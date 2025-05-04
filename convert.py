@@ -19,11 +19,13 @@ def convert_html_for_flask(html_path, output_path):
     
     print(f"✔ Flask HTML로 저장 완료: {output_path}")
 
-convert_html_for_flask("./templates/index.html", "index.html")
-convert_html_for_flask("./templates/contactthanks.html", "contactthanks.html")
-convert_html_for_flask("./templates/privacy.html", "privacy.html")
-convert_html_for_flask("./templates/shortcodes.html", "shortcodes.html")
+# convert_html_for_flask("./templates/index.html", "index.html")
+# convert_html_for_flask("./templates/contactthanks.html", "contactthanks.html")
+# convert_html_for_flask("./templates/privacy.html", "privacy.html")
+# convert_html_for_flask("./templates/shortcodes.html", "shortcodes.html")
 
-convert_html_for_flask("./templates/subscribe.html", "subscribe.html")
-convert_html_for_flask("./templates/video.html", "video.html")
+# convert_html_for_flask("./templates/subscribe.html", "subscribe.html")
+#  convert_html_for_flask("./templates/video.html", "video.html")
+
+convert_html_for_flask("./templates/download.html", "download.html")
 

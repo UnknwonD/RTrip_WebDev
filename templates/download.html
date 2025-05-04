@@ -7,20 +7,20 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
         <!-- CSS Files -->
-        <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
-        <link href="css/font-awesome.min.css" rel="stylesheet">
-        <link href="fonts/icon-7-stroke/css/pe-icon-7-stroke.css" rel="stylesheet">
-        <link href="css/animate.css" rel="stylesheet" media="screen">
-        <link href="css/owl.theme.css" rel="stylesheet">
-        <link href="css/owl.carousel.css" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
+        <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='fonts/icon-7-stroke/css/pe-icon-7-stroke.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/animate.css') }}" rel="stylesheet" media="screen">
+        <link href="{{ url_for('static', filename='css/owl.theme.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/owl.carousel.css') }}" rel="stylesheet">
 
         <!-- Colors -->
-        <link href="css/css-index.css" rel="stylesheet" media="screen">
-        <!-- <link href="css/css-index-green.css" rel="stylesheet" media="screen"> -->
-        <!-- <link href="css/css-index-purple.css" rel="stylesheet" media="screen"> -->
-        <!-- <link href="css/css-index-red.css" rel="stylesheet" media="screen"> -->
-        <!-- <link href="css/css-index-orange.css" rel="stylesheet" media="screen"> -->
-        <!-- <link href="css/css-index-yellow.css" rel="stylesheet" media="screen"> -->
+        <link href="{{ url_for('static', filename='css/css-index.css') }}" rel="stylesheet" media="screen">
+        <!-- <link href="{{ url_for('static', filename='css/css-index-green.css') }}" rel="stylesheet" media="screen"> -->
+        <!-- <link href="{{ url_for('static', filename='css/css-index-purple.css') }}" rel="stylesheet" media="screen"> -->
+        <!-- <link href="{{ url_for('static', filename='css/css-index-red.css') }}" rel="stylesheet" media="screen"> -->
+        <!-- <link href="{{ url_for('static', filename='css/css-index-orange.css') }}" rel="stylesheet" media="screen"> -->
+        <!-- <link href="{{ url_for('static', filename='css/css-index-yellow.css') }}" rel="stylesheet" media="screen"> -->
 
         <!-- Google Fonts -->
         <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato:100,300,400,700,900,100italic,300italic,400italic,700italic,900italic" />
@@ -41,7 +41,7 @@
                         <div class="col-md-10 col-md-offset-1 text-center">
 
                             <!-- /.logo -->
-                            <div class="logo wow fadeInDown"> <a href=""><img src="images/logo.png" alt="logo"></a></div>
+                            <div class="logo wow fadeInDown"> <a href=""><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a></div>
 
                             <!-- /.main title -->
                             <h1 class="wow fadeInLeft">
@@ -76,7 +76,7 @@
                             <span class="icon-bar"></span>
                             <span class="icon-bar"></span>
                         </button>
-                        <a class="navbar-brand site-name" href="#top"><img src="images/logo2.png" alt="logo"></a>
+                        <a class="navbar-brand site-name" href="#top"><img src="{{ url_for('static', filename='images/logo2.png') }}" alt="logo"></a>
                     </div>
 
                     <div id="navbar-scroll" class="collapse navbar-collapse navbar-backyard navbar-right">
@@ -100,7 +100,7 @@
 
                     <!-- /.intro image -->
                     <div class="col-md-6 intro-pic wow slideInLeft">
-                        <img src="images/ipad.jpg" alt="ipad" class="img-responsive">
+                        <img src="{{ url_for('static', filename='images/ipad.jpg') }}" alt="ipad" class="img-responsive">
                     </div>	
 
                     <!-- /.intro content -->
@@ -132,7 +132,7 @@
 
                         <!-- /.feature image -->
                         <div class="feature-img">
-                            <img src="images/iphone.jpg" alt="iphone" class="img-responsive wow fadeInLeft">
+                            <img src="{{ url_for('static', filename='images/iphone.jpg') }}" alt="iphone" class="img-responsive wow fadeInLeft">
                         </div>
                     </div>
 
@@ -196,7 +196,7 @@
 
                     <!-- /.feature image -->
                     <div class="col-md-6 feature-2-pic wow fadeInRight">
-                        <img src="images/macbook.jpg" alt="macbook" class="img-responsive">
+                        <img src="{{ url_for('static', filename='images/macbook.jpg') }}" alt="macbook" class="img-responsive">
                     </div>				  
                 </div>			  
 
@@ -388,10 +388,10 @@
             <div class="container">
                 <div class="row">
                     <div class="col-sm-12 text-center">
-                        <img alt="client" src="images/client1.png" class="wow fadeInUp">
-                        <img alt="client" src="images/client2.png" class="wow fadeInUp" data-wow-delay="0.2s">
-                        <img alt="client" src="images/client3.png" class="wow fadeInUp" data-wow-delay="0.4s">
-                        <img alt="client" src="images/client4.png" class="wow fadeInUp" data-wow-delay="0.6s">
+                        <img alt="client" src="{{ url_for('static', filename='images/client1.png') }}" class="wow fadeInUp">
+                        <img alt="client" src="{{ url_for('static', filename='images/client2.png') }}" class="wow fadeInUp" data-wow-delay="0.2s">
+                        <img alt="client" src="{{ url_for('static', filename='images/client3.png') }}" class="wow fadeInUp" data-wow-delay="0.4s">
+                        <img alt="client" src="{{ url_for('static', filename='images/client4.png') }}" class="wow fadeInUp" data-wow-delay="0.6s">
                     </div>
                 </div>
             </div>	
@@ -413,7 +413,7 @@
                                 <div class="client-pic text-center">
 
                                     <!-- /.client photo -->
-                                    <img src="images/testi1.jpg" alt="client">
+                                    <img src="{{ url_for('static', filename='images/testi1.jpg') }}" alt="client">
                                 </div>
                                 <div class="box">
 
@@ -432,7 +432,7 @@
                                 <div class="client-pic text-center">
 
                                     <!-- /.client photo -->
-                                    <img src="images/testi2.jpg" alt="client">
+                                    <img src="{{ url_for('static', filename='images/testi2.jpg') }}" alt="client">
                                 </div>
                                 <div class="box">
 
@@ -451,7 +451,7 @@
                                 <div class="client-pic text-center">
 
                                     <!-- /.client photo -->
-                                    <img src="images/testi3.jpg" alt="client">
+                                    <img src="{{ url_for('static', filename='images/testi3.jpg') }}" alt="client">
                                 </div>
                                 <div class="box">
 
@@ -537,13 +537,13 @@
         </footer>
 
         <!-- /.javascript files -->
-        <script src="js/jquery.js"></script>
-        <script src="js/bootstrap.min.js"></script>
-        <script src="js/custom.js"></script>
-        <script src="js/jquery.sticky.js"></script>
-        <script src="js/wow.min.js"></script>
-        <script src="js/owl.carousel.min.js"></script>
-        <script src="js/ekko-lightbox-min.js"></script>
+        <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/jquery.sticky.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ekko-lightbox-min.js') }}"></script>
         <script type="text/javascript">
                                     $( document ).delegate( '*[data-toggle="lightbox"]', 'click', function ( event ) {
                                         event.preventDefault();
