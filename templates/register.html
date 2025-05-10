@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <meta charset="UTF-8">
     <title>회원가입 폼</title>
     <style>
@@ -36,7 +37,10 @@
 <body>
     <h2>회원가입 - Page 1</h2>
     <form method="POST" action="/register">
-        <label>아이디:</label><input type="text" name="USER_ID" pattern="[a-z0-9]{4,20}" title="영어 소문자와 숫자만, 4~20자 입력" required><br>
+        <label>아이디:</label><input type="text" name="USER_ID" id="USER_ID" pattern="[a-z0-9]{4,20}" title="영어 소문자와 숫자만, 4~20자 입력" required>
+        <button type="button" onclick="checkDuplicateId()">중복 확인</button>
+        <span id="id-check-result"></span>
+        <br>
         <label>비밀번호:</label><input type="password" name="PASSWORD" required><br>
         <label>비밀번호 확인:</label><input type="password" name="CONFIRM_PASSWORD" required><br>
         <label>이름:</label><input type="text" name="NAME" required><br>
@@ -51,12 +55,14 @@
         <input type="date" name="BIRTHDATE" min="1900-01-01" max="2025-12-31"><br>
 
         <label>휴대전화 번호:</label>
-        <select name="phone_prefix">
+        <select name="phone_prefix" id="phone_prefix">
             <option value="010">010</option>
         </select>
-        - <input type="text" name="phone_middle" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required>
-        - <input type="text" name="phone_last" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required><br>
-
+        - <input type="text" name="phone_middle" id="phone_middle" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required>
+        - <input type="text" name="phone_last" id="phone_last" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required>
+        <button type="button" onclick="checkDuplicatePhone()">중복 확인</button>
+        <span id="phone-check-result"></span>
+        <br>
         <label>최종학력:</label>
         <select name="EDU_NM">
             <option value="1">무학</option>
@@ -109,8 +115,8 @@
 
         <h2>회원가입 - Page 2</h2>
 
-        <label>본인 소득:</label><input type="text" name="INCOME"><br>
-        <label>가구 소득:</label><input type="text" name="HOUSE_INCOME"><br>
+        <label>본인 소득:</label><input type="number" name="INCOME"><label>만 원</label><br>
+        <label>가구 소득:</label><input type="number" name="HOUSE_INCOME"><label>만 원</label><br>
 
         <label>여행기간:</label>
         <select name="TRAVEL_TERM">
@@ -121,7 +127,7 @@
         </select><br>
 
         
-        <label>여행 빈도:</label><input type="number" name="TRAVEL_NUM"><br>
+        <label>여행 빈도(한달 내):</label><input type="number" name="TRAVEL_NUM"><br>
         
         <label>1순위 여행지(시도):</label>
         <select id="TRAVEL_LIKE_SIDO_1" name="TRAVEL_LIKE_SIDO_1" required>
@@ -319,6 +325,45 @@
         <input type="number" name="TRAVEL_COMPANIONS_NUM"><br>
 
         <button type="submit">가입 완료</button>
+        <script>
+            function checkDuplicateId() {
+                const userId = document.getElementById("USER_ID").value;
+                fetch(`/check_duplicate?field=USER_ID&value=${userId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const result = document.getElementById("id-check-result");
+                        result.innerText = data.duplicate 
+                            ? "이미 사용 중인 아이디입니다." 
+                            : "사용 가능한 아이디입니다.";
+                        result.classList.toggle("text-danger", data.duplicate);
+                        result.classList.toggle("text-success", !data.duplicate);
+                    })
+                    .catch(() => alert("중복 확인 중 오류가 발생했습니다."));
+            }
+        
+            function checkDuplicatePhone() {
+                const prefix = document.getElementById("phone_prefix").value;
+                const middle = document.getElementById("phone_middle").value;
+                const last = document.getElementById("phone_last").value;
+                const phone = prefix + middle + last;
+                fetch(`/check_duplicate?field=phone_number&value=${phone}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const result = document.getElementById("phone-check-result");
+                        result.innerText = data.duplicate 
+                            ? "이미 등록된 전화번호입니다." 
+                            : "사용 가능한 전화번호입니다.";
+                        result.classList.toggle("text-danger", data.duplicate);
+                        result.classList.toggle("text-success", !data.duplicate);
+                    })
+                    .catch(() => alert("중복 확인 중 오류가 발생했습니다."));
+            }
+            </script>
+            
     </form>
+<!-- Bootstrap JS, jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

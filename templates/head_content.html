@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+   <!-- Flask-compatible HTML head (일부) -->
+    <head>
+        <title>Backyard App Landing Page</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+        <!-- CSS Files -->
+        <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
+        <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='fonts/icon-7-stroke/css/pe-icon-7-stroke.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/animate.css') }}" rel="stylesheet" media="screen">
+        <link href="{{ url_for('static', filename='css/owl.theme.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/owl.carousel.css') }}" rel="stylesheet">
+
+        <!-- Colors -->
+        <link href="{{ url_for('static', filename='css/css-app.css') }}" rel="stylesheet" media="screen">
+
+        <!-- Google Fonts -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:100,300,400,700,900,100italic,300italic,400italic,700italic,900italic" />
+
+        <style>
+            #slider {
+                overflow: hidden;
+                margin: auto;
+                position: relative;
+              }
+              #slider-container {
+                display: flex;
+                width: 5000px; /* 500 * 10 (이미지 개수) */
+                transition: transform 0.8s ease-in-out;
+              }
+              #info {
+                text-align: center;
+              }
+              #dots {
+                text-align: center;
+              }
+              .dot {
+                font-size: 20px;
+                color: #aaa;
+                cursor: pointer;
+                margin: 0 3px;
+              }
+              .active-dot {
+                color: #333;
+              }
+        </style>
+    </head>
+
+
+    <body data-spy="scroll" data-target="#navbar-scroll">
+
+        
+        <!-- /.preloader -->
+        <div id="preloader"></div>
+        <div id="top"></div>
+
+        <!-- /.parallax full screen background image -->
+        <div class="fullscreen landing parallax" style="background-image:url('images/bg.jpg');" data-img-width="2000" data-img-height="1325" data-diff="100">
+
+            <div class="overlay">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-7">
+
+                            <!-- /.logo -->
+                            <div class="logo wow fadeInDown"> <a href=""><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a></div>
+                            <!-- /.main title -->
+                            {% if session.username %}
+                                <h1 class="wow fadeInLeft">
+                                    {{ session.username }}님, 환영합니다!
+                                </h1>
+
+                                <div class="landing-text wow fadeInLeft">
+                                    <p>여행 스타일 기반 맞춤형 추천 서비스를 시작해보세요.</p>
+                                </div>
+                            {% else %}
+                                <h1 class="wow fadeInLeft">
+                                    Mobile Strategy App
+                                </h1>
+
+                                <div class="landing-text wow fadeInLeft">
+                                    <p>Backyard is a modern and customizable landing page template designed to increase conversion of your product...</p>
+                                </div>
+                            {% endif %}			  
+
+                            <!-- /.header button -->
+                            <div class="head-btn wow fadeInLeft">
+                                {% if session.username %}
+                                    <a href="{{ url_for('mypage') }}" class="btn-default">마이페이지</a>
+                                    <a href="{{ url_for('logout') }}" class="btn-default">로그아웃</a>
+                                {% else %}
+                                    <a href="#" class="btn-primary" data-toggle="modal" data-target="#loginModal">로그인</a>
+                                    <a href="{{ url_for('register_form') }}" class="btn-default">회원가입</a>
+                                {% endif %}
+                            </div>                           
+                            
+
+                            <!-- /.phone option -->
+                            <div class="more wow fadeInLeft">
+                                <p>Available for:
+                                    <a href="#download" class="btn option"><i class="fa fa-apple"></i>iOS</a>
+                                    <a href="#download" class="btn option"><i class="fa fa-android"></i>Android</a>
+                                </p>
+                            </div>			  
+
+                        </div> 
+
+                        <!-- /.phone image -->
+                        <div id = 'slider' class="col-md-5">
+                            <div id="slider-container">
+                                {% for i in range(1, 11) %}
+                                <img src="{{ url_for('static', filename='images/mobile' ~ i ~ '.png') }}"
+                                 alt="image {{ i }}"
+                                id="main-image"
+                                class="slide slider header-phone img-responsive wow fadeInRight" 
+                                style="width: 100%;">
+                                {% endfor %}
+                            </div>
+                            <div id="info" class='landing-text wow fadeInRight text-center'>
+                                설명 1번
+                            </div>
+                            <div id="dots" class='landing-text wow fadeInRight'></div>
+                            
+                            {% if session.username %}
+                                <div class='landing-text wow fadeInRight text-center'> 
+                                    <p>이 장소는 당신의 여행 스타일과 비슷한 사용자들이 다녀간 곳이에요 ! </p>
+                                </div>
+                            {% else %}
+                                <div class='landing-text wow fadeInRight text-center'> 
+                                    <p> R-Trip의 사용자는 이런 장소를 다녀갔어요 ! </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div> 
+            </div> 
+        </div>
+
+        <!-- NAVIGATION -->
+        <div id="menu">
+            <nav class="navbar-wrapper navbar-default" role="navigation">
+                <div class="container">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-backyard">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand site-name" href="#top"><img src="{{ url_for('static', filename='images/logo2.png') }}" alt="logo"></a>
+                    </div>
+
+                    <div id="navbar-scroll" class="collapse navbar-collapse navbar-backyard navbar-right">
+                        <ul class="nav navbar-nav">
+                            <li><a href="#intro">About</a></li>
+                            <li><a href="#feature">Features</a></li>
+                            <li><a href="{{ url_for('recommended') }}">Recommended</a></li>
+                            <li><a href="{{ url_for('map') }}">Map</a></li>
+                            <li><a href="#subscribe">Subscribe</a></li>
+                            <li><a href="#screenshot">Screenshots</a></li>
+                            <li><a href="#testi">Reviews</a></li>
+                            <li><a href="#download">Download</a></li>
+                            
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        {% block content%}
+        {% endblock %}
+
+        <!-- /.footer -->
+        <footer id="footer">
+            <div class="container">
+                <div class="col-sm-4 col-sm-offset-4">
+                    <!-- /.social links -->
+                    <div class="social text-center">
+                        <ul>
+                            <li><a class="wow fadeInUp" href="https://twitter.com/"><i class="fa fa-twitter"></i></a></li>
+                            <li><a class="wow fadeInUp" href="https://www.facebook.com/" data-wow-delay="0.2s"><i class="fa fa-facebook"></i></a></li>
+                            <li><a class="wow fadeInUp" href="https://plus.google.com/" data-wow-delay="0.4s"><i class="fa fa-google-plus"></i></a></li>
+                            <li><a class="wow fadeInUp" href="https://instagram.com/" data-wow-delay="0.6s"><i class="fa fa-instagram"></i></a></li>
+                        </ul>
+                    </div>	
+                    <div class="text-center wow fadeInUp" style="font-size: 14px;">Copyright Backyard 2015 - Template by  <a href="http://bootstrapthemes.co/" target="_blank">BootstrapThemes</a></div>
+                    <a href="#" class="scrollToTop"><i class="pe-7s-up-arrow pe-va"></i></a>
+                </div>	
+            </div>	
+        </footer>
+
+        <!-- /.javascript files -->
+        <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/jquery.sticky.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ekko-lightbox-min.js') }}"></script>
+        <script type="text/javascript">
+            $( document ).delegate( '*[data-toggle="lightbox"]', 'click', function ( event ) {
+                event.preventDefault();
+                $( this ).ekkoLightbox();
+            } );
+        </script>
+        <script>
+            new WOW().init();
+        </script>
+        <script>
+            {% if error %}
+              $(document).ready(function() {
+                $('#loginModal').modal('show');
+              });
+            {% endif %}
+        </script>
+
+        <script>
+            const descriptions = [
+              "설명 1번", "설명 2번", "설명 3번", "설명 4번", "설명 5번",
+              "설명 6번", "설명 7번", "설명 8번", "설명 9번", "설명 10번"
+            ];
+        
+            let current = 0;
+            const total = descriptions.length;
+            const slider = document.getElementById("slider-container");
+            const info = document.getElementById("info");
+            const dotsContainer = document.getElementById("dots");
+            const slides = document.querySelectorAll(".slide");
+
+            // dot 생성
+            for (let i = 0; i < total; i++) {
+            const dot = document.createElement("span");
+            dot.classList.add("dot");
+            dot.innerHTML = "●";
+            dot.addEventListener("click", () => goToSlide(i));
+            dotsContainer.appendChild(dot);
+            }
+
+            const dots = document.querySelectorAll(".dot");
+
+            function updateDots() {
+            dots.forEach((dot, idx) => {
+                dot.classList.toggle("active-dot", idx === current);
+                dot.innerHTML = idx === current ? "●" : "○";
+            });
+            }
+
+            function updateSlide() {
+            const width = slides[current].clientWidth;
+            slider.style.transform = `translateX(-${width * current}px)`;
+            info.innerText = descriptions[current];
+            updateDots();
+            }
+
+            function slideNext() {
+            current = (current + 1) % total;
+            updateSlide();
+            }
+
+            function goToSlide(index) {
+            current = index;
+            updateSlide();
+            }
+
+            window.addEventListener("load", () => {
+            updateSlide();
+            setInterval(slideNext, 5000);
+            });
+
+            window.addEventListener("resize", () => {
+            updateSlide();
+            });
+          </script>
+
+        <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+          
+                <form method="POST" action="{{ url_for('login') }}">
+                  <div class="modal-header">
+                    <h4 class="modal-title" id="loginModalLabel">로그인</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span>&times;</span>
+                    </button>
+                  </div>
+          
+                  <div class="modal-body">
+                    {% if error %}
+                      <div class="alert alert-danger">{{ error }}</div>
+                    {% endif %}
+                    <div class="form-group">
+                      <label for="USER_ID">아이디</label>
+                      <input type="text" class="form-control" name="USER_ID" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="PASSWORD">비밀번호</label>
+                      <input type="password" class="form-control" name="PASSWORD" required>
+                    </div>
+                  </div>
+          
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">로그인</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+                  </div>
+                </form>
+          
+              </div>
+            </div>
+          </div>
+    </body>
+</html>

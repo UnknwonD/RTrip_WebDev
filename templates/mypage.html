@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>마이페이지</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-success" style="margin: 20px;">
+                {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+    <h2>마이페이지</h2>
+    <form method="POST" action="/mypage">
+        <label>아이디:</label><input type="text" name="USER_ID" value="{{ user.USER_ID }}" readonly><br>
+        <label>이름:</label><input type="text" name="NAME" value="{{ user.NAME }}"><br>
+        <label>성별:</label>
+        <select name="GENDER">
+            <option value="1" {% if user.GENDER == '1' %}selected{% endif %}>남</option>
+            <option value="2" {% if user.GENDER == '2' %}selected{% endif %}>여</option>
+        </select><br>
+        <label>생년월일:</label><input type="date" name="BIRTHDATE" value="{{ user.BIRTHDATE }}"><br>
+        <label>전화번호:</label><input type="text" name="phone_number" value="{{ user.phone_number }}"><br>
+        <label>최종학력:</label><input type="text" name="EDU_NM" value="{{ user.EDU_NM }}"><br>
+        <label>최종학력 이수 여부:</label><input type="text" name="EDU_FNSH_SE" value="{{ user.EDU_FNSH_SE }}"><br>
+        <label>혼인상태:</label><input type="text" name="MARR_STTS" value="{{ user.MARR_STTS }}"><br>
+        <label>가족 수:</label><input type="number" name="FAMILY_MEMB" value="{{ user.FAMILY_MEMB }}"><br>
+        <label>직업:</label><input type="text" name="JOB_NM" value="{{ user.JOB_NM }}"><br>
+        <label>본인 소득:</label><input type="text" name="INCOME" value="{{ user.INCOME }}"><br>
+        <label>가구 소득:</label><input type="text" name="HOUSE_INCOME" value="{{ user.HOUSE_INCOME }}"><br>
+        <label>여행기간:</label><input type="text" name="TRAVEL_TERM" value="{{ user.TRAVEL_TERM }}"><br>
+        <label>여행 빈도:</label><input type="text" name="TRAVEL_NUM" value="{{ user.TRAVEL_NUM }}"><br>
+        <label>1순위 여행지:</label><input type="text" name="TRAVEL_LIKE_SIDO_1" value="{{ user.TRAVEL_LIKE_SIDO_1 }}"><br>
+        <label>2순위 여행지:</label><input type="text" name="TRAVEL_LIKE_SIDO_2" value="{{ user.TRAVEL_LIKE_SIDO_2 }}"><br>
+        <label>3순위 여행지:</label><input type="text" name="TRAVEL_LIKE_SIDO_3" value="{{ user.TRAVEL_LIKE_SIDO_3 }}"><br>
+        {% for i in range(1, 9) %}
+            <label>여행스타일 {{ i }}:</label><input type="text" name="TRAVEL_STYL_{{ i }}" value="{{ user['TRAVEL_STYL_' ~ i] }}"><br>
+        {% endfor %}
+        <label>여행동기 1:</label><input type="text" name="TRAVEL_MOTIVE_1" value="{{ user.TRAVEL_MOTIVE_1 }}"><br>
+        <label>여행동기 2:</label><input type="text" name="TRAVEL_MOTIVE_2" value="{{ user.TRAVEL_MOTIVE_2 }}"><br>
+        <label>동반자 수:</label><input type="number" name="TRAVEL_COMPANIONS_NUM" value="{{ user.TRAVEL_COMPANIONS_NUM }}"><br>
+
+        <button type="submit">수정 완료</button>
+        <button type="home" onclick="location.href='/home'">메인</button>
+    </form>
+</body>
+</html>
