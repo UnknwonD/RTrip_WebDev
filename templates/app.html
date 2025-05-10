@@ -23,6 +23,7 @@
 
     <body data-spy="scroll" data-target="#navbar-scroll">
 
+        
         <!-- /.preloader -->
         <div id="preloader"></div>
         <div id="top"></div>
@@ -38,20 +39,35 @@
                             <!-- /.logo -->
                             <div class="logo wow fadeInDown"> <a href=""><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a></div>
                             <!-- /.main title -->
-                            <h1 class="wow fadeInLeft">
-                                Mobile Strategy App
-                            </h1>
+                            {% if session.username %}
+                                <h1 class="wow fadeInLeft">
+                                    {{ session.username }}님, 환영합니다!
+                                </h1>
 
-                            <!-- /.header paragraph -->
-                            <div class="landing-text wow fadeInLeft">
-                                <p>Backyard is a modern and customizable landing page template designed to increase conversion of your product. Backyard is flexible to suit any kind of your business. Try now and join with our happy customers!</p>
-                            </div>				  
+                                <div class="landing-text wow fadeInLeft">
+                                    <p>여행 스타일 기반 맞춤형 추천 서비스를 시작해보세요.</p>
+                                </div>
+                            {% else %}
+                                <h1 class="wow fadeInLeft">
+                                    Mobile Strategy App
+                                </h1>
+
+                                <div class="landing-text wow fadeInLeft">
+                                    <p>Backyard is a modern and customizable landing page template designed to increase conversion of your product...</p>
+                                </div>
+                            {% endif %}			  
 
                             <!-- /.header button -->
                             <div class="head-btn wow fadeInLeft">
-                                <a href="#feature" class="btn-primary">Features</a>
-                                <a href="#subscribe" class="btn-default">Subscribe</a>
-                            </div>
+                                {% if session.username %}
+                                    <a href="{{ url_for('mypage') }}" class="btn-default">마이페이지</a>
+                                    <a href="{{ url_for('logout') }}" class="btn-default">로그아웃</a>
+                                {% else %}
+                                    <a href="#" class="btn-primary" data-toggle="modal" data-target="#loginModal">로그인</a>
+                                    <a href="{{ url_for('register_form') }}" class="btn-default">회원가입</a>
+                                {% endif %}
+                            </div>                           
+                            
 
                             <!-- /.phone option -->
                             <div class="more wow fadeInLeft">
@@ -90,10 +106,13 @@
                         <ul class="nav navbar-nav">
                             <li><a href="#intro">About</a></li>
                             <li><a href="#feature">Features</a></li>
+                            <li><a href="{{ url_for('recommended') }}">Recommended</a></li>
+                            <li><a href="{{ url_for('map') }}">Map</a></li>
                             <li><a href="#subscribe">Subscribe</a></li>
                             <li><a href="#screenshot">Screenshots</a></li>
                             <li><a href="#testi">Reviews</a></li>
                             <li><a href="#download">Download</a></li>
+                            
                         </ul>
                     </div>
                 </div>
@@ -196,7 +215,10 @@
                         <p>Good marketing makes the company look smart. <span class="highlight">Great marketing</span> makes the customer feel smart, - Joe Chernov. Never doubt a small group of thoughtful, committed people can change the world. Indeed, it is the only thing that ever has, - Margaret Mead. The best way to predict the future is to create it, - Peter Drucker.
                         </p>
 
-                        <div class="btn-section"><a href="#download" class="btn-default">Download Now</a></div>
+                        <div class="btn-section">
+                            <a href="#download" class="btn-default">Download Now</a>
+                        </div>
+                        
 
                     </div>
 
@@ -437,5 +459,47 @@
         <script>
             new WOW().init();
         </script>
+        <script>
+            {% if error %}
+              $(document).ready(function() {
+                $('#loginModal').modal('show');
+              });
+            {% endif %}
+          </script>
+        <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+          
+                <form method="POST" action="{{ url_for('login') }}">
+                  <div class="modal-header">
+                    <h4 class="modal-title" id="loginModalLabel">로그인</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span>&times;</span>
+                    </button>
+                  </div>
+          
+                  <div class="modal-body">
+                    {% if error %}
+                      <div class="alert alert-danger">{{ error }}</div>
+                    {% endif %}
+                    <div class="form-group">
+                      <label for="USER_ID">아이디</label>
+                      <input type="text" class="form-control" name="USER_ID" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="PASSWORD">비밀번호</label>
+                      <input type="password" class="form-control" name="PASSWORD" required>
+                    </div>
+                  </div>
+          
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">로그인</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+                  </div>
+                </form>
+          
+              </div>
+            </div>
+          </div>
     </body>
 </html>
