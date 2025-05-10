@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>추천 페이지</title>
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <h2>추천 페이지</h2>
-        <p>이곳은 추천 기능이 구현될 테스트 페이지입니다.</p>
-    </div>
-</body>
-</html>
+{% extends  'head_content.html' %}
+
+{% block content %}
+
+<div class="container mt-5">
+    <h2>추천 페이지</h2>
+    <p>이곳은 추천 기능이 구현될 테스트 페이지입니다.</p>
+</div>
+
+{% endblock %}
