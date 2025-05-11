@@ -1,14 +1,17 @@
+import botocore.client
 from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
-import os
+from lee import find_nearest_neighbors
 import boto3
+import requests
+import os
 import uuid
 import json
-import requests
+import botocore
 
 app = Flask(__name__)
-load_dotenv()
+load_dotenv(override=True)
 app.secret_key = 'your_secret_key'  # 세션을 위한 시크릿 키 설정
 
 # === AWS S3 설정 ===
@@ -24,11 +27,95 @@ s3 = boto3.client(
     region_name=REGION_NAME
 )
 
+
+# def get_photo_urls_from_photo_df(photo_df):
+#     prefix = 'resized_image/E/data_resized/'
+#     photo_filenames = set(photo_df['PHOTO_FILE_NM'].astype(str) + '.jpg')
+#     matching_keys = []
+
+#     continuation_token = None
+#     while True:
+#         if continuation_token:
+#             response = s3.list_objects_v2(
+#                 Bucket=BUCKET_NAME,
+#                 Prefix=prefix,
+#                 ContinuationToken=continuation_token
+#             )
+#         else:
+#             response = s3.list_objects_v2(
+#                 Bucket=BUCKET_NAME,
+#                 Prefix=prefix
+#             )
+
+#         for obj in response.get('Contents', []):
+#             filename = obj['Key'].split('/')[-1]
+#             if filename in photo_filenames:
+#                 matching_keys.append(obj['Key'])
+
+#         if response.get('IsTruncated'):
+#             continuation_token = response.get('NextContinuationToken')
+#         else:
+#             break
+
+#     signed_urls = [
+#         s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET_NAME, 'Key': key}, ExpiresIn=3600)
+#         for key in matching_keys
+#     ]
+#     return signed_urls
+
+
+# # === S3 JSON 파일에서 사용자 정보 찾기 ===
+# def find_user_by_travel_id(travel_id):
+#     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="travelers/")
+#     for obj in response.get('Contents', []):
+#         key = obj['Key']
+#         file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
+#         user_json = json.loads(file_obj['Body'].read().decode('utf-8'))
+
+#         # travel_id 필드나 uuid 앞 7자리로 비교
+#         uuid_prefix = user_json.get('uuid', '')[:7]
+#         if uuid_prefix == travel_id:
+#             return user_json  # 사용자 정보 반환
+
+#     return None  # 해당하는 사용자 없음
+
+
+# # === S3에서 이미지 URL 가져오기 ===
+# def get_s3_signed_urls(reverse=False):
+#     prefix = 'resized_image/E/data_resized/'
+#     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+
+#     all_keys = [obj['Key'] for obj in response.get('Contents', []) if obj['Key'].endswith('.jpg')]
+#     all_keys = sorted(all_keys, reverse=reverse)[:10]
+
+#     signed_data = []
+#     for key in all_keys:
+#         filename = key.split("/")[-1]
+#         travel_id = filename[:7]  
+#         print(f"[파일명] {filename} / [Travel ID] {travel_id}")  # 콘솔 로그
+
+#         url = s3.generate_presigned_url(
+#             'get_object',
+#             Params={'Bucket': BUCKET_NAME, 'Key': key},
+#             ExpiresIn=3600
+#         )
+
+#         signed_data.append({
+#             "filename": filename,
+#             "travel_id": travel_id,  
+#             "url": url
+#         })
+
+#     return signed_data
+
+# 이미지 정보 같이 불러오는 코드 추가할 것 (장소명, 주소, 방문 횟수 ...)
 def get_s3_signed_urls(reverse = False):
     s3 = boto3.client('s3',
                       aws_access_key_id=AWS_ACCESS_KEY,
                       aws_secret_access_key=AWS_SECRET_KEY,
-                      region_name=REGION_NAME)
+                      region_name= REGION_NAME,
+                      config=botocore.client.Config(signature_version='s3v4')
+                    )
 
     bucket = 'my-test-for-mediaprj'
     prefix = 'resized_image/E/data_resized/'
@@ -42,6 +129,13 @@ def get_s3_signed_urls(reverse = False):
         for key in all_keys
     ]
     return signed_urls
+    
+url = s3.generate_presigned_url(
+    ClientMethod='get_object',
+    Params={'Bucket': BUCKET_NAME, 'Key': 'resized_image/E/data_resized/example.jpg'},
+    ExpiresIn=3600
+)
+
 
 # === 중복 확인 함수 ===
 def is_duplicate(field_name, value):
@@ -85,9 +179,10 @@ def send_to_ec2(user_data):
 def home():
     if "username" in session.keys():
         images = get_s3_signed_urls(True)
-    else:
+    else:     
         images = get_s3_signed_urls()
     return render_template("app.html", images=images)
+
 
 @app.route("/login", methods=["POST"])
 def login():

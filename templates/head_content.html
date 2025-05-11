@@ -113,21 +113,13 @@
                                 <!-- S3에서 이미지 불러오기 -->
                                 {% for img in images %}
                                 <img src="{{ img }}"
-                                 alt="image {{ loop.index }}"
-                                id="main-image"
-                                class="slide slider header-phone img-responsive wow fadeInRight" 
-                                style="width: 100%;">
+                                    alt="image {{ loop.index }}"
+                                    id="main-image"
+                                    class="slide slider header-phone img-responsive wow fadeInRight" 
+                                    style="width: 100%;">                                    
                                 {% endfor %}
-                                <!-- 여기까지 -->
+
                             </div>
-                            <div id="slider-container">
-                                {% for i in range(1, 11) %}
-                                <img src="{{ url_for('static', filename='images/mobile' ~ i ~ '.png') }}"
-                                 alt="image {{ i }}"
-                                id="main-image"
-                                class="slide slider header-phone img-responsive wow fadeInRight" 
-                                style="width: 100%;">
-                                {% endfor %}
                             </div>
                             <div id="info" class='landing-text wow fadeInRight text-center'>
                                 설명 1번
@@ -219,13 +211,13 @@
         <script>
             new WOW().init();
         </script>
+        {% if error %}
         <script>
-            {% if error %}
-              $(document).ready(function() {
-                $('#loginModal').modal('show');
-              });
-            {% endif %}
+                $(document).ready(function() {
+                    $('#loginModal').modal('show');
+                });
         </script>
+        {% endif %}
 
         <script>
             const descriptions = [
