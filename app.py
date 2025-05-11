@@ -24,6 +24,25 @@ s3 = boto3.client(
     region_name=REGION_NAME
 )
 
+def get_s3_signed_urls(reverse = False):
+    s3 = boto3.client('s3',
+                      aws_access_key_id=AWS_ACCESS_KEY,
+                      aws_secret_access_key=AWS_SECRET_KEY,
+                      region_name=REGION_NAME)
+
+    bucket = 'my-test-for-mediaprj'
+    prefix = 'resized_image/E/data_resized/'
+
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    all_keys = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.jpg')]
+    all_keys = sorted(all_keys, reverse=reverse)[:10]  # 상위 10개
+    
+    signed_urls = [
+        s3.generate_presigned_url('get_object', Params={'Bucket': bucket, 'Key': key}, ExpiresIn=3600)
+        for key in all_keys
+    ]
+    return signed_urls
+
 # === 중복 확인 함수 ===
 def is_duplicate(field_name, value):
     try:
@@ -64,7 +83,11 @@ def send_to_ec2(user_data):
 # === 기본 페이지 라우팅 ===
 @app.route("/")
 def home():
-    return render_template("app.html")
+    if "username" in session.keys():
+        images = get_s3_signed_urls(True)
+    else:
+        images = get_s3_signed_urls()
+    return render_template("app.html", images=images)
 
 @app.route("/login", methods=["POST"])
 def login():

@@ -110,6 +110,17 @@
                         <!-- /.phone image -->
                         <div id = 'slider' class="col-md-5">
                             <div id="slider-container">
+                                <!-- S3에서 이미지 불러오기 -->
+                                {% for img in images %}
+                                <img src="{{ img }}"
+                                 alt="image {{ loop.index }}"
+                                id="main-image"
+                                class="slide slider header-phone img-responsive wow fadeInRight" 
+                                style="width: 100%;">
+                                {% endfor %}
+                                <!-- 여기까지 -->
+                            </div>
+                            <div id="slider-container">
                                 {% for i in range(1, 11) %}
                                 <img src="{{ url_for('static', filename='images/mobile' ~ i ~ '.png') }}"
                                  alt="image {{ i }}"
