@@ -1,6 +1,5 @@
-import botocore.client
-from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify
-from dotenv import load_dotenv, find_dotenv
+from flask import Flask,render_template, redirect, url_for, flash, jsonify, request, session
+from dotenv import load_dotenv
 from datetime import datetime
 from lee import find_nearest_neighbors
 import boto3
@@ -14,12 +13,17 @@ app = Flask(__name__)
 load_dotenv(override=True)
 app.secret_key = 'your_secret_key'  # 세션을 위한 시크릿 키 설정
 
-# === AWS S3 설정 ===
+# AWS Setting 
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 REGION_NAME = os.getenv("AWS_REGION")
 
+# EC2 Setting
+EC2_PUBLIC_ADDR = os.getenv("EC2_PUBLIC_ADDR")
+
+
+# S3 Client setting
 s3 = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY,
@@ -27,86 +31,6 @@ s3 = boto3.client(
     region_name=REGION_NAME
 )
 
-
-# def get_photo_urls_from_photo_df(photo_df):
-#     prefix = 'resized_image/E/data_resized/'
-#     photo_filenames = set(photo_df['PHOTO_FILE_NM'].astype(str) + '.jpg')
-#     matching_keys = []
-
-#     continuation_token = None
-#     while True:
-#         if continuation_token:
-#             response = s3.list_objects_v2(
-#                 Bucket=BUCKET_NAME,
-#                 Prefix=prefix,
-#                 ContinuationToken=continuation_token
-#             )
-#         else:
-#             response = s3.list_objects_v2(
-#                 Bucket=BUCKET_NAME,
-#                 Prefix=prefix
-#             )
-
-#         for obj in response.get('Contents', []):
-#             filename = obj['Key'].split('/')[-1]
-#             if filename in photo_filenames:
-#                 matching_keys.append(obj['Key'])
-
-#         if response.get('IsTruncated'):
-#             continuation_token = response.get('NextContinuationToken')
-#         else:
-#             break
-
-#     signed_urls = [
-#         s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET_NAME, 'Key': key}, ExpiresIn=3600)
-#         for key in matching_keys
-#     ]
-#     return signed_urls
-
-
-# # === S3 JSON 파일에서 사용자 정보 찾기 ===
-# def find_user_by_travel_id(travel_id):
-#     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="travelers/")
-#     for obj in response.get('Contents', []):
-#         key = obj['Key']
-#         file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-#         user_json = json.loads(file_obj['Body'].read().decode('utf-8'))
-
-#         # travel_id 필드나 uuid 앞 7자리로 비교
-#         uuid_prefix = user_json.get('uuid', '')[:7]
-#         if uuid_prefix == travel_id:
-#             return user_json  # 사용자 정보 반환
-
-#     return None  # 해당하는 사용자 없음
-
-
-# # === S3에서 이미지 URL 가져오기 ===
-# def get_s3_signed_urls(reverse=False):
-#     prefix = 'resized_image/E/data_resized/'
-#     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
-
-#     all_keys = [obj['Key'] for obj in response.get('Contents', []) if obj['Key'].endswith('.jpg')]
-#     all_keys = sorted(all_keys, reverse=reverse)[:10]
-
-#     signed_data = []
-#     for key in all_keys:
-#         filename = key.split("/")[-1]
-#         travel_id = filename[:7]  
-#         print(f"[파일명] {filename} / [Travel ID] {travel_id}")  # 콘솔 로그
-
-#         url = s3.generate_presigned_url(
-#             'get_object',
-#             Params={'Bucket': BUCKET_NAME, 'Key': key},
-#             ExpiresIn=3600
-#         )
-
-#         signed_data.append({
-#             "filename": filename,
-#             "travel_id": travel_id,  
-#             "url": url
-#         })
-
-#     return signed_data
 
 # 이미지 정보 같이 불러오는 코드 추가할 것 (장소명, 주소, 방문 횟수 ...)
 def get_s3_signed_urls(reverse = False):
@@ -117,8 +41,8 @@ def get_s3_signed_urls(reverse = False):
                       config=botocore.client.Config(signature_version='s3v4')
                     )
 
-    bucket = 'my-test-for-mediaprj'
-    prefix = 'resized_image/E/data_resized/'
+    bucket = BUCKET_NAME
+    prefix = 'data/resized_image/E/'
 
     response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
     all_keys = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.jpg')]
@@ -129,41 +53,39 @@ def get_s3_signed_urls(reverse = False):
         for key in all_keys
     ]
     return signed_urls
-    
-url = s3.generate_presigned_url(
-    ClientMethod='get_object',
-    Params={'Bucket': BUCKET_NAME, 'Key': 'resized_image/E/data_resized/example.jpg'},
-    ExpiresIn=3600
-)
-
 
 # === 중복 확인 함수 ===
 def is_duplicate(field_name, value):
     try:
-        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="travelers/")
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
         for obj in response.get('Contents', []):
             key = obj['Key']
+            if not key.endswith('.json'):
+                continue
+
             file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-            user_json = json.loads(file_obj['Body'].read().decode('utf-8'))
+            body = file_obj['Body'].read().decode('utf-8').strip()
+
+            if not body:
+                continue
+
+            try:
+                user_json = json.loads(body)
+            except json.JSONDecodeError:
+                continue
+
+            if user_json.get(field_name) == value:
+                return True
             if user_json.get(field_name) == value:
                 return True
     except Exception as e:
         print(f"[!] 중복 확인 오류: {str(e)}")
     return False
 
-@app.route("/check_duplicate")
-def check_duplicate():
-    field = request.args.get("field")
-    value = request.args.get("value")
-    return jsonify({"duplicate": is_duplicate(field, value)})
-
-# === EC2 전송 설정 ===
-EC2_API_URL = "http://3.38.250.18:8000/ingest"
-
 def send_to_ec2(user_data):
     try:
         res = requests.post(
-            EC2_API_URL,
+            EC2_PUBLIC_ADDR,
             headers={"Content-Type": "application/json"},
             data=json.dumps(user_data, ensure_ascii=False).encode("utf-8")
         )
@@ -188,18 +110,31 @@ def home():
 def login():
     input_id = request.form.get("USER_ID")
     input_pw = request.form.get("PASSWORD")
-
+    
     try:
-        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="travelers/")
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
         for obj in response.get('Contents', []):
             key = obj['Key']
+            if not key.endswith('.json'):
+                continue  # 폴더 객체 등은 무시
+
             file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-            user_json = json.loads(file_obj['Body'].read().decode('utf-8'))
+            body = file_obj['Body'].read().decode('utf-8').strip()
+
+            if not body:
+                print(f"[!] 빈 파일: {key}")
+                continue
+
+            try:
+                user_json = json.loads(body)
+            except json.JSONDecodeError as e:
+                print(f"[!] JSON 파싱 실패: {key} → {e}")
+                continue
 
             if user_json.get("USER_ID") == input_id and user_json.get("PASSWORD") == input_pw:
+                print("1")
                 session["username"] = input_id
                 return redirect(url_for("home"))
-
         return render_template("app.html", error="아이디 또는 비밀번호가 잘못되었습니다.")
     except Exception as e:
         return f"S3 조회 오류: {str(e)}", 500
@@ -208,6 +143,61 @@ def login():
 def logout():
     session.pop("username", None)
     return redirect(url_for("home"))
+
+@app.route("/register", methods=["POST"])
+def register():
+    user_id = request.form.get("USER_ID")
+    phone_number = f"{request.form.get('phone_prefix')}{request.form.get('phone_middle')}{request.form.get('phone_last')}"
+
+    if is_duplicate("USER_ID", user_id):
+        return render_template("register.html", error="이미 사용 중인 아이디입니다.")
+    if is_duplicate("phone_number", phone_number):
+        return render_template("register.html", error="이미 등록된 전화번호입니다.")
+
+    fields = [
+        'USER_ID', 'PASSWORD', 'CONFIRM_PASSWORD', 'NAME', 'BIRTHDATE',
+        'GENDER', 'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'JOB_NM',
+        'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM',
+        'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
+        'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
+        'TRAVEL_STYL_5', 'TRAVEL_STYL_6', 'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
+        'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2',
+        'FAMILY_MEMB', 'TRAVEL_NUM', 'TRAVEL_COMPANIONS_NUM'
+    ]
+
+    user_data = {field: request.form.get(field, "") for field in fields}
+    user_data["uuid"] = str(uuid.uuid4())
+
+    birthdate_str = user_data.get("BIRTHDATE", "")
+    try:
+        birth_year = datetime.strptime(birthdate_str, "%Y-%m-%d").year
+        age = datetime.now().year - birth_year
+        age_group = (age // 10) * 10
+        user_data["AGE_GRP"] = "90" if age_group >= 90 else str(max(10, age_group))
+    except:
+        user_data["AGE_GRP"] = ""
+
+    user_data["phone_number"] = phone_number
+
+    try:
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key=f"users/{user_data['uuid']}.json",
+            Body=json.dumps(user_data, ensure_ascii=False).encode('utf-8'),
+            ContentType='application/json'
+        )
+        print(f"[✓] S3 저장 완료: {user_data['uuid']}")
+    except Exception as e:
+        print(f"[!] S3 저장 실패: {str(e)}")
+        return f"S3 저장 실패: {str(e)}", 500
+
+    return redirect(url_for("home"))
+
+@app.route("/check_duplicate")
+def check_duplicate():
+    field = request.args.get("field")
+    value = request.args.get("value")
+    return jsonify({"duplicate": is_duplicate(field, value)})
 
 @app.route("/mypage", methods=["GET", "POST"])
 def mypage():
@@ -218,11 +208,28 @@ def mypage():
 
     if request.method == "GET":
         try:
-            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="travelers/")
+            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
             for obj in response.get('Contents', []):
                 key = obj['Key']
+                if not key.endswith('.json'):
+                    continue
+
                 file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-                user_json = json.loads(file_obj['Body'].read().decode('utf-8'))
+                body = file_obj['Body'].read().decode('utf-8').strip()
+
+                if not body:
+                    print(f"[!] 빈 파일: {key}")
+                    continue
+
+                try:
+                    user_json = json.loads(body)
+                except json.JSONDecodeError as e:
+                    print(f"[!] JSON 파싱 오류: {key} → {e}")
+                    continue
+
+                if user_json.get("USER_ID") == username:
+                    return render_template("mypage.html", user=user_json)
+
                 if user_json.get("USER_ID") == username:
                     return render_template("mypage.html", user=user_json)
             return "사용자 정보를 찾을 수 없습니다.", 404
@@ -234,7 +241,7 @@ def mypage():
         updated_data = {field: request.form.get(field, "") for field in update_fields}
 
         try:
-            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="travelers/")
+            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
             for obj in response.get('Contents', []):
                 key = obj['Key']
                 file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
@@ -293,55 +300,6 @@ def index():
 @app.route("/register")
 def register_form():
     return render_template("register.html")
-
-@app.route("/register", methods=["POST"])
-def register():
-    user_id = request.form.get("USER_ID")
-    phone_number = f"{request.form.get('phone_prefix')}{request.form.get('phone_middle')}{request.form.get('phone_last')}"
-
-    if is_duplicate("USER_ID", user_id):
-        return render_template("register.html", error="이미 사용 중인 아이디입니다.")
-    if is_duplicate("phone_number", phone_number):
-        return render_template("register.html", error="이미 등록된 전화번호입니다.")
-
-    fields = [
-        'USER_ID', 'PASSWORD', 'CONFIRM_PASSWORD', 'NAME', 'BIRTHDATE',
-        'GENDER', 'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'JOB_NM',
-        'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM',
-        'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
-        'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
-        'TRAVEL_STYL_5', 'TRAVEL_STYL_6', 'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
-        'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2',
-        'FAMILY_MEMB', 'TRAVEL_NUM', 'TRAVEL_COMPANIONS_NUM'
-    ]
-
-    user_data = {field: request.form.get(field, "") for field in fields}
-    user_data["uuid"] = str(uuid.uuid4())
-
-    birthdate_str = user_data.get("BIRTHDATE", "")
-    try:
-        birth_year = datetime.strptime(birthdate_str, "%Y-%m-%d").year
-        age = datetime.now().year - birth_year
-        age_group = (age // 10) * 10
-        user_data["AGE_GRP"] = "90" if age_group >= 90 else str(max(10, age_group))
-    except:
-        user_data["AGE_GRP"] = ""
-
-    user_data["phone_number"] = phone_number
-
-    try:
-        s3.put_object(
-            Bucket=BUCKET_NAME,
-            Key=f"travelers/{user_data['uuid']}.json",
-            Body=json.dumps(user_data, ensure_ascii=False).encode('utf-8'),
-            ContentType='application/json'
-        )
-        print(f"[✓] S3 저장 완료: {user_data['uuid']}")
-    except Exception as e:
-        print(f"[!] S3 저장 실패: {str(e)}")
-        return f"S3 저장 실패: {str(e)}", 500
-
-    return redirect(url_for("home"))
 
 if __name__ == "__main__":
     app.run(debug=True)
