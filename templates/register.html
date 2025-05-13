@@ -7,301 +7,318 @@
     <div class="col-md-10 col-lg-8">
       <div class="card shadow-lg rounded-lg p-4">
         <h2 class="text-center mb-4">회원가입</h2>
-        <form method="POST" action="/register">
+        <form method="POST" action="/register" id="register_form">
           <!-- 기본 정보 영역 -->
-          <div class="form-group mb-3">
-            <label for="USER_ID">아이디</label>
-            <div style="display: flex; gap: 8px; align-items: center;" class="input-group">
-              <input type="text" name="USER_ID" id="USER_ID" class="form-control" pattern="[a-z0-9]{4,20}" title="영어 소문자와 숫자만, 4~20자 입력" required>
-              <div class="input-group-append">
-                <button type="button" class="btn btn-outline-secondary" onclick="checkDuplicateId()">중복 확인</button>
+          <!-- Page 1 -->
+          <div class="form-step" id="step-1">
+            <div class="form-group mb-3">
+              <label for="USER_ID">아이디</label>
+              <div style="display: flex; gap: 8px; align-items: center;" class="input-group">
+                <input type="text" name="USER_ID" id="USER_ID" class="form-control" pattern="[a-z0-9]{4,20}" title="영어 소문자와 숫자만, 4~20자 입력" required>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-outline-secondary" onclick="checkDuplicateId()">중복 확인</button>
+                </div>
               </div>
+              <small id="id-check-result" class="form-text"></small>
             </div>
-            <small id="id-check-result" class="form-text"></small>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>비밀번호</label>
-              <input type="password" name="PASSWORD" class="form-control" required>
-            </div>
-            <div class="form-group col-md-6">
-              <label>비밀번호 확인</label>
-              <input type="password" name="CONFIRM_PASSWORD" class="form-control" required>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>이름</label>
-            <input type="text" name="NAME" class="form-control" required>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-4">
-              <label>성별</label>
-              <select name="GENDER" class="form-control">
-                <option value="1">남</option>
-                <option value="2">여</option>
-              </select>
-            </div>
-            <div class="form-group col-md-8">
-              <label>생년월일</label>
-              <input type="date" name="BIRTHDATE" class="form-control" min="1900-01-01" max="2025-12-31">
-            </div>
-          </div>
-
-          <!-- 휴대전화 번호 -->
-            <label for="phone_prefix">휴대전화 번호:</label>
-
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <select name="phone_prefix" id="phone_prefix" class="form-control" style="max-width: 80px;">
-                    <option value="010">010</option>
-                </select>
             
-                <input type="text" name="phone_middle" id="phone_middle" class="form-control text-center" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required style="max-width: 100px;">
-                <input type="text" name="phone_last" id="phone_last" class="form-control text-center" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required style="max-width: 100px;">
-                <button type="button" class="btn btn-outline-secondary" onclick="checkDuplicatePhone()">중복 확인</button>
-            </div>
-
-            <small id="phone-check-result" class="form-text text-muted"></small>
-
-
-          <!-- 추가 정보 영역 -->
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>최종학력</label>
-              <select name="EDU_NM" class="form-control">
-                <option value="1">무학</option>
-                <option value="2">초등학교</option>
-                <option value="3">중학교</option>
-                <option value="4">고등학교</option>
-                <option value="5">대학(4년제 미만)</option>
-                <option value="6">대학교(4년제 이상)</option>
-                <option value="7">대학원 석사 과정</option>
-                <option value="8">대학원 박사 과정</option>
-              </select>
-            </div>
-            <div class="form-group col-md-6">
-              <label>이수 여부</label>
-              <select name="EDU_FNSH_SE" class="form-control">
-                <option value="1">졸업</option>
-                <option value="2">재학</option>
-                <option value="3">휴학</option>
-                <option value="4">중퇴</option>
-                <option value="5">수료</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>혼인상태</label>
-              <select name="MARR_STTS" class="form-control">
-                <option value="1">미혼</option>
-                <option value="2">기혼</option>
-                <option value="3">사별</option>
-                <option value="4">이혼</option>
-                <option value="5">기타</option>
-              </select>
-            </div>
-            <div class="form-group col-md-6">
-              <label>가족 수</label>
-              <input type="number" name="FAMILY_MEMB" class="form-control">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>직업</label>
-            <select name="JOB_NM" class="form-control">
-              <option value="1">관리자</option>
-              <option value="2">전문가 및 관련 종사자</option>
-              <option value="3">사무 종사자</option>
-              <option value="4">서비스 종사자</option>
-              <option value="5">판매 종사자</option>
-              <option value="6">농림어업 숙련 종사자</option>
-              <option value="7">기능원 및 관련 기능 종사자</option>
-              <option value="8">장치·기계 조작 및 조립 종사자</option>
-              <option value="9">단순노무종사자</option>
-              <option value="10">군인</option>
-              <option value="11">전업주부</option>
-              <option value="12">학생</option>
-              <option value="13">기타</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>본인 소득 (만원)</label>
-              <input type="number" name="INCOME" class="form-control">
-            </div>
-            <div class="form-group col-md-6">
-              <label>가구 소득 (만원)</label>
-              <input type="number" name="HOUSE_INCOME" class="form-control">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>여행 기간</label>
-              <select name="TRAVEL_TERM" class="form-control">
-                <option value="1">1주일</option>
-                <option value="2">한달</option>
-                <option value="3">1년</option>
-                <option value="4">기타</option>
-              </select>
-            </div>
-            <div class="form-group col-md-6">
-              <label>한 달 내 여행 빈도</label>
-              <input type="number" name="TRAVEL_NUM" class="form-control">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>여행 동반자 수</label>
-            <input type="number" name="TRAVEL_COMPANIONS_NUM" class="form-control">
-          </div>
-
-          <!-- 여행 선호 지역 -->
-          <div class="form-group">
-            <label>1순위 여행지(시도)</label>
-            <select name="TRAVEL_LIKE_SIDO_1" class="form-control" required>
-              <option value="">선택하세요</option>
-              <option value="서울특별시">서울특별시</option>
-              <option value="부산광역시">부산광역시</option>
-              <option value="대구광역시">대구광역시</option>
-              <option value="인천광역시">인천광역시</option>
-              <option value="광주광역시">광주광역시</option>
-              <option value="대전광역시">대전광역시</option>
-              <option value="울산광역시">울산광역시</option>
-              <option value="세종특별자치시">세종특별자치시</option>
-              <option value="경기도">경기도</option>
-              <option value="충청북도">충청북도</option>
-              <option value="충청남도">충청남도</option>
-              <option value="전북특별자치도">전북특별자치도</option>
-              <option value="전라남도">전라남도</option>
-              <option value="경상북도">경상북도</option>
-              <option value="경상남도">경상남도</option>
-              <option value="강원특별자치도">강원특별자치도</option>
-              <option value="제주특별자치도">제주특별자치도</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>2순위 여행지(시도)</label>
-              <select name="TRAVEL_LIKE_SIDO_2" class="form-control" required>
-                <option value="">선택하세요</option>
-                <option value="서울특별시">서울특별시</option>
-                <option value="부산광역시">부산광역시</option>
-                <option value="대구광역시">대구광역시</option>
-                <option value="인천광역시">인천광역시</option>
-                <option value="광주광역시">광주광역시</option>
-                <option value="대전광역시">대전광역시</option>
-                <option value="울산광역시">울산광역시</option>
-                <option value="세종특별자치시">세종특별자치시</option>
-                <option value="경기도">경기도</option>
-                <option value="충청북도">충청북도</option>
-                <option value="충청남도">충청남도</option>
-                <option value="전북특별자치도">전북특별자치도</option>
-                <option value="전라남도">전라남도</option>
-                <option value="경상북도">경상북도</option>
-                <option value="경상남도">경상남도</option>
-                <option value="강원특별자치도">강원특별자치도</option>
-                <option value="제주특별자치도">제주특별자치도</option>
-              </select>
-            </div>
-            <div class="form-group col-md-6">
-              <label>3순위 여행지(시도)</label>
-              <select name="TRAVEL_LIKE_SIDO_3" class="form-control" required>
-                <option value="">선택하세요</option>
-                <option value="서울특별시">서울특별시</option>
-                <option value="부산광역시">부산광역시</option>
-                <option value="대구광역시">대구광역시</option>
-                <option value="인천광역시">인천광역시</option>
-                <option value="광주광역시">광주광역시</option>
-                <option value="대전광역시">대전광역시</option>
-                <option value="울산광역시">울산광역시</option>
-                <option value="세종특별자치시">세종특별자치시</option>
-                <option value="경기도">경기도</option>
-                <option value="충청북도">충청북도</option>
-                <option value="충청남도">충청남도</option>
-                <option value="전북특별자치도">전북특별자치도</option>
-                <option value="전라남도">전라남도</option>
-                <option value="경상북도">경상북도</option>
-                <option value="경상남도">경상남도</option>
-                <option value="강원특별자치도">강원특별자치도</option>
-                <option value="제주특별자치도">제주특별자치도</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- 여행 스타일 -->
-          <div class="form-group">
-            <h3 class="mb-4">여행 스타일 선호도 (1~7)</h3>
-            {% set labels = [
-              '자연 vs 도시',
-              '숙박 vs 당일',
-              '새로운 지역 vs 익숙한 지역',
-              '편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소',
-              '휴양/휴식 vs 체험활동',
-              '잘 알려지지 않은 방문지 vs 유명한 방문지',
-              '계획에 따른 여행 vs 즉흥적 여행',
-              '사진촬영 중요하지 않음 vs 사진촬영 중요'
-            ] %}
-
-            {% for i in range(1,9) %}
-            <div class="mb-4">
-              <p class="mb-1"><strong>{{ labels[i-1] }}</strong><br>
-              <span class="text-muted" style="font-size: 0.9em;">(1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)</span>
-              </p>
-              <div class="btn-group-toggle d-flex justify-content-between style-buttons">
-                {% for j in range(1,8) %}
-                  <input type="radio" class="d-none" name="TRAVEL_STYL_{{i}}" id="style{{i}}_{{j}}" value="{{j}}">
-                  <label for="style{{i}}_{{j}}" class="btn btn-outline-primary flex-fill mx-1">{{j}}</label>
-                {% endfor %}
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>비밀번호</label>
+                <input type="password" name="PASSWORD" class="form-control" required>
+              </div>
+              <div class="form-group col-md-6">
+                <label>비밀번호 확인</label>
+                <input type="password" name="CONFIRM_PASSWORD" class="form-control" required>
               </div>
             </div>
-            {% endfor %}
+
+            <div class="form-group">
+              <label>이름</label>
+              <input type="text" name="NAME" class="form-control" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label>성별</label>
+                <select name="GENDER" class="form-control">
+                  <option value="1">남</option>
+                  <option value="2">여</option>
+                </select>
+              </div>
+              <div class="form-group col-md-8">
+                <label>생년월일</label>
+                <input type="date" name="BIRTHDATE" class="form-control" min="1900-01-01" max="2025-12-31">
+              </div>
+            </div>
+
+            <!-- 휴대전화 번호 -->
+              <label for="phone_prefix">휴대전화 번호:</label>
+
+              <div style="display: flex; gap: 8px; align-items: center;">
+                  <select name="phone_prefix" id="phone_prefix" class="form-control" style="max-width: 80px;">
+                      <option value="010">010</option>
+                  </select>
+              
+                  <input type="text" name="phone_middle" id="phone_middle" class="form-control text-center" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required style="max-width: 100px;">
+                  <input type="text" name="phone_last" id="phone_last" class="form-control text-center" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required style="max-width: 100px;">
+                  <button type="button" class="btn btn-outline-secondary" onclick="checkDuplicatePhone()">중복 확인</button>
+              </div>
+
+              <small id="phone-check-result" class="form-text text-muted"></small>
+            <div class="text-center mt-4">
+                <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(1)">다음</button>
+            </div>
           </div>
-
-
-          <!-- 여행 동기 -->
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>1순위 여행 동기</label>
-              <select name="TRAVEL_MOTIVE_1" class="form-control">
-                <option value="1">일상 탈출</option>
-                <option value="2">휴식/충전</option>
-                <option value="3">유대감</option>
-                <option value="4">자아 성찰</option>
-                <option value="5">SNS 과시</option>
-                <option value="6">건강 증진</option>
-                <option value="7">새로운 경험</option>
-                <option value="8">역사/문화 체험</option>
-                <option value="9">특별한 목적</option>
-                <option value="10">기타</option>
+          
+          <!-- 추가 정보 영역 -->
+          <!-- page 2 -->
+          <div class="form-step d-none" id="step-2">
+            <!-- first line -->        
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>최종학력</label>
+                <select name="EDU_NM" class="form-control">
+                  <option value="1">무학</option>
+                  <option value="2">초등학교</option>
+                  <option value="3">중학교</option>
+                  <option value="4">고등학교</option>
+                  <option value="5">대학(4년제 미만)</option>
+                  <option value="6">대학교(4년제 이상)</option>
+                  <option value="7">대학원 석사 과정</option>
+                  <option value="8">대학원 박사 과정</option>
+                </select>
+              </div>
+              <div class="form-group col-md-6">
+                <label>이수 여부</label>
+                <select name="EDU_FNSH_SE" class="form-control">
+                  <option value="1">졸업</option>
+                  <option value="2">재학</option>
+                  <option value="3">휴학</option>
+                  <option value="4">중퇴</option>
+                  <option value="5">수료</option>
+                </select>
+              </div>
+            </div>
+            <!-- second line  -->
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>혼인상태</label>
+                <select name="MARR_STTS" class="form-control">
+                  <option value="1">미혼</option>
+                  <option value="2">기혼</option>
+                  <option value="3">사별</option>
+                  <option value="4">이혼</option>
+                  <option value="5">기타</option>
+                </select>
+              </div>
+              <div class="form-group col-md-6">
+                <label>가족 수</label>
+                <input type="number" name="FAMILY_MEMB" class="form-control">
+              </div>
+            </div>
+            <!-- third line -->
+            <div class="form-group">
+              <label>직업</label>
+              <select name="JOB_NM" class="form-control">
+                <option value="1">관리자</option>
+                <option value="2">전문가 및 관련 종사자</option>
+                <option value="3">사무 종사자</option>
+                <option value="4">서비스 종사자</option>
+                <option value="5">판매 종사자</option>
+                <option value="6">농림어업 숙련 종사자</option>
+                <option value="7">기능원 및 관련 기능 종사자</option>
+                <option value="8">장치·기계 조작 및 조립 종사자</option>
+                <option value="9">단순노무종사자</option>
+                <option value="10">군인</option>
+                <option value="11">전업주부</option>
+                <option value="12">학생</option>
+                <option value="13">기타</option>
               </select>
             </div>
-            <div class="form-group col-md-6">
-              <label>2순위 여행 동기</label>
-              <select name="TRAVEL_MOTIVE_2" class="form-control">
-                <option value="1">일상 탈출</option>
-                <option value="2">휴식/충전</option>
-                <option value="3">유대감</option>
-                <option value="4">자아 성찰</option>
-                <option value="5">SNS 과시</option>
-                <option value="6">건강 증진</option>
-                <option value="7">새로운 경험</option>
-                <option value="8">역사/문화 체험</option>
-                <option value="9">특별한 목적</option>
-                <option value="10">기타</option>
+            <!-- fourth line  -->
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>본인 소득 (만원)</label>
+                <input type="number" name="INCOME" class="form-control">
+              </div>
+              <div class="form-group col-md-6">
+                <label>가구 소득 (만원)</label>
+                <input type="number" name="HOUSE_INCOME" class="form-control">
+              </div>
+            </div>
+            <!-- fifth line -->
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>여행 기간</label>
+                <select name="TRAVEL_TERM" class="form-control">
+                  <option value="1">1주일</option>
+                  <option value="2">한달</option>
+                  <option value="3">1년</option>
+                  <option value="4">기타</option>
+                </select>
+              </div>
+              <div class="form-group col-md-6">
+                <label>한 달 내 여행 빈도</label>
+                <input type="number" name="TRAVEL_NUM" class="form-control">
+              </div>
+            </div>
+            <!-- six line -->
+            <div class="form-group">
+              <label>여행 동반자 수</label>
+              <input type="number" name="TRAVEL_COMPANIONS_NUM" class="form-control">
+            </div>
+            <!-- seven line -->
+            <!-- 여행 선호 지역 -->
+            <div class="form-group">
+              <label>1순위 여행지(시도)</label>
+              <select name="TRAVEL_LIKE_SIDO_1" class="form-control" required>
+                <option value="">선택하세요</option>
+                <option value="서울특별시">서울특별시</option>
+                <option value="부산광역시">부산광역시</option>
+                <option value="대구광역시">대구광역시</option>
+                <option value="인천광역시">인천광역시</option>
+                <option value="광주광역시">광주광역시</option>
+                <option value="대전광역시">대전광역시</option>
+                <option value="울산광역시">울산광역시</option>
+                <option value="세종특별자치시">세종특별자치시</option>
+                <option value="경기도">경기도</option>
+                <option value="충청북도">충청북도</option>
+                <option value="충청남도">충청남도</option>
+                <option value="전북특별자치도">전북특별자치도</option>
+                <option value="전라남도">전라남도</option>
+                <option value="경상북도">경상북도</option>
+                <option value="경상남도">경상남도</option>
+                <option value="강원특별자치도">강원특별자치도</option>
+                <option value="제주특별자치도">제주특별자치도</option>
               </select>
             </div>
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>2순위 여행지(시도)</label>
+                <select name="TRAVEL_LIKE_SIDO_2" class="form-control" required>
+                  <option value="">선택하세요</option>
+                  <option value="서울특별시">서울특별시</option>
+                  <option value="부산광역시">부산광역시</option>
+                  <option value="대구광역시">대구광역시</option>
+                  <option value="인천광역시">인천광역시</option>
+                  <option value="광주광역시">광주광역시</option>
+                  <option value="대전광역시">대전광역시</option>
+                  <option value="울산광역시">울산광역시</option>
+                  <option value="세종특별자치시">세종특별자치시</option>
+                  <option value="경기도">경기도</option>
+                  <option value="충청북도">충청북도</option>
+                  <option value="충청남도">충청남도</option>
+                  <option value="전북특별자치도">전북특별자치도</option>
+                  <option value="전라남도">전라남도</option>
+                  <option value="경상북도">경상북도</option>
+                  <option value="경상남도">경상남도</option>
+                  <option value="강원특별자치도">강원특별자치도</option>
+                  <option value="제주특별자치도">제주특별자치도</option>
+                </select>
+              </div>
+              <div class="form-group col-md-6">
+                <label>3순위 여행지(시도)</label>
+                <select name="TRAVEL_LIKE_SIDO_3" class="form-control" required>
+                  <option value="">선택하세요</option>
+                  <option value="서울특별시">서울특별시</option>
+                  <option value="부산광역시">부산광역시</option>
+                  <option value="대구광역시">대구광역시</option>
+                  <option value="인천광역시">인천광역시</option>
+                  <option value="광주광역시">광주광역시</option>
+                  <option value="대전광역시">대전광역시</option>
+                  <option value="울산광역시">울산광역시</option>
+                  <option value="세종특별자치시">세종특별자치시</option>
+                  <option value="경기도">경기도</option>
+                  <option value="충청북도">충청북도</option>
+                  <option value="충청남도">충청남도</option>
+                  <option value="전북특별자치도">전북특별자치도</option>
+                  <option value="전라남도">전라남도</option>
+                  <option value="경상북도">경상북도</option>
+                  <option value="경상남도">경상남도</option>
+                  <option value="강원특별자치도">강원특별자치도</option>
+                  <option value="제주특별자치도">제주특별자치도</option>
+                </select>
+              </div>
+              <!-- 여행 동기 -->
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>1순위 여행 동기</label>
+                <select name="TRAVEL_MOTIVE_1" class="form-control">
+                  <option value="1">일상 탈출</option>
+                  <option value="2">휴식/충전</option>
+                  <option value="3">유대감</option>
+                  <option value="4">자아 성찰</option>
+                  <option value="5">SNS 과시</option>
+                  <option value="6">건강 증진</option>
+                  <option value="7">새로운 경험</option>
+                  <option value="8">역사/문화 체험</option>
+                  <option value="9">특별한 목적</option>
+                  <option value="10">기타</option>
+                </select>
+              </div>
+              <div class="form-group col-md-6">
+                <label>2순위 여행 동기</label>
+                <select name="TRAVEL_MOTIVE_2" class="form-control">
+                  <option value="1">일상 탈출</option>
+                  <option value="2">휴식/충전</option>
+                  <option value="3">유대감</option>
+                  <option value="4">자아 성찰</option>
+                  <option value="5">SNS 과시</option>
+                  <option value="6">건강 증진</option>
+                  <option value="7">새로운 경험</option>
+                  <option value="8">역사/문화 체험</option>
+                  <option value="9">특별한 목적</option>
+                  <option value="10">기타</option>
+                </select>
+              </div>
+            </div>          
+            <div class="text-center mt-4">
+              <button type="button" class="btn btn-secondary btn-lg px-5 mr-2" onclick="prevStep(2)">이전</button>
+              <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(2)">다음</button>
+            </div>
           </div>
+          </div>
+          
+            
 
-          <div class="text-center mt-4">
-            <button type="submit" class="btn btn-primary btn-lg px-5">가입 완료</button>
+          <div class="form-step d-none" id="step-3">
+            <!-- 여행 스타일 -->
+            <div class="form-group">
+              <h3 class="mb-4">여행 스타일 선호도 (1~7)</h3>
+              {% set labels = [
+                '자연 vs 도시',
+                '숙박 vs 당일',
+                '새로운 지역 vs 익숙한 지역',
+                '편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소',
+                '휴양/휴식 vs 체험활동',
+                '잘 알려지지 않은 방문지 vs 유명한 방문지',
+                '계획에 따른 여행 vs 즉흥적 여행',
+                '사진촬영 중요하지 않음 vs 사진촬영 중요'
+              ] %}
+
+              {% for i in range(1,9) %}
+              <div class="mb-4">
+                <p class="mb-1"><strong>{{ labels[i-1] }}</strong><br>
+                <span class="text-muted" style="font-size: 0.9em;">(1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)</span></p>
+                <div class="btn-group-toggle d-flex justify-content-between style-buttons">
+                  {% for j in range(1,8) %}
+                    <input type="radio" class="d-none" name="TRAVEL_STYL_{{i}}" id="style{{i}}_{{j}}" value="{{j}}">
+                    <label for="style{{i}}_{{j}}" class="btn btn-outline-primary flex-fill mx-1">{{j}}</label>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+              <div class="text-center mt-4">
+                <button type="button" class="btn btn-secondary btn-lg px-5 mr-2" onclick="prevStep(2)">이전</button>
+                <button type="submit" class="btn btn-primary btn-lg px-5">가입 완료</button>
+              </div>
+            </div>
+            </div>
           </div>
+          
+
           <style>
                 .style-buttons label {
                     display: inline-block;
@@ -317,6 +334,9 @@
                     background-color: #007BFF;
                     color: white;
                 }
+                .form-step {display: none;}
+                .form-step.active{display:block;}
+                
             </style>
             <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
             <script>
@@ -365,6 +385,29 @@
                     .catch(() => alert("중복 확인 중 오류가 발생했습니다."));
             }
             </script>
+            <script>
+              let currentStep = 1;
+              function showStep(step) {
+                document.querySelectorAll('.form-step').forEach((el, i) => {
+                  el.classList.toggle('active', i === step - 1);
+                });
+              }
+
+              function nextStep(step) {
+                currentStep = step + 1;
+                showStep(currentStep);
+              }
+
+              function prevStep(step) {
+                currentStep = step - 1;
+                showStep(currentStep);
+              }
+
+              document.addEventListener("DOMContentLoaded", () => {
+                showStep(currentStep);
+              });
+            </script>
+
         </form>
       </div>
     </div>

@@ -8,6 +8,7 @@ import os
 import uuid
 import json
 import botocore
+from modules.s3_utils import get_user_from_s3, update_user_in_s3
 
 app = Flask(__name__)
 load_dotenv(override=True)
@@ -99,11 +100,7 @@ def send_to_ec2(user_data):
 # 기본 페이지
 @app.route("/")
 def home():
-    if "username" in session.keys():
-        images = get_s3_signed_urls(True)
-    else:     
-        images = get_s3_signed_urls()
-    return render_template("app.html", images=images)
+    return render_template("app.html")
 
 # 로그인 팝업
 @app.route("/login", methods=["POST"])
@@ -208,58 +205,26 @@ def mypage():
 
     if request.method == "GET":
         try:
-            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
-            for obj in response.get('Contents', []):
-                key = obj['Key']
-                if not key.endswith('.json'):
-                    continue
-
-                file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-                body = file_obj['Body'].read().decode('utf-8').strip()
-
-                if not body:
-                    print(f"[!] 빈 파일: {key}")
-                    continue
-
-                try:
-                    user_json = json.loads(body)
-                except json.JSONDecodeError as e:
-                    print(f"[!] JSON 파싱 오류: {key} → {e}")
-                    continue
-
-                if user_json.get("USER_ID") == username:
-                    return render_template("mypage.html", user=user_json)
-
-                if user_json.get("USER_ID") == username:
-                    return render_template("mypage.html", user=user_json)
+            user_json = get_user_from_s3(username)
+            if user_json:
+                return render_template("mypage.html", user=user_json)
             return "사용자 정보를 찾을 수 없습니다.", 404
-        except Exception as e:
-            return f"S3 조회 오류: {str(e)}", 500
+        except RuntimeError as e:
+            return str(e), 500
 
     elif request.method == "POST":
         update_fields = ['NAME', 'GENDER', 'JOB_NM', 'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM']
         updated_data = {field: request.form.get(field, "") for field in update_fields}
 
         try:
-            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
-            for obj in response.get('Contents', []):
-                key = obj['Key']
-                file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-                user_json = json.loads(file_obj['Body'].read().decode('utf-8'))
-
-                if user_json.get("USER_ID") == username:
-                    user_json.update(updated_data)
-                    s3.put_object(
-                        Bucket=BUCKET_NAME,
-                        Key=key,
-                        Body=json.dumps(user_json, ensure_ascii=False).encode('utf-8'),
-                        ContentType='application/json'
-                    )
-                    flash("회원 정보가 성공적으로 수정되었습니다.")
-                    return redirect(url_for("home"))
+            success = update_user_in_s3(username, updated_data)
+            if success:
+                flash("회원 정보가 성공적으로 수정되었습니다.")
+                return redirect(url_for("home"))
             return "수정 대상 사용자를 찾을 수 없습니다.", 404
-        except Exception as e:
-            return f"S3 저장 오류: {str(e)}", 500
+        except RuntimeError as e:
+            return str(e), 500
+
 
 # 추천 페이지
 @app.route("/recommended")
@@ -271,43 +236,17 @@ def recommended():
 def map():
     return render_template("map.html")
 
-@app.route("/contactthanks")
-def contactthanks():
-    return render_template("contactthanks.html")
-
-@app.route("/privacy")
-def privacy():
-    return render_template("privacy.html")
-
-@app.route("/shortcodes")
-def shortcodes():
-    return render_template("shortcodes.html")
-
-@app.route("/subscribe")
-def subscribe():
-    return render_template("subscribe.html")
-
-@app.route("/video")
-def video():
-    return render_template("video.html")
-
-@app.route("/download")
-def download():
-    return render_template("download.html")
-
-@app.route("/index")
-def index():
-    return render_template("index.html")
-
 # 회원가입 페이지
 @app.route("/register")
 def register_form():
     return render_template("register.html")
 
+# XAI Page
 @app.route("/xai")
 def xai():
     return render_template("xai.html")
 
+# 이미지 불러오기 위한 전역변수
 @app.context_processor
 def inject_images():
     if "username" in session:
@@ -315,6 +254,38 @@ def inject_images():
     else:
         images = get_s3_signed_urls()
     return dict(images=images)
+
+    
+# @app.route("/contactthanks")
+# def contactthanks():
+#     return render_template("contactthanks.html")
+
+# @app.route("/privacy")
+# def privacy():
+#     return render_template("privacy.html")
+
+# @app.route("/shortcodes")
+# def shortcodes():
+#     return render_template("shortcodes.html")
+
+# @app.route("/subscribe")
+# def subscribe():
+#     return render_template("subscribe.html")
+
+# # @app.route("/video")
+# def video():
+#     return render_template("video.html")
+
+# @app.route("/download")
+# def download():
+#     return render_template("download.html")
+
+# @app.route("/index")
+# def index():
+#     return render_template("index.html")
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

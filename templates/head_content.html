@@ -71,7 +71,15 @@
                             <li><a href="{{ url_for('home') }}">Home</a></li>
                             <li><a href="{{ url_for('recommended') }}">Recommended</a></li>
                             <li><a href="{{ url_for('map') }}">Map</a></li>
-                            <li><a href="{{ url_for('xai') }}">XAI</a></li>                         
+                            <li><a href="{{ url_for('xai') }}">XAI</a></li>
+                            {% if session.username %}
+                                <li><a href="{{ url_for('mypage') }}">Profile</a></li>
+                                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                            {% else %}
+                                <!-- 로그인 안 되어 있을 경우 로그인 및 회원가입 추가 -->
+                                <li><a href="{{ url_for('login') }}">login</a></li>
+                                <li><a href="{{ url_for('register_form') }}">register</a></li>
+                            {% endif %}                         
                         </ul>
                     </div>
                 </div>
@@ -108,19 +116,7 @@
                                 <div class="landing-text wow fadeInLeft">
                                     <p>R-trip 설명</p>
                                 </div>
-                            {% endif %}			  
-
-                            <!-- /.header button -->
-                            <div class="head-btn wow fadeInLeft">
-                                {% if session.username %}
-                                    <a href="{{ url_for('mypage') }}" class="btn-default">마이페이지</a>
-                                    <a href="{{ url_for('logout') }}" class="btn-default">로그아웃</a>
-                                {% else %}
-                                    <a href="#" class="btn-primary" data-toggle="modal" data-target="#loginModal">로그인</a>
-                                    <a href="{{ url_for('register_form') }}" class="btn-default">회원가입</a>
-                                {% endif %}
-                            </div>                           
-                            
+                            {% endif %}			                              
 
                             <!-- /.phone option -->
                             <div class="more wow fadeInLeft">
