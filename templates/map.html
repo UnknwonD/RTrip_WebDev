@@ -1,29 +1,10 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>카카오 지도</title>
-  <style>
-    #map {
-      width: 100%;
-      height: 500px;
-    }
-  </style>
-  <!-- 카카오 지도 SDK 로딩 -->
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=909bbe82f785f360574704073a1e8422&autoload=false"></script>
-</head>
-<body>
-  <div id="map"></div>
+{% extends  'head_content.html' %}
 
-  <script>
-    kakao.maps.load(function () {
-      var container = document.getElementById('map');
-      var options = {
-        center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울시청 좌표
-        level: 3
-      };
-      new kakao.maps.Map(container, options);
-    });
-  </script>
-</body>
-</html>
+{% block content %}
+
+<div class="container mt-5">
+    <h2>카카오 지도</h2>
+    <p>카카오 지도 페이지 구현</p>
+</div>
+
+{% endblock %}

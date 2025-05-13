@@ -11,7 +11,7 @@ import botocore
 
 app = Flask(__name__)
 load_dotenv(override=True)
-app.secret_key = 'your_secret_key'  # 세션을 위한 시크릿 키 설정
+app.secret_key = 'test'  # 세션을 위한 시크릿 키 설정
 
 # AWS Setting 
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
@@ -96,7 +96,7 @@ def send_to_ec2(user_data):
     except Exception as e:
         print(f"[!] EC2 전송 중 오류 발생: {str(e)}")
 
-# === 기본 페이지 라우팅 ===
+# 기본 페이지
 @app.route("/")
 def home():
     if "username" in session.keys():
@@ -105,7 +105,7 @@ def home():
         images = get_s3_signed_urls()
     return render_template("app.html", images=images)
 
-
+# 로그인 팝업
 @app.route("/login", methods=["POST"])
 def login():
     input_id = request.form.get("USER_ID")
@@ -261,10 +261,12 @@ def mypage():
         except Exception as e:
             return f"S3 저장 오류: {str(e)}", 500
 
+# 추천 페이지
 @app.route("/recommended")
 def recommended():
     return render_template("recommended.html")
 
+# 지도 페이지
 @app.route("/map")
 def map():
     return render_template("map.html")
@@ -297,9 +299,14 @@ def download():
 def index():
     return render_template("index.html")
 
+# 회원가입 페이지
 @app.route("/register")
 def register_form():
     return render_template("register.html")
+
+@app.route("/xai")
+def xai():
+    return render_template("xai.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
