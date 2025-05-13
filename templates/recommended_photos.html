@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>추천 관광 사진</title>
+</head>
+<body>
+  <h2>추천 관광 사진</h2>
+  {% if urls %}
+    {% for url in urls %}
+      <img src="{{ url }}" style="width: 300px; margin: 10px;">
+    {% endfor %}
+  {% else %}
+    <p>추천 사진이 없습니다.</p>
+  {% endif %}
+</body>
+</html>

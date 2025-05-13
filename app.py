@@ -2,7 +2,10 @@ from flask import Flask,render_template, redirect, url_for, flash, jsonify, requ
 from dotenv import load_dotenv
 from datetime import datetime
 from lee import find_nearest_neighbors
+from lee import find_nearest_neighbors
 import boto3
+import requests
+import os
 import requests
 import os
 import uuid
