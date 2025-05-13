@@ -308,5 +308,13 @@ def register_form():
 def xai():
     return render_template("xai.html")
 
+@app.context_processor
+def inject_images():
+    if "username" in session:
+        images = get_s3_signed_urls(True)
+    else:
+        images = get_s3_signed_urls()
+    return dict(images=images)
+
 if __name__ == "__main__":
     app.run(debug=True)
