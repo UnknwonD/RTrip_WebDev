@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>회원가입 폼</title>
+    <style>
+        .style-buttons label {
+            display: inline-block;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .style-buttons input[type="radio"] {
+            display: none;
+        }
+        .style-buttons input[type="radio"]:checked + label {
+            background-color: #007BFF;
+            color: white;
+        }
+    </style>
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script>
+    function execDaumPostcode() {
+        new daum.Postcode({
+            oncomplete: function(data) {
+                var fullAddr = data.roadAddress || data.jibunAddress;
+                document.getElementById('postcode').value = data.zonecode;
+                document.getElementById('address').value = fullAddr;
+                document.getElementById('address_detail').focus();
+            }
+        }).open();
+    }
+    </script>
+</head>
+<body>
+    <h2>회원가입 - Page 1</h2>
+    <form method="POST" action="/register">
+        <label>아이디:</label><input type="text" name="USER_ID" id="USER_ID" pattern="[a-z0-9]{4,20}" title="영어 소문자와 숫자만, 4~20자 입력" required>
+        <button type="button" onclick="checkDuplicateId()">중복 확인</button>
+        <span id="id-check-result"></span>
+        <br>
+        <label>비밀번호:</label><input type="password" name="PASSWORD" required><br>
+        <label>비밀번호 확인:</label><input type="password" name="CONFIRM_PASSWORD" required><br>
+        <label>이름:</label><input type="text" name="NAME" required><br>
+
+        <label>성별:</label>
+        <select name="GENDER">
+            <option value="1">남</option>
+            <option value="2">여</option>
+        </select><br>
+
+        <label>생년월일:</label>
+        <input type="date" name="BIRTHDATE" min="1900-01-01" max="2025-12-31"><br>
+
+        <label>휴대전화 번호:</label>
+        <select name="phone_prefix" id="phone_prefix">
+            <option value="010">010</option>
+        </select>
+        - <input type="text" name="phone_middle" id="phone_middle" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required>
+        - <input type="text" name="phone_last" id="phone_last" maxlength="4" pattern="\d{4}" title="4자리 숫자 입력" required>
+        <button type="button" onclick="checkDuplicatePhone()">중복 확인</button>
+        <span id="phone-check-result"></span>
+        <br>
+        <label>최종학력:</label>
+        <select name="EDU_NM">
+            <option value="1">무학</option>
+            <option value="2">초등학교</option>
+            <option value="3">중학교</option>
+            <option value="4">고등학교</option>
+            <option value="5">대학(4년제 미만)</option>
+            <option value="6">대학교(4년제 이상)</option>
+            <option value="7">대학원 석사 과정</option>
+            <option value="8">대학원 박사 과정</option>
+        </select><br>
+
+        <label>최종학력 이수 여부:</label>
+        <select name="EDU_FNSH_SE">
+            <option value="1">졸업</option>
+            <option value="2">재학</option>
+            <option value="3">휴학</option>
+            <option value="4">중퇴</option>
+            <option value="5">수료</option>
+        </select><br>
+
+        <label>혼인상태:</label>
+        <select name="MARR_STTS">
+            <option value="1">미혼</option>
+            <option value="2">기혼</option>
+            <option value="3">사별</option>
+            <option value="4">이혼</option>
+            <option value="5">기타</option>
+        </select><br>
+
+        <label>가족 수:</label>
+        <input type="number" name="FAMILY_MEMB"><br>
+
+        <label>직업:</label>
+        <select name="JOB_NM">
+            <option value="1">관리자</option>
+            <option value="2">전문가 및 관련 종사자</option>
+            <option value="3">사무 종사자</option>
+            <option value="4">서비스 종사자</option>
+            <option value="5">판매 종사자</option>
+            <option value="6">농림어업 숙련 종사자</option>
+            <option value="7">기능원 및 관련 기능 종사자</option>
+            <option value="8">장치·기계 조작 및 조립 종사자</option>
+            <option value="9">단순노무종사자</option>
+            <option value="10">군인</option>
+            <option value="11">전업주부</option>
+            <option value="12">학생</option>
+            <option value="13">기타</option>
+        </select><br>
+
+        <h2>회원가입 - Page 2</h2>
+
+        <label>본인 소득:</label><input type="number" name="INCOME"><label>만 원</label><br>
+        <label>가구 소득:</label><input type="number" name="HOUSE_INCOME"><label>만 원</label><br>
+
+        <label>여행기간:</label>
+        <select name="TRAVEL_TERM">
+            <option value="1">1주일</option>
+            <option value="2">한달</option>
+            <option value="3">1년</option>
+            <option value="4">기타</option>
+        </select><br>
+
+        
+        <label>여행 빈도(한달 내):</label><input type="number" name="TRAVEL_NUM"><br>
+        
+        <label>1순위 여행지(시도):</label>
+        <select id="TRAVEL_LIKE_SIDO_1" name="TRAVEL_LIKE_SIDO_1" required>
+            <option value="">선택하세요</option>
+            <option value="서울특별시">서울특별시</option>
+            <option value="부산광역시">부산광역시</option>
+            <option value="대구광역시">대구광역시</option>
+            <option value="인천광역시">인천광역시</option>
+            <option value="광주광역시">광주광역시</option>
+            <option value="대전광역시">대전광역시</option>
+            <option value="울산광역시">울산광역시</option>
+            <option value="세종특별자치시">세종특별자치시</option>
+            <option value="경기도">경기도</option>
+            <option value="충청북도">충청북도</option>
+            <option value="충청남도">충청남도</option>
+            <option value="전북특별자치도">전북특별자치도</option>
+            <option value="전라남도">전라남도</option>
+            <option value="경상북도">경상북도</option>
+            <option value="경상남도">경상남도</option>
+            <option value="강원특별자치도">강원특별자치도</option>
+            <option value="제주특별자치도">제주특별자치도</option>
+        </select><br>
+
+
+    <label>2순위 여행지(시도):</label>
+    <select id="TRAVEL_LIKE_SIDO_2" name="TRAVEL_LIKE_SIDO_2" required>
+        <option value="">선택하세요</option>
+        <option value="서울특별시">서울특별시</option>
+        <option value="부산광역시">부산광역시</option>
+        <option value="대구광역시">대구광역시</option>
+        <option value="인천광역시">인천광역시</option>
+        <option value="광주광역시">광주광역시</option>
+        <option value="대전광역시">대전광역시</option>
+        <option value="울산광역시">울산광역시</option>
+        <option value="세종특별자치시">세종특별자치시</option>
+        <option value="경기도">경기도</option>
+        <option value="충청북도">충청북도</option>
+        <option value="충청남도">충청남도</option>
+        <option value="전북특별자치도">전북특별자치도</option>
+        <option value="전라남도">전라남도</option>
+        <option value="경상북도">경상북도</option>
+        <option value="경상남도">경상남도</option>
+        <option value="강원특별자치도">강원특별자치도</option>
+        <option value="제주특별자치도">제주특별자치도</option>
+    </select><br>
+
+    <label>3순위 여행지(시도):</label>
+    <select id="TRAVEL_LIKE_SIDO_3" name="TRAVEL_LIKE_SIDO_3" required>
+        <option value="">선택하세요</option>
+        <option value="서울특별시">서울특별시</option>
+        <option value="부산광역시">부산광역시</option>
+        <option value="대구광역시">대구광역시</option>
+        <option value="인천광역시">인천광역시</option>
+        <option value="광주광역시">광주광역시</option>
+        <option value="대전광역시">대전광역시</option>
+        <option value="울산광역시">울산광역시</option>
+        <option value="세종특별자치시">세종특별자치시</option>
+        <option value="경기도">경기도</option>
+        <option value="충청북도">충청북도</option>
+        <option value="충청남도">충청남도</option>
+        <option value="전북특별자치도">전북특별자치도</option>
+        <option value="전라남도">전라남도</option>
+        <option value="경상북도">경상북도</option>
+        <option value="경상남도">경상남도</option>
+        <option value="강원특별자치도">강원특별자치도</option>
+        <option value="제주특별자치도">제주특별자치도</option>
+    </select><br>
+            
+        <h3>여행 스타일 선호도 (1~7)</h3>
+        <div>
+            <p><strong>자연 vs 도시</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 자연을 매우 선호 ←→ 7: 도시를 매우 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_1" id="style1_{{i}}" value="{{i}}">
+                    <label for="style1_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>숙박 vs 당일</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 숙박 선호 ←→ 7: 당일 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_2" id="style2_{{i}}" value="{{i}}">
+                    <label for="style2_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>새로운 지역 vs 익숙한 지역</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 새로운 지역 선호 ←→ 7: 익숙한 지역 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_3" id="style3_{{i}}" value="{{i}}">
+                    <label for="style3_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 편하지만 비싼 숙소 선호 ←→ 7: 불편하지만 저렴한 숙소 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_4" id="style4_{{i}}" value="{{i}}">
+                    <label for="style4_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>휴양/휴식 vs 체험활동</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 휴양/휴식 선호 ←→ 7: 체험활동 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_5" id="style5_{{i}}" value="{{i}}">
+                    <label for="style5_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>잘 알려지지 않은 방문지 vs 유명한 방문지</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 알려지지 않은 곳 선호 ←→ 7: 유명한 곳 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_6" id="style6_{{i}}" value="{{i}}">
+                    <label for="style6_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>계획에 따른 여행 vs 즉흥적 여행</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 계획적 여행 선호 ←→ 7: 상황 따라 여행 선호)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_7" id="style7_{{i}}" value="{{i}}">
+                    <label for="style7_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <p><strong>사진촬영 중요하지 않음 vs 사진촬영 중요</strong>
+            <span style="font-size: 0.9em; color: gray;">(1: 촬영 비중 낮음 ←→ 7: 촬영 매우 중요)</span>
+            </p>
+            <div class="style-buttons">
+                {% for i in range(1,8) %}
+                    <input type="radio" name="TRAVEL_STYL_8" id="style8_{{i}}" value="{{i}}">
+                    <label for="style8_{{i}}">{{i}}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <label>1순위 여행 동기:</label>
+        <select name="TRAVEL_MOTIVE_1">
+            <option value="1">일상 탈출</option>
+            <option value="2">휴식/충전</option>
+            <option value="3">유대감</option>
+            <option value="4">자아 성찰</option>
+            <option value="5">SNS 과시</option>
+            <option value="6">건강 증진</option>
+            <option value="7">새로운 경험</option>
+            <option value="8">역사/문화 체험</option>
+            <option value="9">특별한 목적</option>
+            <option value="10">기타</option>
+        </select><br>
+
+        <label>2순위 여행 동기:</label>
+        <select name="TRAVEL_MOTIVE_2">
+            <option value="1">일상 탈출</option>
+            <option value="2">휴식/충전</option>
+            <option value="3">유대감</option>
+            <option value="4">자아 성찰</option>
+            <option value="5">SNS 과시</option>
+            <option value="6">건강 증진</option>
+            <option value="7">새로운 경험</option>
+            <option value="8">역사/문화 체험</option>
+            <option value="9">특별한 목적</option>
+            <option value="10">기타</option>
+        </select><br>
+
+        <label>여행 동반자 수:</label>
+        <input type="number" name="TRAVEL_COMPANIONS_NUM"><br>
+
+        <button type="submit">가입 완료</button>
+        <script>
+            function checkDuplicateId() {
+                const userId = document.getElementById("USER_ID").value;
+                fetch(`/check_duplicate?field=USER_ID&value=${userId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const result = document.getElementById("id-check-result");
+                        result.innerText = data.duplicate 
+                            ? "이미 사용 중인 아이디입니다." 
+                            : "사용 가능한 아이디입니다.";
+                        result.classList.toggle("text-danger", data.duplicate);
+                        result.classList.toggle("text-success", !data.duplicate);
+                    })
+                    .catch(() => alert("중복 확인 중 오류가 발생했습니다."));
+            }
+        
+            function checkDuplicatePhone() {
+                const prefix = document.getElementById("phone_prefix").value;
+                const middle = document.getElementById("phone_middle").value;
+                const last = document.getElementById("phone_last").value;
+                const phone = prefix + middle + last;
+                fetch(`/check_duplicate?field=phone_number&value=${phone}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const result = document.getElementById("phone-check-result");
+                        result.innerText = data.duplicate 
+                            ? "이미 등록된 전화번호입니다." 
+                            : "사용 가능한 전화번호입니다.";
+                        result.classList.toggle("text-danger", data.duplicate);
+                        result.classList.toggle("text-success", !data.duplicate);
+                    })
+                    .catch(() => alert("중복 확인 중 오류가 발생했습니다."));
+            }
+            </script>
+            
+    </form>
+<!-- Bootstrap JS, jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

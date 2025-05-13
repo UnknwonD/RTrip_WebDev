@@ -51,21 +51,54 @@
 
     <body data-spy="scroll" data-target="#navbar-scroll">
 
-        
+        <!-- NAVIGATION -->
+        <div id="menu">
+            <nav class="navbar-wrapper navbar-default" role="navigation">
+                <div class="container">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-backyard">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand site-name" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a>
+                    </div>
+
+                    <div id="navbar-scroll" class="collapse navbar-collapse navbar-backyard navbar-right">
+                        <ul class="nav navbar-nav">
+                            <!-- href="#feature" 처럼 id 태깅하면면 해당 페이지의 그 요소로 이동할 수 있음 -->
+                            <li><a href="{{ url_for('home') }}">Home</a></li>
+                            <li><a href="{{ url_for('recommended') }}">Recommended</a></li>
+                            <li><a href="{{ url_for('map') }}">Map</a></li>
+                            <li><a href="{{ url_for('xai') }}">XAI</a></li>
+                            {% if session.username %}
+                                <li><a href="{{ url_for('mypage') }}">Profile</a></li>
+                                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                            {% else %}
+                                <!-- 로그인 안 되어 있을 경우 로그인 및 회원가입 추가 -->
+                                <li><a href="{{ url_for('login') }}">login</a></li>
+                                <li><a href="{{ url_for('register_form') }}">register</a></li>
+                            {% endif %}                         
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
         <!-- /.preloader -->
         <div id="preloader"></div>
         <div id="top"></div>
 
         <!-- /.parallax full screen background image -->
         <div class="fullscreen landing parallax" style="background-image:url('images/bg.jpg');" data-img-width="2000" data-img-height="1325" data-diff="100">
-
             <div class="overlay">
                 <div class="container">
                     <div class="row">
                         <div class="col-md-7">
-
+                            
                             <!-- /.logo -->
-                            <div class="logo wow fadeInDown"> <a href=""><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a></div>
+                            <div class="logo wow fadeInDown"> <a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a></div>
+                            
                             <!-- /.main title -->
                             {% if session.username %}
                                 <h1 class="wow fadeInLeft">
@@ -77,25 +110,13 @@
                                 </div>
                             {% else %}
                                 <h1 class="wow fadeInLeft">
-                                    Mobile Strategy App
+                                    R-trip
                                 </h1>
 
                                 <div class="landing-text wow fadeInLeft">
-                                    <p>Backyard is a modern and customizable landing page template designed to increase conversion of your product...</p>
+                                    <p>R-trip 설명</p>
                                 </div>
-                            {% endif %}			  
-
-                            <!-- /.header button -->
-                            <div class="head-btn wow fadeInLeft">
-                                {% if session.username %}
-                                    <a href="{{ url_for('mypage') }}" class="btn-default">마이페이지</a>
-                                    <a href="{{ url_for('logout') }}" class="btn-default">로그아웃</a>
-                                {% else %}
-                                    <a href="#" class="btn-primary" data-toggle="modal" data-target="#loginModal">로그인</a>
-                                    <a href="{{ url_for('register_form') }}" class="btn-default">회원가입</a>
-                                {% endif %}
-                            </div>                           
-                            
+                            {% endif %}			                              
 
                             <!-- /.phone option -->
                             <div class="more wow fadeInLeft">
@@ -107,20 +128,23 @@
 
                         </div> 
 
-                        <!-- /.phone image -->
+                        <!-- /user image -->
                         <div id = 'slider' class="col-md-5">
                             <div id="slider-container">
-                                {% for i in range(1, 11) %}
-                                <img src="{{ url_for('static', filename='images/mobile' ~ i ~ '.png') }}"
-                                 alt="image {{ i }}"
-                                id="main-image"
-                                class="slide slider header-phone img-responsive wow fadeInRight" 
-                                style="width: 100%;">
+                                <!-- S3에서 이미지 불러오기 -->
+                                {% for img in images %}
+                                <img src="{{ img }}"
+                                    alt="image {{ loop.index }}"
+                                    id="main-image"
+                                    class="slide slider header-phone img-responsive wow fadeInRight" 
+                                    style="width: 100%;">                                    
                                 {% endfor %}
                             </div>
+
                             <div id="info" class='landing-text wow fadeInRight text-center'>
                                 설명 1번
                             </div>
+                            
                             <div id="dots" class='landing-text wow fadeInRight'></div>
                             
                             {% if session.username %}
@@ -138,36 +162,7 @@
             </div> 
         </div>
 
-        <!-- NAVIGATION -->
-        <div id="menu">
-            <nav class="navbar-wrapper navbar-default" role="navigation">
-                <div class="container">
-                    <div class="navbar-header">
-                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-backyard">
-                            <span class="sr-only">Toggle navigation</span>
-                            <span class="icon-bar"></span>
-                            <span class="icon-bar"></span>
-                            <span class="icon-bar"></span>
-                        </button>
-                        <a class="navbar-brand site-name" href="#top"><img src="{{ url_for('static', filename='images/logo2.png') }}" alt="logo"></a>
-                    </div>
-
-                    <div id="navbar-scroll" class="collapse navbar-collapse navbar-backyard navbar-right">
-                        <ul class="nav navbar-nav">
-                            <li><a href="#intro">About</a></li>
-                            <li><a href="#feature">Features</a></li>
-                            <li><a href="{{ url_for('recommended') }}">Recommended</a></li>
-                            <li><a href="{{ url_for('map') }}">Map</a></li>
-                            <li><a href="#subscribe">Subscribe</a></li>
-                            <li><a href="#screenshot">Screenshots</a></li>
-                            <li><a href="#testi">Reviews</a></li>
-                            <li><a href="#download">Download</a></li>
-                            
-                        </ul>
-                    </div>
-                </div>
-            </nav>
-        </div>
+        
 
         {% block content%}
         {% endblock %}
@@ -208,13 +203,13 @@
         <script>
             new WOW().init();
         </script>
+        {% if error %}
         <script>
-            {% if error %}
-              $(document).ready(function() {
-                $('#loginModal').modal('show');
-              });
-            {% endif %}
+                $(document).ready(function() {
+                    $('#loginModal').modal('show');
+                });
         </script>
+        {% endif %}
 
         <script>
             const descriptions = [
