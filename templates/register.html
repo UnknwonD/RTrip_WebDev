@@ -1,6 +1,98 @@
 {% extends "head_content.html" %}
 
 {% block content %}
+<style>
+input[type=range] {
+  height: 23px;
+  -webkit-appearance: none;
+  margin: 10px 0;
+  width: 100%;
+}
+input[type=range]:focus {
+  outline: none;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 15px;
+  cursor: pointer;
+  animate: 0.2s;
+  box-shadow: 1px 1px 1px #000000;
+  background: #6C80A9;
+  border-radius: 4px;
+  border: 1px solid #000000;
+}
+input[type=range]::-webkit-slider-thumb {
+  box-shadow: 1px 1px 1px #000000;
+  border: 1px solid #000000;
+  height: 15px;
+  width: 19px;
+  border-radius: 5px;
+  background: #FFFFFF;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -1px;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #6C80A9;
+}
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 15px;
+  cursor: pointer;
+  animate: 0.2s;
+  box-shadow: 1px 1px 1px #000000;
+  background: #6C80A9;
+  border-radius: 4px;
+  border: 1px solid #000000;
+}
+input[type=range]::-moz-range-thumb {
+  box-shadow: 1px 1px 1px #000000;
+  border: 1px solid #000000;
+  height: 15px;
+  width: 19px;
+  border-radius: 5px;
+  background: #FFFFFF;
+  cursor: pointer;
+}
+input[type=range]::-ms-track {
+  width: 100%;
+  height: 15px;
+  cursor: pointer;
+  animate: 0.2s;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+input[type=range]::-ms-fill-lower {
+  background: #6C80A9;
+  border: 1px solid #000000;
+  border-radius: 8px;
+  box-shadow: 1px 1px 1px #000000;
+}
+input[type=range]::-ms-fill-upper {
+  background: #6C80A9;
+  border: 1px solid #000000;
+  border-radius: 8px;
+  box-shadow: 1px 1px 1px #000000;
+}
+input[type=range]::-ms-thumb {
+  margin-top: 1px;
+  box-shadow: 1px 1px 1px #000000;
+  border: 1px solid #000000;
+  height: 15px;
+  width: 19px;
+  border-radius: 5px;
+  background: #FFFFFF;
+  cursor: pointer;
+}
+input[type=range]:focus::-ms-fill-lower {
+  background: #6C80A9;
+}
+input[type=range]:focus::-ms-fill-upper {
+  background: #6C80A9;
+}
+
+</style>
 
 <section id="register" class="container mt-5 mb-5">
   <div class="row justify-content-center">
@@ -11,6 +103,7 @@
           <!-- 기본 정보 영역 -->
           <!-- Page 1 -->
           <div class="form-step" id="step-1">
+            
             <div class="form-group mb-3">
               <label for="USER_ID">아이디</label>
               <div style="display: flex; gap: 8px; align-items: center;" class="input-group">
@@ -150,7 +243,7 @@
             <!-- fifth line -->
             <div class="form-row">
               <div class="form-group col-md-6">
-                <label>여행 기간</label>
+                <label>한 달 내 여행하는 기간</label>
                 <select name="TRAVEL_TERM" class="form-control">
                   <option value="1">1주일</option>
                   <option value="2">한달</option>
@@ -273,19 +366,18 @@
                 </select>
               </div>
             </div>          
-            <div class="text-center mt-4">
-              <button type="button" class="btn btn-secondary btn-lg px-5 mr-2" onclick="prevStep(2)">이전</button>
-              <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(2)">다음</button>
+              <div class="text-center mt-4">
+                <button type="button" class="btn btn-primary btn-lg px-5" onclick="prevStep(2)">이전</button>
+                <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(2)">다음</button>
+              </div>
             </div>
-          </div>
           </div>
           
             
 
-          <div class="form-step d-none" id="step-3">
+          <!-- <div class="form-step d-none" id="step-3"> -->
             <!-- 여행 스타일 -->
             <div class="form-group">
-              <h3 class="mb-4">여행 스타일 선호도 (1~7)</h3>
               {% set labels = [
                 '자연 vs 도시',
                 '숙박 vs 당일',
@@ -297,28 +389,54 @@
                 '사진촬영 중요하지 않음 vs 사진촬영 중요'
               ] %}
 
-              {% for i in range(1,9) %}
-              <div class="mb-4">
-                <p class="mb-1"><strong>{{ labels[i-1] }}</strong><br>
-                <span class="text-muted" style="font-size: 0.9em;">(1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)</span></p>
-                <div class="btn-group-toggle d-flex justify-content-between style-buttons">
-                  {% for j in range(1,8) %}
-                    <input type="radio" class="d-none" name="TRAVEL_STYL_{{i}}" id="style{{i}}_{{j}}" value="{{j}}">
-                    <label for="style{{i}}_{{j}}" class="btn btn-outline-primary flex-fill mx-1">{{j}}</label>
-                  {% endfor %}
+              {% for i in range(1, 9) %}
+              <div class="form-step d-none" id="step-{{ i }}">
+                <div class="form-group text-center">
+                  <h4>여행 스타일 {{ i }} / 8</h4>
+                  <p><strong>{{ labels[i-1] }}</strong></p>
+                  
+                  <div class="d-flex justify-content-center align-items-center my-3 gap-3">
+                      <img src="/static/images/register_{{ i }}.jpg" style="width: 45%; max-width: 300px;" alt="style image">
+                      <img src="/static/images/register_{{ i + 1 }}.jpg" style="width: 45%; max-width: 300px;" alt="style image">
+                  </div>
+                    <div class="btn-group-toggle d-flex justify-content-between flex-wrap">
+                      <span class="text-muted" style="font-size: 0.9em;">
+                        (1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)
+                      </span>
+                      <br/>
+                      <strong id="valueDisplay{{ i }}">4</strong>
+                      <input type="range" class="form-range" name="TRAVEL_STYL_{{ i }}" id="slider{{ i }}" min="1" max="7" step="1" value="4" oninput="updateLabel({{ i }})">
+                      <!-- {% for j in range(1, 8) %}
+                      <input type="radio" class="d-none" name="TRAVEL_STYL_{{ i }}" id="style{{ i }}_{{ j }}" value="{{ j }}">
+                      <label for="style{{ i }}_{{ j }}" class="btn btn-outline-primary m-1">{{ j }}</label>
+                      {% endfor %} -->
+                    </div>  
+                  </div>
+
+                  <div class="text-center mt-4">
+                    {% if i > 0 %}
+                    <button type="button" class="btn btn-primary btn-lg px-5" onclick="prevStep({{ i+2 }})">이전</button>
+                    {% endif %}
+                    {% if i < 8 %}
+                    <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep({{ i+2 }})">다음</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary btn-lg px-5">가입 완료</button>
+                    {% endif %}
+                  </div>
                 </div>
+              
+            {% endfor %}
               </div>
-              {% endfor %}
-            </div>
-              <div class="text-center mt-4">
-                <button type="button" class="btn btn-secondary btn-lg px-5 mr-2" onclick="prevStep(2)">이전</button>
-                <button type="submit" class="btn btn-primary btn-lg px-5">가입 완료</button>
-              </div>
-            </div>
             </div>
           </div>
           
-
+          <script>
+            function updateLabel(i) {
+              const slider = document.getElementById(`slider${i}`);
+              const display = document.getElementById(`valueDisplay${i}`);
+              display.textContent = slider.value;
+            }
+          </script>
           <style>
                 .style-buttons label {
                     display: inline-block;

@@ -12,7 +12,7 @@ def calculate_age_group(birthdate_str):
         return ""
 
 def is_duplicate(field_name, value):
-    objects = list_s3_objects("travelers/")
+    objects = list_s3_objects("users/")
     for obj in objects:
         user_json = get_json_from_s3(obj['Key'])
         if user_json.get(field_name) == value:
@@ -23,19 +23,13 @@ def register_user(form_data):
     user_data = {field: form_data.get(field, "") for field in form_data.keys()}
     user_data["uuid"] = str(uuid.uuid4())
     user_data["AGE_GRP"] = calculate_age_group(user_data.get("BIRTHDATE", ""))
-    put_json_to_s3(f"travelers/{user_data['uuid']}.json", user_data)
+    put_json_to_s3(f"users/{user_data['uuid']}.json", user_data)
     return user_data["uuid"]
 
-def get_user_info(username):
-    objects = list_s3_objects("travelers/")
-    for obj in objects:
-        user_json = get_json_from_s3(obj['Key'])
-        if user_json.get("USER_ID") == username:
-            return user_json
-    return None
+
 
 def update_user_info(username, updated_data):
-    objects = list_s3_objects("travelers/")
+    objects = list_s3_objects("users/")
     for obj in objects:
         user_json = get_json_from_s3(obj['Key'])
         if user_json.get("USER_ID") == username:

@@ -57,8 +57,10 @@ def find_nearest_neighbors(user, k=5):
     similar_users = df.iloc[I[0]]
     
     travel = travel[travel['TRAVELER_ID'].isin(similar_users['TRAVELER_ID'])]
+
     travel_ids = travel['TRAVEL_ID'].to_list()
     filter_area = ['집', '사무실', '학교', '기타']
+
     area = area[(area['TRAVEL_ID'].isin(travel_ids)) & (~area['VISIT_AREA_NM'].isin(filter_area))]
     
     cond = photo['VISIT_AREA_ID'].isin(area['VISIT_AREA_ID'].to_list()[:10])

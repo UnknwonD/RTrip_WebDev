@@ -77,7 +77,8 @@
                                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
                             {% else %}
                                 <!-- 로그인 안 되어 있을 경우 로그인 및 회원가입 추가 -->
-                                <li><a href="{{ url_for('login') }}">login</a></li>
+                                
+                                <li><a href="#" data-toggle="modal" data-target="#loginModal">login</a></li>
                                 <li><a href="{{ url_for('register_form') }}">register</a></li>
                             {% endif %}                         
                         </ul>
@@ -117,6 +118,16 @@
                                     <p>R-trip 설명</p>
                                 </div>
                             {% endif %}			                              
+                            <!-- /.header button -->
+                            <div class="head-btn wow fadeInLeft">
+                                {% if session.username %}
+                                    <a href="{{ url_for('mypage') }}" class="btn-default">마이페이지</a>
+                                    <a href="{{ url_for('logout') }}" class="btn-default">로그아웃</a>
+                                {% else %}
+                                    <a href="#" class="btn-primary" data-toggle="modal" data-target="#loginModal">로그인</a>
+                                    <a href="{{ url_for('register_form') }}" class="btn-default">회원가입</a>
+                                {% endif %}
+                            </div>       
 
                             <!-- /.phone option -->
                             <div class="more wow fadeInLeft">
@@ -133,16 +144,16 @@
                             <div id="slider-container">
                                 <!-- S3에서 이미지 불러오기 -->
                                 {% for img in images %}
-                                <img src="{{ img }}"
-                                    alt="image {{ loop.index }}"
-                                    id="main-image"
-                                    class="slide slider header-phone img-responsive wow fadeInRight" 
-                                    style="width: 100%;">                                    
+                                    <img 
+                                        src="{% if img is string %}{{ img }}{% else %}{{ img.url | safe }}{% endif %}"
+                                        alt="image {{ loop.index }}"
+                                        id="main-image"
+                                        class="slide slider header-phone img-responsive wow fadeInRight"
+                                        style="width: auto; height: auto; max-height: auto; object-fit: cover;">
                                 {% endfor %}
 
                             </div>
-                            </div>
-
+ 
                             <div id="info" class='landing-text wow fadeInRight text-center'>
                                 설명 1번
                             </div>

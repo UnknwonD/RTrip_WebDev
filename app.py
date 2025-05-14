@@ -2,7 +2,6 @@ from flask import Flask,render_template, redirect, url_for, flash, jsonify, requ
 from dotenv import load_dotenv
 from datetime import datetime
 from lee import find_nearest_neighbors
-from lee import find_nearest_neighbors
 import boto3
 import requests
 import os
@@ -11,7 +10,9 @@ import os
 import uuid
 import json
 import botocore
-from modules.s3_utils import get_user_from_s3, update_user_in_s3
+from modules.user import update_user_info
+from modules.s3_utils import get_user_recommended_images_and_areas, get_user_info
+from modules.ec2_utils import send_to_ec2
 
 app = Flask(__name__)
 load_dotenv(override=True)
@@ -132,7 +133,6 @@ def login():
                 continue
 
             if user_json.get("USER_ID") == input_id and user_json.get("PASSWORD") == input_pw:
-                print("1")
                 session["username"] = input_id
                 return redirect(url_for("home"))
         return render_template("app.html", error="아이디 또는 비밀번호가 잘못되었습니다.")
@@ -208,7 +208,7 @@ def mypage():
 
     if request.method == "GET":
         try:
-            user_json = get_user_from_s3(username)
+            user_json = get_user_info(username)
             if user_json:
                 return render_template("mypage.html", user=user_json)
             return "사용자 정보를 찾을 수 없습니다.", 404
@@ -220,7 +220,7 @@ def mypage():
         updated_data = {field: request.form.get(field, "") for field in update_fields}
 
         try:
-            success = update_user_in_s3(username, updated_data)
+            success = update_user_info(username, updated_data)
             if success:
                 flash("회원 정보가 성공적으로 수정되었습니다.")
                 return redirect(url_for("home"))
@@ -253,9 +253,10 @@ def xai():
 @app.context_processor
 def inject_images():
     if "username" in session:
-        images = get_s3_signed_urls(True)
+        images = get_user_recommended_images_and_areas(session["username"])
+        print(images)
     else:
-        images = get_s3_signed_urls()
+        images = get_s3_signed_urls()  # 랜덤 이미지
     return dict(images=images)
 
     
@@ -286,9 +287,6 @@ def inject_images():
 # @app.route("/index")
 # def index():
 #     return render_template("index.html")
-
-
-
 
 if __name__ == "__main__":
     app.run(debug=True)
