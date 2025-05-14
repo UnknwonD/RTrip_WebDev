@@ -2,8 +2,72 @@
 
 {% block content %}
 
-<div id="recommended" class="container">
-    <h2>추천 페이지</h2>
-</div>
+<h2>R-Trip 여행 추천 입력</h2>
+
+    <form method="POST" action="{{ url_for('recommended') }}">
+        <h3>🧳 여행 정보 입력</h3>
+
+        <label for="date_range">여행 기간 (출발일 ~ 도착일)</label><br>
+        <input type="text" id="date_range" name="date_range" required><br>
+        <input type="hidden" id="start_date" name="start_date">
+        <input type="hidden" id="end_date" name="end_date"><br>
+
+        <label for="LODGOUT_COST">숙소 지출 (LODGOUT_COST)</label><br>
+        <input type="number" name="LODGOUT_COST" step="any" required><br>
+
+        <label for="ACTIVITY_COST">활동 지출 (ACTIVITY_COST)</label><br>
+        <input type="number" name="ACTIVITY_COST" step="any" required><br>
+
+        <label for="TOTAL_COST">총 여행 예산 (TOTAL_COST)</label><br>
+        <input type="number" name="TOTAL_COST" step="any" required><br>
+
+        <label for="PURPOSE_1">주요 여행 목적 (PURPOSE_1)</label><br>
+        <select name="PURPOSE_1" required>
+            {% for code, label in purpose_options %}
+                <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select><br>
+
+        <label for="MVMN_NM_ENC">이동수단 (MVMN_NM_ENC)</label><br>
+        <select name="MVMN_NM_ENC" required>
+            {% for code, label in movement_options %}
+                <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select><br>
+
+        <label for="age_ENC">나이대 (age_ENC)</label><br>
+        <input type="number" name="age_ENC" required><br>
+
+        <label for="whowith_ENC">동반자 (whowith_ENC)</label><br>
+        <select name="whowith_ENC" required>
+            {% for label, value in whowith_options %}
+                <option value="{{ loop.index }}">{{ label }}</option>
+            {% endfor %}
+        </select><br>
+
+        <label for="mission_ENC">여행 미션 (mission_ENC)</label><br>
+        <select name="mission_ENC" required>
+            {% for code, label in purpose_options %}
+                <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <button type="submit">✨ 추천받기</button>
+    </form>
+
+    <!-- Litepicker Script -->
+    <script>
+      const picker = new Litepicker({
+        element: document.getElementById('date_range'),
+        singleMode: false,
+        format: 'YYYY-MM-DD',
+        onSelect: (start, end) => {
+          document.getElementById('start_date').value = start.format('YYYY-MM-DD');
+          document.getElementById('end_date').value = end.format('YYYY-MM-DD');
+        }
+      });
+    </script>
+
+
 
 {% endblock %}
