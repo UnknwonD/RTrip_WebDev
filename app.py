@@ -95,9 +95,9 @@ def send_to_ec2(user_data):
             data=json.dumps(user_data, ensure_ascii=False).encode("utf-8")
         )
         if res.status_code == 200:
-            print(f"[✓] EC2에 전송 성공: {user_data['uuid']}")
+            print(f"EC2에 전송 성공: {user_data['uuid']}")
         else:
-            print(f"[!] EC2 전송 실패 - 상태 코드: {res.status_code}")
+            print(f"EC2 전송 실패 - 상태 코드: {res.status_code}")
     except Exception as e:
         print(f"[!] EC2 전송 중 오류 발생: {str(e)}")
 

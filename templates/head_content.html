@@ -142,21 +142,22 @@
                         <!-- /user image -->
                         <div id = 'slider' class="col-md-5">
                             <div id="slider-container">
-                                <!-- S3에서 이미지 불러오기 -->
                                 {% for img in images %}
+                                    <div class="slide">
                                     <img 
-                                        src="{% if img is string %}{{ img }}{% else %}{{ img.url | safe }}{% endif %}"
+                                        src="{{ img.url | safe }}"
                                         alt="image {{ loop.index }}"
-                                        id="main-image"
-                                        class="slide slider header-phone img-responsive wow fadeInRight"
-                                        style="width: auto; height: auto; max-height: auto; object-fit: cover;">
-                                {% endfor %}
+                                        class="header-phone img-responsive wow fadeInRight"
+                                        style="width: 100%; object-fit: cover;">
 
-                            </div>
- 
-                            <div id="info" class='landing-text wow fadeInRight text-center'>
-                                설명 1번
-                            </div>
+                                    <div class="landing-text text-center" style="color: #ffffff;">
+                                        {{ img.area }}
+                                    </div>
+                                    </div>
+                                {% endfor %}
+                                </div>
+                            
+                                                 
                             
                             <div id="dots" class='landing-text wow fadeInRight'></div>
                             

@@ -107,18 +107,40 @@ def get_user_recommended_images_and_areas(username):
         with conn.cursor() as cursor:
             # 4. place_info → meta_photo 조인 쿼리
             format_str = ','.join(['%s'] * len(recommended_ids))
-            sql = f"""                
-                SELECT mp.PHOTO_FILE_NM, pi.VISIT_AREA_NM
-                FROM place_info pi
-                JOIN meta_photo mp
-                ON pi.VISIT_AREA_ID = mp.VISIT_AREA_ID AND pi.TRAVEL_ID = mp.TRAVEL_ID
-                WHERE (pi.TRAVEL_ID, pi.VISIT_AREA_ID) IN (
-                    SELECT TRAVEL_ID, MIN(VISIT_AREA_ID)
-                    FROM place_info
-                    WHERE TRAVEL_ID IN (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    GROUP BY TRAVEL_ID
-                );
-            """
+            sql = """
+                WITH filtered_place AS (
+                SELECT *
+                FROM place_info
+                WHERE travel_id IN (
+                    {}
+                )
+            ),
+            joined_data AS (
+                SELECT 
+                    p.travel_id,
+                    p.visit_area_id,
+                    p.visit_area_nm,
+                    m.photo_file_nm,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY p.travel_id, p.visit_area_id
+                        ORDER BY RAND()
+                    ) AS rn
+                FROM filtered_place p
+                JOIN meta_photo m
+                ON p.travel_id = m.travel_id
+                AND p.visit_area_id = m.visit_area_id
+                WHERE m.photo_file_nm IS NOT NULL
+            )
+            SELECT
+                travel_id,
+                visit_area_id,
+                visit_area_nm,
+                photo_file_nm
+            FROM joined_data
+            WHERE rn = 1
+            ORDER BY travel_id, visit_area_id;
+
+            """.format(format_str)
             cursor.execute(sql, recommended_ids)
             results = cursor.fetchall()
         conn.close()
@@ -127,20 +149,23 @@ def get_user_recommended_images_and_areas(username):
         prefix = "data/resized_image/E/"
         image_infos = []
         for row in results:
-            file_name = row["PHOTO_FILE_NM"]            
-            area_name = row["VISIT_AREA_NM"]
-            url = s3.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': BUCKET_NAME, 'Key': f"{prefix}{file_name}"},
-                ExpiresIn=3600
-            )
-            image_infos.append({"url": url, "area": area_name})
+            file_name = row.get("photo_file_nm")
+            area_name = row.get("visit_area_nm")
+            area_id = row.get("visit_area_id")
+
+            if file_name:
+                url = s3.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': BUCKET_NAME, 'Key': f"{prefix}{file_name}"},
+                    ExpiresIn=3600
+                )
+                image_infos.append({"url": url, "area": area_name, "area_id": area_id})
           
         return image_infos
     
     except Exception as e:
         print("DB_HOST:", DB_HOST)
 
-        print(f"[!] 추천 이미지 처리 오류: {str(e)}")
+        print(f" 추천 이미지 처리 오류: {str(e)}")
         return []
 

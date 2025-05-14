@@ -68,3 +68,16 @@ def find_nearest_neighbors(user, k=5):
     photo = photo[cond]
     
     return photo
+
+# SELECT VISIT_AREA_ID
+
+# SELECT DISTINCT(VISIT_AREA_ID)
+# FROM meta_photo
+
+
+# from
+
+# 유저 travel id ( travel 과 엮기)
+# travel id -> place_info ID 엮고 -> place_info 에서 visit_area_id (dist)
+# metaphoto -> travel_id , distinct(visit_area_id)
+
