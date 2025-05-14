@@ -1,18 +1,4 @@
-from flask import Flask,render_template, redirect, url_for, flash, jsonify, request, session
-from dotenv import load_dotenv
-from datetime import datetime
-from lee import find_nearest_neighbors
-import boto3
-import requests
-import os
-import requests
-import os
-import uuid
-import json
-import botocore
-from modules.user import update_user_info
-from modules.s3_utils import get_user_recommended_images_and_areas, get_user_info
-from modules.ec2_utils import send_to_ec2
+from dependency import *
 
 app = Flask(__name__)
 load_dotenv(override=True)
@@ -232,7 +218,14 @@ def mypage():
 # 추천 페이지
 @app.route("/recommended")
 def recommended():
-    return render_template("recommended.html")
+    return render_template(
+        "recommended.html",
+        purpose_options=purpose_options,
+        movement_options=movement_options,
+        whowith_options=whowith_options,
+        user_feature_keys=user_feature_keys
+    )
+
 
 # 지도 페이지
 @app.route("/map")
