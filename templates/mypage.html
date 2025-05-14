@@ -43,7 +43,7 @@
         <label>동반자 수:</label><input type="number" name="TRAVEL_COMPANIONS_NUM" value="{{ user.TRAVEL_COMPANIONS_NUM }}"><br>
 
         <button type="submit">수정 완료</button>
-        <button type="home" onclick="location.href='/home'">메인</button>
+        <button type="button" onclick=location.href="{{ url_for('home') }}">메인</button>
     </form>
 </body>
 </html>

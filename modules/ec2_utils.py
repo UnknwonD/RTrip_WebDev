@@ -1,7 +1,11 @@
 import requests
 import json
+import os
+from dotenv import load_dotenv
 
-EC2_API_URL = "http://3.38.250.18:8000/ingest"
+load_dotenv(override = True)
+
+EC2_API_URL = os.getenv("EC2_PUBLIC_ADDR")
 
 def send_to_ec2(user_data):
     try:

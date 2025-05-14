@@ -14,7 +14,7 @@ BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 REGION_NAME = os.getenv("AWS_S3_REGION")
 
 # S3 설정
-prefix = 'resized_image/E/data_resized/'
+prefix = 'resized_image/E/dpipata_resized/'
 
 # boto3 S3 클라이언트 생성
 s3 = boto3.client(

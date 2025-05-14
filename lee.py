@@ -57,8 +57,10 @@ def find_nearest_neighbors(user, k=5):
     similar_users = df.iloc[I[0]]
     
     travel = travel[travel['TRAVELER_ID'].isin(similar_users['TRAVELER_ID'])]
+
     travel_ids = travel['TRAVEL_ID'].to_list()
     filter_area = ['집', '사무실', '학교', '기타']
+
     area = area[(area['TRAVEL_ID'].isin(travel_ids)) & (~area['VISIT_AREA_NM'].isin(filter_area))]
     
     cond = photo['VISIT_AREA_ID'].isin(area['VISIT_AREA_ID'].to_list()[:10])
@@ -66,3 +68,16 @@ def find_nearest_neighbors(user, k=5):
     photo = photo[cond]
     
     return photo
+
+# SELECT VISIT_AREA_ID
+
+# SELECT DISTINCT(VISIT_AREA_ID)
+# FROM meta_photo
+
+
+# from
+
+# 유저 travel id ( travel 과 엮기)
+# travel id -> place_info ID 엮고 -> place_info 에서 visit_area_id (dist)
+# metaphoto -> travel_id , distinct(visit_area_id)
+
