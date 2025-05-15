@@ -4,6 +4,7 @@ import botocore
 import os
 from dotenv import load_dotenv
 import pymysql
+import random
 
 load_dotenv(override=True)
 
@@ -39,13 +40,21 @@ def list_s3_objects(prefix):
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
     return response.get('Contents', [])
 
-# key에 대해 1시간짜리 presigned URL 생성성
-def generate_signed_url(key, expires_in=3600):
-    return s3.generate_presigned_url(
-        'get_object',
-        Params={'Bucket': BUCKET_NAME, 'Key': key},
-        ExpiresIn=expires_in
-    )
+# # key에 대해 1시간짜리 presigned URL 생성성
+def get_s3_signed_urls(reverse=False):
+    prefix = 'data/resized_image/E/'
+    response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+
+    all_keys = [obj['Key'] for obj in response.get('Contents', []) if obj['Key'].endswith('.jpg')]
+    selected_keys = random.sample(all_keys, k=min(10, len(all_keys)))
+
+    signed_urls = [
+        s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET_NAME, 'Key': key}, ExpiresIn=3600)
+        for key in selected_keys
+    ]
+
+    return [{"url": url, "area": ""} for url in signed_urls]
+
 
 # user 정보 반환 ( input = ID output = dict )
 def get_user_info(username):
