@@ -224,10 +224,15 @@ def recommend_result():
 def recommended():
     user_json = None
     if request.method == "POST":
+        travel_input = request.form.to_dict()
+
         raw_user = get_user_info(session["username"])
         if raw_user:
             exclude_fields = {"BIRTHDATE", "uuid", 'phone_number', "PASSWORD", "CONFIRM_PASSWORD"} # user 정보에서 필요 없는 정보들 입력
             user_json = {k: v for k, v in raw_user.items() if k not in exclude_fields}
+
+        user_input, travel_input = preprocess_gnn(user_json, travel_input)
+
 
         # user_input = get_user_feature_from_session(session["username"])
         # travel_input = preprocess_travel_form(form)

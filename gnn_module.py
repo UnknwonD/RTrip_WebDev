@@ -44,14 +44,6 @@ movement_options = [
     (6, "기타")
 ]
 
-# 3. 동반자
-whowith_options = [
-    ("커플", "커플"), ("특별미션", "특별미션"), ("나홀로 여행", "나홀로 여행"),
-    ("자녀동반", "자녀동반"), ("부부", "부부"), ("3인 이상 친구", "3인 이상 친구"),
-    ("부모 동반", "부모 동반"), ("3대 동반 여행", "3대 동반 여행")
-]
-
-
 # 다시 변수 정의 (환경 리셋됨)
 purpose_options = [
     (1, "쇼핑"), (2, "테마파크, 놀이시설, 동/식물원 방문"), (3, "역사 유적지 방문"),
@@ -225,3 +217,64 @@ def recommend_from_input(model: nn.Module,
     # index → visit_area_id 변환
     index_to_id = {v: k for k, v in visit_area_id_map.items()}
     return [{"visit_area_id": index_to_id[i], "score": round(v, 4)} for i, v in zip(indices, values)]
+
+from datetime import datetime
+import pandas as pd
+
+def preprocess_gnn(user_json: dict, travel_input_raw: dict):
+    # 1. USER 처리
+    user_input = {}
+    for key in user_feature_keys:
+        val = user_json.get(key, 0)
+        user_input[key] = float(val) if str(val).isdigit() else 0
+
+    # 2. TRAVEL 처리
+    travel_input = {k: 0.0 for k in travel_feature_keys}
+
+    # 비용: 만원 → 원
+    for k in ['LODGOUT_COST', 'ACTIVITY_COST', 'TOTAL_COST']:
+        raw_val = travel_input_raw.get(k, "0")
+        travel_input[k] = float(raw_val) * 10000
+
+    # 여행 기간 → DURATION 계산
+    date_range = travel_input_raw.get('date_range', '')
+    try:
+        start_str, end_str = [d.strip() for d in date_range.split('-')]
+        start = datetime.strptime(start_str, "%Y-%m-%d")
+        end = datetime.strptime(end_str, "%Y-%m-%d")
+        travel_input['DURATION'] = max((end - start).days, 1)
+    except:
+        travel_input['DURATION'] = 1.0
+
+    # 이동수단, 나이대, 동반자
+    travel_input['MVMN_NM_ENC'] = float(travel_input_raw.get('MVMN_NM_ENC', 0))
+    travel_input['age_ENC'] = float(0) if int(user_json['AGE_GRP']) <= float(39) else 1.0
+
+    mission_type = travel_input_raw.get('mission_type', 'normal')
+    if mission_type == 'special':
+        travel_input['whowith_ENC'] = "특별미션"
+        # 모든 PURPOSE를 0으로 유지
+    else:
+        travel_input['whowith_ENC'] = float(travel_input_raw.get('whowith_ENC', 0))
+
+        # mission_ENC → PURPOSE one-hot
+        missions = travel_input_raw.get('mission_ENC', '')
+        for code in missions.split(','):
+            code = code.strip()
+            if code.isdigit():
+                key = f"PURPOSE_{code}"
+                if key in travel_input:
+                    travel_input[key] = 1.0
+
+    # mission_ENC 원래 컬럼도 float로 추가
+    travel_input['mission_ENC'] = float(0) if mission_type == 'normal' and missions else 1.0
+
+    ################# DF 변환 (디버깅용) #################
+    user_df = pd.DataFrame([user_input]).reindex(columns=user_feature_keys, fill_value=0)
+    travel_df = pd.DataFrame([travel_input]).reindex(columns=travel_feature_keys, fill_value=0)
+
+    user_df.to_csv('user_input.csv', index=False)
+    travel_df.to_csv('travel_input.csv', index=False)
+    ####################################################
+
+    return user_df, travel_df

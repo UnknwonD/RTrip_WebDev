@@ -2,3 +2,8 @@ __pycache__/
 .env
 *.pem
 Dockerfile
+user_input.csv
+travel_input.csv
+*.pyc
+*.pyo
+*.pyd

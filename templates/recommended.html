@@ -165,15 +165,16 @@
                     </label>
                 </div>
 
-                <div style="flex: 1;" id="normal_mission_fields">
-                    <label for="mission_ENC">🚩 여행 미션</label>
-                    <select class="form-control" name="mission_ENC">
-                        {% for code, label in purpose_options %}
-                            <option value="{{ code }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="form-group" id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
+                    <label>🚩 여행 목적 </label><br>
+                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#missionModal">
+                        미션 선택하기
+                    </button>
+                    <input type="hidden" id="mission_ENC_hidden" name="mission_ENC">
+
                 </div>
             </div>
+            <p id="selected_missions_text" class="text-muted" style="margin-top: 10px;"></p>
 
             <!-- 여행 기간 -->
             <div class="form-group">
@@ -231,9 +232,54 @@
             <input type="hidden" id="mission_type_hidden" name="mission_type" value="normal">
             <button type="submit" class="btn-submit">✨ 추천받기</button>
         </form>
+
+        <div class="modal fade" id="missionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h4 class="modal-title">🎯 여행 미션 선택</h4>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+
+      <div class="modal-body">
+        {% for code, label in purpose_options %}
+          <div class="checkbox">
+            <label>
+              <input type="checkbox" class="mission-checkbox" value="{{ code }}"> {{ label }}
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="confirmMission">확인</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+      </div>
+
     </div>
+  </div>
 </div>
 
+    </div>
+</div>
+<script>
+    document.getElementById('confirmMission').addEventListener('click', function () {
+    const checkboxes = document.querySelectorAll('.mission-checkbox:checked');
+    const values = Array.from(checkboxes).map(cb => cb.value);
+    const labels = Array.from(checkboxes).map(cb => cb.parentNode.textContent.trim());
+
+    // 값 저장
+    document.getElementById('mission_ENC_hidden').value = values.join(',');
+
+    // UI에 미리보기
+    document.getElementById('selected_missions_text').innerText =
+        labels.length > 0 ? `선택된 여행 목적: ${labels.join(', ')}` : '선택된 목적 없음';
+
+    // 모달 닫기
+    $('#missionModal').modal('hide');
+    });
+</script>
 <script>
     const picker = new Litepicker({
         element: document.getElementById('date_range'),
