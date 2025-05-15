@@ -1,5 +1,27 @@
 from dependency import *
 
+############## 초기 모델 로드 ##################
+with open("./pickle/metadata_lite.pkl", "rb") as f:
+    metadata = pickle.load(f)
+with open("./pickle/visit_area_id_map.pkl", "rb") as f:
+    visit_area_id_map = pickle.load(f)
+    
+with open("./pickle/dataset.pkl", "rb") as f:
+    base_data = pickle.load(f)
+
+model = LiteTwistGNN(
+        metadata=metadata,
+        user_input_dim=25,
+        travel_input_dim=29,
+        hidden_dim=128,
+        num_layers=8
+    )
+    
+state = torch.load('./pickle/ppk_lite.pt', map_location='cpu')
+model.load_state_dict(state)
+model.eval()
+#############################################
+
 app = Flask(__name__)
 load_dotenv(override=True)
 app.secret_key = 'test'  # 세션을 위한 시크릿 키 설정
@@ -232,17 +254,9 @@ def recommended():
             user_json = {k: v for k, v in raw_user.items() if k not in exclude_fields}
 
         user_input, travel_input = preprocess_gnn(user_json, travel_input)
-
-
-        # user_input = get_user_feature_from_session(session["username"])
-        # travel_input = preprocess_travel_form(form)
-
-        # model = load_model('models/best_model.pt', metadata)
-        # base_data = torch.load("data/base_data.pt")
-        # visit_area_id_map = load_json("data/visit_area_id_map.json")
-
-        # results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
-
+        
+        results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
+        print(results)
         return redirect(url_for("recommend_result"))
     else:
         return render_template(
@@ -310,4 +324,4 @@ def inject_images():
 #     return render_template("index.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

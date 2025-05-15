@@ -7,3 +7,4 @@ travel_input.csv
 *.pyc
 *.pyo
 *.pyd
+pickle
