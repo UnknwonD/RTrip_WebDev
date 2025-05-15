@@ -91,6 +91,7 @@ python app.py
 
 프로젝트에 관한 문의사항은 아래로 연락주세요:
 - 이메일: daeho5000@naver.com
+- 이메일: dbtkdqja2@gmail.com
 
 ---
 
