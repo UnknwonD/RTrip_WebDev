@@ -213,26 +213,46 @@ def mypage():
             return "수정 대상 사용자를 찾을 수 없습니다.", 404
         except RuntimeError as e:
             return str(e), 500
-
+# 추천 결과 페이지
+@app.route("/recommend_result")
+def recommend_result():
+    results = session.pop("results", None)
+    return render_template("recommend_result.html", results=results)
 
 # 추천 페이지
-@app.route("/recommended")
+@app.route("/recommended", methods=["GET", "POST"])
 def recommended():
     user_json = None
-    if "username" in session:
+    if request.method == "POST":
+        travel_input = request.form.to_dict()
+
         raw_user = get_user_info(session["username"])
         if raw_user:
             exclude_fields = {"BIRTHDATE", "uuid", 'phone_number', "PASSWORD", "CONFIRM_PASSWORD"} # user 정보에서 필요 없는 정보들 입력
             user_json = {k: v for k, v in raw_user.items() if k not in exclude_fields}
 
-    return render_template(
-        "recommended.html",
-        purpose_options=purpose_options,
-        movement_options=movement_options,
-        whowith_options=whowith_options,
-        user_feature_keys=user_feature_keys,
-        user_info=user_json
-    )
+        user_input, travel_input = preprocess_gnn(user_json, travel_input)
+
+
+        # user_input = get_user_feature_from_session(session["username"])
+        # travel_input = preprocess_travel_form(form)
+
+        # model = load_model('models/best_model.pt', metadata)
+        # base_data = torch.load("data/base_data.pt")
+        # visit_area_id_map = load_json("data/visit_area_id_map.json")
+
+        # results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
+
+        return redirect(url_for("recommend_result"))
+    else:
+        return render_template(
+            "recommended.html",
+            purpose_options=purpose_options,
+            movement_options=movement_options,
+            whowith_options=whowith_options,
+            user_feature_keys=user_feature_keys,
+            user_info=user_json
+        )
 
 
 # 지도 페이지

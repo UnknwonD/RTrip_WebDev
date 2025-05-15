@@ -2,76 +2,314 @@
 
 {% block content %}
 
-<h2>R-Trip 여행 추천 입력</h2>
+<style>
+    .recommend-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 60px 20px;
+        background-color: #f0f2f5;
+    }
 
-    <form method="POST" action="{{ url_for('recommended') }}">
-        <h3>🧳 여행 정보 입력</h3>
+    .recommend-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease-in-out;
+    }
 
-        <label for="date_range">여행 기간 (출발일 ~ 도착일)</label><br>
-        <input type="text" id="date_range" name="date_range" required><br>
-        <input type="hidden" id="start_date" name="start_date">
-        <input type="hidden" id="end_date" name="end_date"><br>
+    .recommend-card:hover {
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    }
 
-        <label for="LODGOUT_COST">숙소 지출 (LODGOUT_COST)</label><br>
-        <input type="number" name="LODGOUT_COST" step="any" required><br>
+    .form-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 30px;
+        color: #333;
+    }
 
-        <label for="ACTIVITY_COST">활동 지출 (ACTIVITY_COST)</label><br>
-        <input type="number" name="ACTIVITY_COST" step="any" required><br>
+    .form-group label {
+        font-weight: 600;
+        margin-top: 10px;
+    }
 
-        <label for="TOTAL_COST">총 여행 예산 (TOTAL_COST)</label><br>
-        <input type="number" name="TOTAL_COST" step="any" required><br>
+    .form-control {
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 14px;
+        margin-top: 5px;
+    }
 
-        <label for="PURPOSE_1">주요 여행 목적 (PURPOSE_1)</label><br>
-        <select name="PURPOSE_1" required>
-            {% for code, label in purpose_options %}
-                <option value="{{ code }}">{{ label }}</option>
-            {% endfor %}
-        </select><br>
+    .btn-submit {
+        width: 100%;
+        background-color: #655cff;
+        color: white;
+        font-weight: bold;
+        padding: 12px;
+        border-radius: 6px;
+        border: none;
+        margin-top: 20px;
+        font-size: 16px;
+    }
 
-        <label for="MVMN_NM_ENC">이동수단 (MVMN_NM_ENC)</label><br>
-        <select name="MVMN_NM_ENC" required>
-            {% for code, label in movement_options %}
-                <option value="{{ code }}">{{ label }}</option>
-            {% endfor %}
-        </select><br>
+    .btn-submit:hover {
+        background-color: #534cf3;
+    }
+    label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+    [type="checkbox"] {
+        appearance: none;
+    }
+    [type="checkbox"] {
+        appearance: none;
+        position: relative;
+        border: max(2px, 0.1em) solid gray;
+        border-radius: 1.25em;
+        width: 2.25em;
+        height: 1.25em;
+    }
+    [type="checkbox"]::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        width: 1em;
+        height: 1em;
+        border-radius: 50%;
+        transform: scale(0.8);
+        background-color: gray;
+        transition: left 250ms linear;
+    }
+    [type="checkbox"]:checked::before {
+        background-color: white;
+        left: 1em;
+    }
 
-        <label for="age_ENC">나이대 (age_ENC)</label><br>
-        <input type="number" name="age_ENC" required><br>
+    [type="checkbox"]:checked {
+        background-color: rgb(101, 74, 255);
+        border-color: #4787ff;
+    }
+    [type="checkbox"]:disabled {
+        border-color: lightgray;
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
 
-        <label for="whowith_ENC">동반자 (whowith_ENC)</label><br>
-        <select name="whowith_ENC" required>
-            {% for label, value in whowith_options %}
-                <option value="{{ loop.index }}">{{ label }}</option>
-            {% endfor %}
-        </select><br>
+    [type="checkbox"]:disabled:before {
+        background-color: lightgray;
+    }
 
-        <label for="mission_ENC">여행 미션 (mission_ENC)</label><br>
-        <select name="mission_ENC" required>
-            {% for code, label in purpose_options %}
-                <option value="{{ code }}">{{ label }}</option>
-            {% endfor %}
-        </select><br><br>
+    [type="checkbox"]:disabled + span {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+    [type="checkbox"]:focus-visible {
+        outline-offset: max(2px, 0.1em);
+        outline: max(2px, 0.1em) solid rgb(99, 71, 255);
+    }
+    [type="checkbox"]:enabled:hover {
+        box-shadow: 0 0 0 max(4px, 0.2em) lightgray;
+    }
+    [type="checkbox"]::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        width: 1em;
+        height: 1em;
+        border-radius: 50%;
+        transform: scale(0.8);
+        background-color: gray;
+        transition: left 250ms linear;
+    }
+    select.form-control {
+    padding: 10px 12px;
+    line-height: 1.4;
+    height: auto;
+    font-size: 14px;
+    } 
+    .cost-input {
+  padding-right: 40px; /* 여유 공간 확보 */
+}
 
-        <button type="submit">✨ 추천받기</button>
-    </form>
+.unit-label {
+  position: absolute;
+  top: 50%;       
+  transform: translateY(35%); 
+  right: 10px;
+  font-size: 13px;
+  color: #555;
+  pointer-events: none;
+}
+</style>
 
-    {% for k, v in user_info.items() %}
-        <div>{{k}} : {{v}}</div>
-    {% endfor %}
+<div class="recommend-wrapper">
+    <div class="recommend-card">
+        <h2 class="form-title">🌏 R-Trip 여행 추천 입력</h2>
 
-    <!-- Litepicker Script -->
-    <script>
-      const picker = new Litepicker({
+        <form method="POST" action="{{ url_for('recommended') }}">
+            <!-- 여행 유형 -->
+            <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;">
+                <div style="flex: 1;">
+                    <label>🎯 여행 유형</label><br>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input role="switch" type="checkbox" id="missionToggle" />
+                        <span id='missionToggleLabel'>일반 여행</span>
+                    </label>
+                </div>
+
+                <div class="form-group" id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
+                    <label>🚩 여행 목적 </label><br>
+                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#missionModal">
+                        미션 선택하기
+                    </button>
+                    <input type="hidden" id="mission_ENC_hidden" name="mission_ENC">
+
+                </div>
+            </div>
+            <p id="selected_missions_text" class="text-muted" style="margin-top: 10px;"></p>
+
+            <!-- 여행 기간 -->
+            <div class="form-group">
+                <label for="date_range">📅 여행 기간 (출발일 ~ 도착일)</label>
+                <input type="text" id="date_range" name="date_range" class="form-control" required>
+                <input type="hidden" id="start_date" name="start_date">
+                <input type="hidden" id="end_date" name="end_date">
+            </div>
+
+            <!-- 예산 -->
+            <div class="form-group">
+                <label>💸 여행 예산</label>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1; position: relative;">
+                        <label for="LODGOUT_COST" style="font-weight: 500;">🏨 숙소</label>
+                        <input type="number" name="LODGOUT_COST" class="form-control cost-input" placeholder="예: 50" required>
+                        <span class="unit-label">만원</span>
+                    </div>
+                    <div style="flex: 1; position: relative;">
+                        <label for="ACTIVITY_COST" style="font-weight: 500;">🎫 활동</label>
+                        <input type="number" name="ACTIVITY_COST" class="form-control cost-input" placeholder="예: 30" required>
+                        <span class="unit-label">만원</span>
+                    </div>
+                    <div style="flex: 1; position: relative;">
+                        <label for="TOTAL_COST" style="font-weight: 500;">💰 총합</label>
+                        <input type="number" name="TOTAL_COST" class="form-control cost-input" placeholder="예: 100" required>
+                        <span class="unit-label">만원</span>
+                    </div>
+                </div>
+            </div>
+            <!-- 이동수단, 나이대, 동반자 -->
+            <div class="form-group">
+                <label for="MVMN_NM_ENC">🚗 이동수단</label>
+                <select name="MVMN_NM_ENC" class="form-control" required>
+                    {% for code, label in movement_options %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="age_ENC">👤 나이대</label>
+                <input type="number" name="age_ENC" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="whowith_ENC">🤝 동반자</label>
+                <select name="whowith_ENC" class="form-control" required>
+                    {% for label, value in whowith_options %}
+                        <option value="{{ loop.index }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <input type="hidden" id="mission_type_hidden" name="mission_type" value="normal">
+            <button type="submit" class="btn-submit">✨ 추천받기</button>
+        </form>
+
+        <div class="modal fade" id="missionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h4 class="modal-title">🎯 여행 미션 선택</h4>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+
+      <div class="modal-body">
+        {% for code, label in purpose_options %}
+          <div class="checkbox">
+            <label>
+              <input type="checkbox" class="mission-checkbox" value="{{ code }}"> {{ label }}
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="confirmMission">확인</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+    </div>
+</div>
+<script>
+    document.getElementById('confirmMission').addEventListener('click', function () {
+    const checkboxes = document.querySelectorAll('.mission-checkbox:checked');
+    const values = Array.from(checkboxes).map(cb => cb.value);
+    const labels = Array.from(checkboxes).map(cb => cb.parentNode.textContent.trim());
+
+    // 값 저장
+    document.getElementById('mission_ENC_hidden').value = values.join(',');
+
+    // UI에 미리보기
+    document.getElementById('selected_missions_text').innerText =
+        labels.length > 0 ? `선택된 여행 목적: ${labels.join(', ')}` : '선택된 목적 없음';
+
+    // 모달 닫기
+    $('#missionModal').modal('hide');
+    });
+</script>
+<script>
+    const picker = new Litepicker({
         element: document.getElementById('date_range'),
         singleMode: false,
         format: 'YYYY-MM-DD',
         onSelect: (start, end) => {
-          document.getElementById('start_date').value = start.format('YYYY-MM-DD');
-          document.getElementById('end_date').value = end.format('YYYY-MM-DD');
+            document.getElementById('start_date').value = start.format('YYYY-MM-DD');
+            document.getElementById('end_date').value = end.format('YYYY-MM-DD');
         }
-      });
-    </script>
+    });
 
+    document.getElementById('missionToggle').addEventListener('change', function () {
+        const isChecked = this.checked;
+        const missionLabel = document.getElementById('missionToggleLabel');
+        const missionFields = document.getElementById('normal_mission_fields');
+        const missionTypeHidden = document.getElementById('mission_type_hidden');
 
+        if (isChecked) {
+            missionLabel.textContent = '특별 미션';
+            missionFields.style.display = 'none';
+            missionTypeHidden.value = 'special';
+        } else {
+            missionLabel.textContent = '일반 여행';
+            missionFields.style.display = 'block';
+            missionTypeHidden.value = 'normal';
+        }
+    });
+
+    // 초기화 시 미션 필드 보이도록
+    document.getElementById('normal_mission_fields').style.display = 'block';
+</script>
 
 {% endblock %}
