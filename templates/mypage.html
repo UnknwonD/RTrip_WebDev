@@ -1,49 +1,492 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>마이페이지</title>
-</head>
-<body>
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="alert alert-success" style="margin: 20px;">
-                {{ messages[0] }}
-            </div>
-        {% endif %}
-    {% endwith %}
-    <h2>마이페이지</h2>
-    <form method="POST" action="/mypage">
-        <label>아이디:</label><input type="text" name="USER_ID" value="{{ user.USER_ID }}" readonly><br>
-        <label>이름:</label><input type="text" name="NAME" value="{{ user.NAME }}"><br>
-        <label>성별:</label>
-        <select name="GENDER">
-            <option value="1" {% if user.GENDER == '1' %}selected{% endif %}>남</option>
-            <option value="2" {% if user.GENDER == '2' %}selected{% endif %}>여</option>
-        </select><br>
-        <label>생년월일:</label><input type="date" name="BIRTHDATE" value="{{ user.BIRTHDATE }}"><br>
-        <label>전화번호:</label><input type="text" name="phone_number" value="{{ user.phone_number }}"><br>
-        <label>최종학력:</label><input type="text" name="EDU_NM" value="{{ user.EDU_NM }}"><br>
-        <label>최종학력 이수 여부:</label><input type="text" name="EDU_FNSH_SE" value="{{ user.EDU_FNSH_SE }}"><br>
-        <label>혼인상태:</label><input type="text" name="MARR_STTS" value="{{ user.MARR_STTS }}"><br>
-        <label>가족 수:</label><input type="number" name="FAMILY_MEMB" value="{{ user.FAMILY_MEMB }}"><br>
-        <label>직업:</label><input type="text" name="JOB_NM" value="{{ user.JOB_NM }}"><br>
-        <label>본인 소득:</label><input type="text" name="INCOME" value="{{ user.INCOME }}"><br>
-        <label>가구 소득:</label><input type="text" name="HOUSE_INCOME" value="{{ user.HOUSE_INCOME }}"><br>
-        <label>여행기간:</label><input type="text" name="TRAVEL_TERM" value="{{ user.TRAVEL_TERM }}"><br>
-        <label>여행 빈도:</label><input type="text" name="TRAVEL_NUM" value="{{ user.TRAVEL_NUM }}"><br>
-        <label>1순위 여행지:</label><input type="text" name="TRAVEL_LIKE_SIDO_1" value="{{ user.TRAVEL_LIKE_SIDO_1 }}"><br>
-        <label>2순위 여행지:</label><input type="text" name="TRAVEL_LIKE_SIDO_2" value="{{ user.TRAVEL_LIKE_SIDO_2 }}"><br>
-        <label>3순위 여행지:</label><input type="text" name="TRAVEL_LIKE_SIDO_3" value="{{ user.TRAVEL_LIKE_SIDO_3 }}"><br>
-        {% for i in range(1, 9) %}
-            <label>여행스타일 {{ i }}:</label><input type="text" name="TRAVEL_STYL_{{ i }}" value="{{ user['TRAVEL_STYL_' ~ i] }}"><br>
-        {% endfor %}
-        <label>여행동기 1:</label><input type="text" name="TRAVEL_MOTIVE_1" value="{{ user.TRAVEL_MOTIVE_1 }}"><br>
-        <label>여행동기 2:</label><input type="text" name="TRAVEL_MOTIVE_2" value="{{ user.TRAVEL_MOTIVE_2 }}"><br>
-        <label>동반자 수:</label><input type="number" name="TRAVEL_COMPANIONS_NUM" value="{{ user.TRAVEL_COMPANIONS_NUM }}"><br>
+{% extends 'head_content.html' %}
 
-        <button type="submit">수정 완료</button>
-        <button type="button" onclick=location.href="{{ url_for('home') }}">메인</button>
-    </form>
-</body>
-</html>
+{% block content %}
+<style>
+    .mypage-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 60px 20px;
+        background-color: #f0f2f5;
+    }
+
+    .mypage-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 700px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease-in-out;
+    }
+
+    .mypage-card:hover {
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .mypage-title {
+        text-align: center;
+        font-size: 26px;
+        font-weight: 700;
+        margin-bottom: 30px;
+        color: #333;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .form-control {
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 14px;
+        margin-top: 5px;
+        width: 100%;
+    }
+
+    select.form-control option {
+        white-space: normal;
+    }
+
+    .btn-submit, .btn-cancel {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: none;
+        margin-top: 20px;
+        font-weight: bold;
+    }
+
+    .btn-submit {
+        background-color: #655cff;
+        color: white;
+    }
+
+    .btn-submit:hover {
+        background-color: #534cf3;
+    }
+
+    .btn-cancel {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    .btn-cancel:hover {
+        background-color: #cacaca;
+    }
+
+    .d-none {
+        display: none !important;
+    }
+
+    .form-step.active {
+        display: block !important;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 8px;
+        color: #444;
+    }
+
+    .form-control {
+        width: 100%;
+        max-width: 100%;
+        white-space: normal; /* 줄바꿈 허용 */
+        word-break: keep-all; /* 단어 중간에서 끊지 않도록 */
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    select.form-control option {
+        white-space: normal;
+    }
+
+    .btn-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+    }
+
+    .btn-submit, .btn-cancel {
+        flex: 1;
+        padding: 12px;
+        font-size: 15px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-submit {
+        background-color: #655cff;
+        color: white;
+    }
+
+    .btn-submit:hover {
+        background-color: #534cf3;
+    }
+
+    .btn-cancel {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    .btn-cancel:hover {
+        background-color: #cacaca;
+    }
+</style>
+
+<div class="mypage-wrapper">
+    <div class="mypage-card">
+        <h2 class="mypage-title">🙋 마이페이지</h2>
+
+        <!-- {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-success" style="margin-bottom: 20px;">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %} -->
+        <form method="POST" action="/mypage">
+        <!-- Page 1 -->
+          <div class="form-step" id="step-1">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-success" style="margin-bottom: 20px;">
+                        {{ messages[0] }}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            <div class="form-group">
+                <label>아이디</label>
+                <input type="text" name="USER_ID" class="form-control" value="{{ user.USER_ID }}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>이름</label>
+                <input type="text" name="NAME" class="form-control" value="{{ user.NAME }}">
+            </div>
+
+            <div class="form-group">
+                <label>성별</label>
+                <select name="GENDER" class="form-control">
+                    <option value="1" {% if user.GENDER == '1' %}selected{% endif %}>남</option>
+                    <option value="2" {% if user.GENDER == '2' %}selected{% endif %}>여</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>생년월일</label>
+                <input type="date" name="BIRTHDATE" class="form-control" value="{{ user.BIRTHDATE }}" min="1999-01-01" max="{{ today }}">
+            </div>
+
+            <div class="form-group">
+                <label>전화번호</label>
+                <input type="tel" name="phone_number" class="form-control" value="{{ user.phone_number }}"
+                    pattern="010-[0-9]{4}-[0-9]{4}"
+                    placeholder="010-1234-5678"
+                    required>
+            </div>
+            <div class="text-center mt-4">
+                <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(1)">다음</button>
+            </div>
+        </div>
+
+        <!-- Page 2 -->
+          <div class="form-step d-none" id="step-2">     
+            <div class="form-group">
+                <label>최종학력</label>      
+                <select name="EDU_NM" class="form-control">
+                    <option value="1" {% if user.EDU_NM == '1' %}selected{% endif %}>무학</option>
+                    <option value="2" {% if user.EDU_NM == '2' %}selected{% endif %}>초등학교</option>
+                    <option value="3" {% if user.EDU_NM == '3' %}selected{% endif %}>중학교</option>
+                    <option value="4" {% if user.EDU_NM == '4' %}selected{% endif %}>고등학교</option>
+                    <option value="5" {% if user.EDU_NM == '5' %}selected{% endif %}>대학(4년제 미만)</option>
+                    <option value="6" {% if user.EDU_NM == '6' %}selected{% endif %}>대학교(4년제 이상)</option>
+                    <option value="7" {% if user.EDU_NM == '7' %}selected{% endif %}>대학원 석사 과정</option>
+                    <option value="8" {% if user.EDU_NM == '8' %}selected{% endif %}>대학원 박사 과정</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>최종학력 이수 여부</label>
+                <select name="EDU_FNSH_SE" class="form-control">
+                    <option value="1" {% if user.EDU_FNSH_SE == '1' %}selected{% endif %}>무학</option>
+                    <option value="2" {% if user.EDU_FNSH_SE == '2' %}selected{% endif %}>재학</option>
+                    <option value="3" {% if user.EDU_FNSH_SE == '3' %}selected{% endif %}>휴학</option>
+                    <option value="4" {% if user.EDU_FNSH_SE == '4' %}selected{% endif %}>중퇴</option>
+                    <option value="5" {% if user.EDU_FNSH_SE == '5' %}selected{% endif %}>수료</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>혼인상태</label>
+                <select name="MARR_STTS" class="form-control">
+                    <option value="1" {% if user.MARR_STTS == '1' %}selected{% endif %}>미혼</option>
+                    <option value="2" {% if user.MARR_STTS == '2' %}selected{% endif %}>기혼</option>
+                    <option value="3" {% if user.MARR_STTS == '3' %}selected{% endif %}>사별</option>
+                    <option value="4" {% if user.MARR_STTS == '4' %}selected{% endif %}>이혼</option>
+                    <option value="5" {% if user.MARR_STTS == '5' %}selected{% endif %}>기타</option>  
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>가족 수</label>
+                <input type="number" name="FAMILY_MEMB" class="form-control" value="{{ user.FAMILY_MEMB }}">
+            </div>
+
+            <div class="form-group">
+                <label>직업</label>
+                <select name="JOB_NM" class="form-control">
+                    <option value="1" {% if user.JOB_NM == '1' %}selected{% endif %}>관리자</option>
+                    <option value="2" {% if user.JOB_NM == '2' %}selected{% endif %}>전문가 및 관련 종사자</option>
+                    <option value="3" {% if user.JOB_NM == '3' %}selected{% endif %}>사무 종사자</option>
+                    <option value="4" {% if user.JOB_NM == '4' %}selected{% endif %}>서비스 종사자</option>
+                    <option value="5" {% if user.JOB_NM == '5' %}selected{% endif %}>판매 종사자</option>
+                    <option value="6" {% if user.JOB_NM == '6' %}selected{% endif %}>농립어원 숙련 종사자</option>
+                    <option value="7" {% if user.JOB_NM == '7' %}selected{% endif %}>기능원 및 관련 기능 종사자</option>
+                    <option value="8" {% if user.JOB_NM == '8' %}selected{% endif %}>장치·기계 조작 및 조립 종사자</option>
+                    <option value="9" {% if user.JOB_NM == '9' %}selected{% endif %}>단순노무종사자</option>
+                    <option value="10" {% if user.JOB_NM == '10' %}selected{% endif %}>군인</option>
+                    <option value="11" {% if user.JOB_NM == '11' %}selected{% endif %}>전업주부</option>
+                    <option value="12" {% if user.JOB_NM == '12' %}selected{% endif %}>학생</option>
+                    <option value="13" {% if user.JOB_NM == '13' %}selected{% endif %}>기타</option>
+                </select>            
+            </div>
+
+            <div class="form-group">
+                <label>본인 소득(만원)</label>
+                <input type="text" name="INCOME" class="form-control" value="{{ user.INCOME }}">
+            </div>
+
+            <div class="form-group">
+                <label>가구 소득(만원)</label>
+                <input type="text" name="HOUSE_INCOME" class="form-control" value="{{ user.HOUSE_INCOME }}">
+            </div>
+
+            <div class="form-group">
+                <label>한 달 내 여행하는는 기간</label>
+                <select name="TRAVEL_TERM" class="form-control">
+                    <option value="1" {% if user.TRAVEL_TERM == '1' %}selected{% endif %}>1주일</option>
+                    <option value="2" {% if user.TRAVEL_TERM == '2' %}selected{% endif %}>한달</option>
+                    <option value="3" {% if user.TRAVEL_TERM == '3' %}selected{% endif %}>1년</option>
+                    <option value="4" {% if user.TRAVEL_TERM == '4' %}selected{% endif %}>기타</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>한 달 내 여행 빈도</label>
+                <input type="text" name="TRAVEL_NUM" class="form-control" value="{{ user.TRAVEL_NUM }}">
+            </div>
+
+            <div class="form-group">
+                <label>여행 동반자 수</label>
+                <input type="number" name="TRAVEL_COMPANIONS_NUM" class="form-control" value="{{ user.TRAVEL_COMPANIONS_NUM }}">
+            </div>
+
+            <div class="form-group">
+                <label>1순위 여행지(시도)</label>
+                <select name="TRAVEL_LIKE_SIDO_1" class="form-control" required>
+                    <option value="서울특별시" {% if user.TRAVEL_LIKE_SIDO_1 == "서울특별시" %}selected{% endif %}>서울특별시</option>
+                    <option value="부산광역시" {% if user.TRAVEL_LIKE_SIDO_1 == "부산광역시" %}selected{% endif %}>부산광역시</option>
+                    <option value="대구광역시" {% if user.TRAVEL_LIKE_SIDO_1 == "대구광역시" %}selected{% endif %}>대구광역시</option>
+                    <option value="인천광역시" {% if user.TRAVEL_LIKE_SIDO_1 == "인천광역시" %}selected{% endif %}>인천광역시</option>
+                    <option value="광주광역시" {% if user.TRAVEL_LIKE_SIDO_1 == "광주광역시" %}selected{% endif %}>광주광역시</option>
+                    <option value="대전광역시" {% if user.TRAVEL_LIKE_SIDO_1 == "대전광역시" %}selected{% endif %}>대전광역시</option>
+                    <option value="울산광역시" {% if user.TRAVEL_LIKE_SIDO_1 == "울산광역시" %}selected{% endif %}>울산광역시</option>
+                    <option value="세종특별자치시" {% if user.TRAVEL_LIKE_SIDO_1 == "세종특별자치시" %}selected{% endif %}>세종특별자치시</option>
+                    <option value="경기도" {% if user.TRAVEL_LIKE_SIDO_1 == "경기도" %}selected{% endif %}>경기도</option>
+                    <option value="충청북도" {% if user.TRAVEL_LIKE_SIDO_1 == "충청북도" %}selected{% endif %}>충청북도</option>
+                    <option value="충청남도" {% if user.TRAVEL_LIKE_SIDO_1 == "충청남도" %}selected{% endif %}>충청남도</option>
+                    <option value="전북특별자치도" {% if user.TRAVEL_LIKE_SIDO_1 == "전북특별자치도" %}selected{% endif %}>전북특별자치도</option>
+                    <option value="전라남도" {% if user.TRAVEL_LIKE_SIDO_1 == "전라남도" %}selected{% endif %}>전라남도</option>
+                    <option value="경상북도" {% if user.TRAVEL_LIKE_SIDO_1 == "경상북도" %}selected{% endif %}>경상북도</option>
+                    <option value="경상남도" {% if user.TRAVEL_LIKE_SIDO_1 == "경상남도" %}selected{% endif %}>경상남도</option>
+                    <option value="강원특별자치도" {% if user.TRAVEL_LIKE_SIDO_1 == "강원특별자치도" %}selected{% endif %}>강원특별자치도</option>
+                    <option value="제주특별자치도" {% if user.TRAVEL_LIKE_SIDO_1 == "제주특별자치도" %}selected{% endif %}>제주특별자치도</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>2순위 여행지(시도)</label>
+                <select name="TRAVEL_LIKE_SIDO_2" class="form-control" required>
+                    <option value="서울특별시" {% if user.TRAVEL_LIKE_SIDO_2 == "서울특별시" %}selected{% endif %}>서울특별시</option>
+                    <option value="부산광역시" {% if user.TRAVEL_LIKE_SIDO_2 == "부산광역시" %}selected{% endif %}>부산광역시</option>
+                    <option value="대구광역시" {% if user.TRAVEL_LIKE_SIDO_2 == "대구광역시" %}selected{% endif %}>대구광역시</option>
+                    <option value="인천광역시" {% if user.TRAVEL_LIKE_SIDO_2 == "인천광역시" %}selected{% endif %}>인천광역시</option>
+                    <option value="광주광역시" {% if user.TRAVEL_LIKE_SIDO_2 == "광주광역시" %}selected{% endif %}>광주광역시</option>
+                    <option value="대전광역시" {% if user.TRAVEL_LIKE_SIDO_2 == "대전광역시" %}selected{% endif %}>대전광역시</option>
+                    <option value="울산광역시" {% if user.TRAVEL_LIKE_SIDO_2 == "울산광역시" %}selected{% endif %}>울산광역시</option>
+                    <option value="세종특별자치시" {% if user.TRAVEL_LIKE_SIDO_2 == "세종특별자치시" %}selected{% endif %}>세종특별자치시</option>
+                    <option value="경기도" {% if user.TRAVEL_LIKE_SIDO_2 == "경기도" %}selected{% endif %}>경기도</option>
+                    <option value="충청북도" {% if user.TRAVEL_LIKE_SIDO_2 == "충청북도" %}selected{% endif %}>충청북도</option>
+                    <option value="충청남도" {% if user.TRAVEL_LIKE_SIDO_2 == "충청남도" %}selected{% endif %}>충청남도</option>
+                    <option value="전북특별자치도" {% if user.TRAVEL_LIKE_SIDO_2 == "전북특별자치도" %}selected{% endif %}>전북특별자치도</option>
+                    <option value="전라남도" {% if user.TRAVEL_LIKE_SIDO_2 == "전라남도" %}selected{% endif %}>전라남도</option>
+                    <option value="경상북도" {% if user.TRAVEL_LIKE_SIDO_2 == "경상북도" %}selected{% endif %}>경상북도</option>
+                    <option value="경상남도" {% if user.TRAVEL_LIKE_SIDO_2 == "경상남도" %}selected{% endif %}>경상남도</option>
+                    <option value="강원특별자치도" {% if user.TRAVEL_LIKE_SIDO_2 == "강원특별자치도" %}selected{% endif %}>강원특별자치도</option>
+                    <option value="제주특별자치도" {% if user.TRAVEL_LIKE_SIDO_2 == "제주특별자치도" %}selected{% endif %}>제주특별자치도</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>3순위 여행지</label>
+                <select name="TRAVEL_LIKE_SIDO_3" class="form-control" required>
+                    <option value="서울특별시" {% if user.TRAVEL_LIKE_SIDO_3 == "서울특별시" %}selected{% endif %}>서울특별시</option>
+                    <option value="부산광역시" {% if user.TRAVEL_LIKE_SIDO_3 == "부산광역시" %}selected{% endif %}>부산광역시</option>
+                    <option value="대구광역시" {% if user.TRAVEL_LIKE_SIDO_3 == "대구광역시" %}selected{% endif %}>대구광역시</option>
+                    <option value="인천광역시" {% if user.TRAVEL_LIKE_SIDO_3 == "인천광역시" %}selected{% endif %}>인천광역시</option>
+                    <option value="광주광역시" {% if user.TRAVEL_LIKE_SIDO_3 == "광주광역시" %}selected{% endif %}>광주광역시</option>
+                    <option value="대전광역시" {% if user.TRAVEL_LIKE_SIDO_3 == "대전광역시" %}selected{% endif %}>대전광역시</option>
+                    <option value="울산광역시" {% if user.TRAVEL_LIKE_SIDO_3 == "울산광역시" %}selected{% endif %}>울산광역시</option>
+                    <option value="세종특별자치시" {% if user.TRAVEL_LIKE_SIDO_3 == "세종특별자치시" %}selected{% endif %}>세종특별자치시</option>
+                    <option value="경기도" {% if user.TRAVEL_LIKE_SIDO_3 == "경기도" %}selected{% endif %}>경기도</option>
+                    <option value="충청북도" {% if user.TRAVEL_LIKE_SIDO_3 == "충청북도" %}selected{% endif %}>충청북도</option>
+                    <option value="충청남도" {% if user.TRAVEL_LIKE_SIDO_3 == "충청남도" %}selected{% endif %}>충청남도</option>
+                    <option value="전북특별자치도" {% if user.TRAVEL_LIKE_SIDO_3 == "전북특별자치도" %}selected{% endif %}>전북특별자치도</option>
+                    <option value="전라남도" {% if user.TRAVEL_LIKE_SIDO_3 == "전라남도" %}selected{% endif %}>전라남도</option>
+                    <option value="경상북도" {% if user.TRAVEL_LIKE_SIDO_3 == "경상북도" %}selected{% endif %}>경상북도</option>
+                    <option value="경상남도" {% if user.TRAVEL_LIKE_SIDO_3 == "경상남도" %}selected{% endif %}>경상남도</option>
+                    <option value="강원특별자치도" {% if user.TRAVEL_LIKE_SIDO_3 == "강원특별자치도" %}selected{% endif %}>강원특별자치도</option>
+                    <option value="제주특별자치도" {% if user.TRAVEL_LIKE_SIDO_3 == "제주특별자치도" %}selected{% endif %}>제주특별자치도</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>1순위 여행 동기</label>
+                <select name="TRAVEL_MOTIVE_1" class="form-control">
+                    <option value="1" {% if user.TRAVEL_MOTIVE_2 == '1' %}selected{% endif %}>일상 탈출</option>
+                    <option value="2" {% if user.TRAVEL_MOTIVE_2 == '2' %}selected{% endif %}>휴식 / 충전</option>
+                    <option value="3" {% if user.TRAVEL_MOTIVE_2 == '3' %}selected{% endif %}>유대감</option>
+                    <option value="4" {% if user.TRAVEL_MOTIVE_2 == '4' %}selected{% endif %}>자아 성찰</option>
+                    <option value="5" {% if user.TRAVEL_MOTIVE_2 == '5' %}selected{% endif %}>SNS 과시</option>
+                    <option value="6" {% if user.TRAVEL_MOTIVE_2 == '6' %}selected{% endif %}>건강 증진</option>
+                    <option value="7" {% if user.TRAVEL_MOTIVE_2 == '7' %}selected{% endif %}>새로운 경험</option>
+                    <option value="8" {% if user.TRAVEL_MOTIVE_2 == '8' %}selected{% endif %}>역사 / 문화 체험</option>
+                    <option value="9" {% if user.TRAVEL_MOTIVE_2 == '9' %}selected{% endif %}>특별한 목적</option>
+                    <option value="10" {% if user.TRAVEL_MOTIVE_2 == '10' %}selected{% endif %}>기타</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>2순위 여행 동기</label>
+                <select name="TRAVEL_MOTIVE_2" class="form-control">
+                    <option value="1" {% if user.TRAVEL_MOTIVE_2 == '1' %}selected{% endif %}>일상 탈출</option>
+                    <option value="2" {% if user.TRAVEL_MOTIVE_2 == '2' %}selected{% endif %}>휴식 / 충전</option>
+                    <option value="3" {% if user.TRAVEL_MOTIVE_2 == '3' %}selected{% endif %}>유대감</option>
+                    <option value="4" {% if user.TRAVEL_MOTIVE_2 == '4' %}selected{% endif %}>자아 성찰</option>
+                    <option value="5" {% if user.TRAVEL_MOTIVE_2 == '5' %}selected{% endif %}>SNS 과시</option>
+                    <option value="6" {% if user.TRAVEL_MOTIVE_2 == '6' %}selected{% endif %}>건강 증진</option>
+                    <option value="7" {% if user.TRAVEL_MOTIVE_2 == '7' %}selected{% endif %}>새로운 경험</option>
+                    <option value="8" {% if user.TRAVEL_MOTIVE_2 == '8' %}selected{% endif %}>역사 / 문화 체험</option>
+                    <option value="9" {% if user.TRAVEL_MOTIVE_2 == '9' %}selected{% endif %}>특별한 목적</option>
+                    <option value="10" {% if user.TRAVEL_MOTIVE_2 == '10' %}selected{% endif %}>기타</option>
+                </select>
+            </div>
+            <div class="text-center mt-4">
+                <button type="button" class="btn btn-primary btn-lg px-5" onclick="prevStep(2)">이전</button>
+                <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(2)">다음</button>
+            </div>
+        </div>
+            <div class = "form-group">
+                {% set labels = [
+                        '자연 vs 도시',
+                        '숙박 vs 당일',
+                        '새로운 지역 vs 익숙한 지역',
+                        '편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소',
+                        '휴양/휴식 vs 체험활동',
+                        '잘 알려지지 않은 방문지 vs 유명한 방문지',
+                        '계획에 따른 여행 vs 즉흥적 여행',
+                        '사진촬영 중요하지 않음 vs 사진촬영 중요'
+                    ] %}
+                {% for i in range(1, 9) %}
+                    <div class="form-step d-none" id="step-{{ i + 2 }}">
+                        <div class="form-group text-center">
+                            <h4>여행 스타일 {{ i }} / 8</h4>
+                            <p><strong>{{ labels[i-1] }}</strong></p>
+                            <div class="d-flex justify-content-center align-items-center my-3 gap-3">
+                            <img src="/static/images/register_{{ i }}.jpg" style="width: 45%; max-width: 300px;" alt="style image">
+                            <img src="/static/images/register_{{ i + 1 }}.jpg" style="width: 45%; max-width: 300px;" alt="style image">
+                            </div>
+                            <div class="btn-group-toggle d-flex justify-content-between flex-wrap">
+                            <span class="text-muted" style="font-size: 0.9em;">
+                                (1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)
+                            </span>
+                            <br/>
+                            <strong id="valueDisplay">{{  user['TRAVEL_STYL_' ~ i] or 4 }}</strong>
+                            <input type="range" class="form-range" name="TRAVEL_STYL_{{ i }}" id="slider{{ i }}" min="1" max="7" step="1" value="{{ user['TRAVEL_STYL_' ~ i] or 4 }}" oninput="updateLabel({{ i }})">
+                            </div>
+
+                            <div class="text-center mt-4">
+                                
+                            {% if i >= 1 %}
+                            <button type="button" class="btn btn-primary btn-lg px-5" onclick="prevStep({{ i+2 }})">이전</button>
+                            {% endif %}
+                            {% if i < 8 %}
+                            <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep({{ i+2 }})">다음</button>
+                            {% else %}
+                            <button type="button" class="btn btn-primary btn-lg px-5" onclick="submitForm()">✅ 수정 완료</button>
+                            <button type="button" class="btn btn-primary btn-lg px-5" onclick=location.href="{{ url_for('home') }}">🏠 메인으로</button>                            
+                            {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                let currentStep = 1;
+
+                function showStep(step) {
+                    document.querySelectorAll('.form-step').forEach((el) => {
+                        el.classList.add('d-none');
+                        el.classList.remove('active');
+                    });
+
+                    const target = document.getElementById(`step-${step}`);
+                    if (target) {
+                        target.classList.remove('d-none');
+                        target.classList.add('active');
+                    }
+                }
+
+                function nextStep(step) {
+                    currentStep = step + 1;
+                    showStep(currentStep);
+                }
+
+                function prevStep(step) {
+                    currentStep = step - 1;
+                    showStep(currentStep);
+                }
+
+                document.addEventListener("DOMContentLoaded", () => {
+                    showStep(currentStep);
+                });
+
+                function submitForm() {
+                    document.querySelector("form").submit();
+                }
+                function updateLabel(index) {
+                    const slider = document.getElementById(`slider${index}`);
+                    const label = document.getElementById(`valueDisplay${index}`);
+                    if (slider && label) {
+                        label.textContent = slider.value;
+                    }
+                }
+                
+                </script>
+        </form>
+    </div>
+</div>
+{% endblock %}

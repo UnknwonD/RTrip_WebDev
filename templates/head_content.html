@@ -45,6 +45,7 @@
               .active-dot {
                 color: #333;
               }
+              
         </style>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css" />
         <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
@@ -147,22 +148,27 @@
                         <div id = 'slider' class="col-md-5">
                             <div id="slider-container">
                                 {% for img in images %}
-                                    <div class="slide">
-                                    <img 
-                                        src="{{ img.url | safe }}"
-                                        alt="image {{ loop.index }}"
-                                        class="header-phone img-responsive wow fadeInRight"
-                                        style="width: 100%; object-fit: cover;">
-
-                                    <div class="landing-text text-center" style="color: #ffffff;">
-                                        {{ img.area }}
-                                    </div>
+                                        <div class="slide">
+                                        {% if session.username %}
+                                            <img 
+                                                src="{{ img.url | safe }}"
+                                                alt="image {{ loop.index }}"
+                                                class="header-phone img-responsive wow fadeInRight"
+                                                style="width: 100%; object-fit: cover;">
+                                        {% else %}
+                                            <img 
+                                                src="{{ img.url | safe }}"
+                                                alt="image {{ loop.index }}"
+                                                class="header-phone img-responsive wow fadeInRight"
+                                                style="width: 100%; object-fit: cover;">
+                                        {% endif %}
+                                        <div class="landing-text text-center" style="color: #ffffff;">
+                                            {{ img.area }}
+                                        </div>
                                     </div>
                                 {% endfor %}
-                                </div>
-                            
-                                                 
-                            
+                            </div>
+                                                          
                             <div id="dots" class='landing-text wow fadeInRight'></div>
                             
                             {% if session.username %}
