@@ -188,7 +188,7 @@ def mypage():
             'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
             'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2', 'TRAVEL_COMPANIONS_NUM'
         ] + [f'TRAVEL_STYL_{i}' for i in range(1, 9)]
-        
+
         print("[📥 FORM 데이터]", request.form)  # ✅ 이거 찍히는지 먼저 확인
         updated_data = {field: request.form.get(field, "") for field in update_fields}
         print("[🧾 업데이트 데이터]", updated_data)
@@ -265,7 +265,7 @@ def inject_images():
     if "username" in session:
         images = get_user_recommended_images_and_areas(session["username"])
     else:
-        images = get_random_images_from_rds(reverse=True)
+        images = get_random_images_from_rds()
     return dict(images=images)
 
     

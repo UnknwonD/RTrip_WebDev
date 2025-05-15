@@ -239,7 +239,7 @@
             </div>
 
             <div class="form-group">
-                <label>가족 수</label>
+                <label>가족 수(명)</label>
                 <input type="number" name="FAMILY_MEMB" class="form-control" value="{{ user.FAMILY_MEMB }}">
             </div>
 
@@ -273,7 +273,7 @@
             </div>
 
             <div class="form-group">
-                <label>한 달 내 여행하는는 기간</label>
+                <label>한 달 내 여행하는 기간</label>
                 <select name="TRAVEL_TERM" class="form-control">
                     <option value="1" {% if user.TRAVEL_TERM == '1' %}selected{% endif %}>1주일</option>
                     <option value="2" {% if user.TRAVEL_TERM == '2' %}selected{% endif %}>한달</option>
@@ -421,8 +421,14 @@
                                 (1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)
                             </span>
                             <br/>
-                            <strong id="valueDisplay">{{  user['TRAVEL_STYL_' ~ i] or 4 }}</strong>
-                            <input type="range" class="form-range" name="TRAVEL_STYL_{{ i }}" id="slider{{ i }}" min="1" max="7" step="1" value="{{ user['TRAVEL_STYL_' ~ i] or 4 }}" oninput="updateLabel({{ i }})">
+                            <strong id="valueDisplay{{ i }}" class="fs-5">{{ user['TRAVEL_STYL_' ~ i] or 4 }}</strong>
+                            <input type="range"
+                                class="form-range"
+                                name="TRAVEL_STYL_{{ i }}"
+                                id="slider{{ i }}"
+                                min="1" max="7"
+                                value="{{ user['TRAVEL_STYL_' ~ i] or 4 }}"
+                                oninput="updateLabel({{ i }})">
                             </div>
 
                             <div class="text-center mt-4">

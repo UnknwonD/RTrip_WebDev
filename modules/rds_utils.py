@@ -32,34 +32,34 @@ s3 = boto3.client(
     config=botocore.client.Config(signature_version='s3v4')
 )
 
-# def get_random_photo_filename(travel_id):
-#     try:
-#         conn = pymysql.connect(
-#             host=DB_HOST,
-#             user=DB_USER,
-#             port = DB_PORT,
-#             password=DB_PASSWORD,
-#             db=DB_NAME,
-#             charset='utf8mb4',
-#             cursorclass=pymysql.cursors.DictCursor
-#         )
-#         with conn.cursor() as cursor:
-#             sql = "SELECT PHOTO_FILE_NM FROM photo WHERE TRAVEL_ID = %s"
-#             cursor.execute(sql, (travel_id,))
-#             results = cursor.fetchall()
+def get_random_photo_filename(travel_id):
+    try:
+        conn = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            port = DB_PORT,
+            password=DB_PASSWORD,
+            db=DB_NAME,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        with conn.cursor() as cursor:
+            sql = "SELECT PHOTO_FILE_NM FROM photo WHERE TRAVEL_ID = %s"
+            cursor.execute(sql, (travel_id,))
+            results = cursor.fetchall()
 
-#             if not results:
-#                 print(f"[!] TRAVEL_ID에 해당하는 이미지 없음: {travel_id}")
-#                 return None
+            if not results:
+                print(f"[!] TRAVEL_ID에 해당하는 이미지 없음: {travel_id}")
+                return None
 
-#             photo_file = random.choice(results)
-#             return photo_file['PHOTO_FILE_NM']
-#     except Exception as e:
-#         print(f"[!] RDS 조회 오류: {e}")
-#         return None
-#     finally:
-#         if 'conn' in locals():
-#             conn.close()
+            photo_file = random.choice(results)
+            return photo_file['PHOTO_FILE_NM']
+    except Exception as e:
+        print(f"[!] RDS 조회 오류: {e}")
+        return None
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
 
 
