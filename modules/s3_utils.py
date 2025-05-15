@@ -4,8 +4,6 @@ import botocore
 import os
 from dotenv import load_dotenv
 import pymysql
-import requests
-
 
 load_dotenv(override=True)
 
@@ -22,6 +20,7 @@ DB_PASSWORD = os.getenv("RDB_PASSWORD")
 DB_NAME = os.getenv("RDB_NAME")
 DB_PORT = int(os.getenv("RDB_PORT"))
 
+# S3 setting
 s3 = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY,
@@ -29,27 +28,18 @@ s3 = boto3.client(
     region_name=REGION_NAME,
     config=botocore.client.Config(signature_version='s3v4')
 )
+
+# S3에서 key로 파일을 읽고 json으로 반환환
 def get_json_from_s3(key):
     file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
     return json.loads(file_obj['Body'].read().decode('utf-8'))
 
-def get_user_info(username):
-    objects = list_s3_objects("users/")
+# prefix로 시작하는 S3 객체 리스트 반환환
+def list_s3_objects(prefix):
+    response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+    return response.get('Contents', [])
 
-    json_objects = [obj for obj in objects if obj['Key'].endswith('.json')]
-
-    for obj in json_objects:
-        key = obj['Key']
-        try:
-            user_json = get_json_from_s3(key)
-        except Exception as e:
-            print(f"[!] JSON 파싱 실패: {key} → {e}")
-            continue
-        if user_json.get("USER_ID") == username:
-            return user_json
-    return None
-
-
+# key에 대해 1시간짜리 presigned URL 생성성
 def generate_signed_url(key, expires_in=3600):
     return s3.generate_presigned_url(
         'get_object',
@@ -57,6 +47,23 @@ def generate_signed_url(key, expires_in=3600):
         ExpiresIn=expires_in
     )
 
+# user 정보 반환 ( input = ID output = dict )
+def get_user_info(username):
+    objects = list_s3_objects("users/")
+    json_objects = [obj for obj in objects if obj['Key'].endswith('.json')] # .json 파일 필터링링
+
+    for obj in json_objects:
+        key = obj['Key']
+        try:
+            user_json = get_json_from_s3(key)   # dict
+        except Exception as e:
+            print(f"[!] JSON 파싱 실패: {key} → {e}")
+            continue
+        if user_json.get("USER_ID") == username:    # USER_ID가 일치하면 해당 유저 정보 반환 
+            return user_json                        # dict
+    return None
+
+# S3에 앋앋
 def put_json_to_s3(key, data):
     s3.put_object(
         Bucket=BUCKET_NAME,
@@ -65,9 +72,7 @@ def put_json_to_s3(key, data):
         ContentType='application/json'
     )
 
-def list_s3_objects(prefix):
-    response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
-    return response.get('Contents', [])
+
 
 def get_user_recommended_images_and_areas(username):
     try:

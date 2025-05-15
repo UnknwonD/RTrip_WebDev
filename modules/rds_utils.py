@@ -5,15 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-
 DB_HOST = os.getenv("RDS_HOST")
 DB_USER = os.getenv("RDS_USER")
 DB_PASSWORD = os.getenv("RDS_PASSWORD")
 DB_NAME = os.getenv("RDS_DB_NAME")
 DB_PORT = int(os.getenv("RDS_PORT"))
 
-
-# 
 def get_random_photo_filename(travel_id):
     try:
         conn = pymysql.connect(

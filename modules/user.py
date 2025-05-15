@@ -26,8 +26,7 @@ def register_user(form_data):
     put_json_to_s3(f"users/{user_data['uuid']}.json", user_data)
     return user_data["uuid"]
 
-
-
+# (input: ID , update_data : dict)
 def update_user_info(username, updated_data):
     objects = list_s3_objects("users/")
     for obj in objects:

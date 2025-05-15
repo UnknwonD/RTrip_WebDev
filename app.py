@@ -218,12 +218,20 @@ def mypage():
 # 추천 페이지
 @app.route("/recommended")
 def recommended():
+    user_json = None
+    if "username" in session:
+        raw_user = get_user_info(session["username"])
+        if raw_user:
+            exclude_fields = {"BIRTHDATE", "uuid", 'phone_number', "PASSWORD", "CONFIRM_PASSWORD"} # user 정보에서 필요 없는 정보들 입력
+            user_json = {k: v for k, v in raw_user.items() if k not in exclude_fields}
+
     return render_template(
         "recommended.html",
         purpose_options=purpose_options,
         movement_options=movement_options,
         whowith_options=whowith_options,
-        user_feature_keys=user_feature_keys
+        user_feature_keys=user_feature_keys,
+        user_info=user_json
     )
 
 

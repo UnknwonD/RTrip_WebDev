@@ -7,6 +7,7 @@ load_dotenv(override = True)
 
 EC2_API_URL = os.getenv("EC2_PUBLIC_ADDR")
 
+# 입력 받은 user 데이터 ec2로 전송
 def send_to_ec2(user_data):
     try:
         res = requests.post(

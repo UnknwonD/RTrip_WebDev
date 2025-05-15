@@ -55,6 +55,10 @@
         <button type="submit">✨ 추천받기</button>
     </form>
 
+    {% for k, v in user_info.items() %}
+        <div>{{k}} : {{v}}</div>
+    {% endfor %}
+
     <!-- Litepicker Script -->
     <script>
       const picker = new Litepicker({
