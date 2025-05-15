@@ -44,29 +44,6 @@ s3 = boto3.client(
     region_name=REGION_NAME
 )
 
-
-# 이미지 정보 같이 불러오는 코드 추가할 것 (장소명, 주소, 방문 횟수 ...)
-def get_s3_signed_urls(reverse = False):
-    s3 = boto3.client('s3',
-                      aws_access_key_id=AWS_ACCESS_KEY,
-                      aws_secret_access_key=AWS_SECRET_KEY,
-                      region_name= REGION_NAME,
-                      config=botocore.client.Config(signature_version='s3v4')
-                    )
-
-    bucket = BUCKET_NAME
-    prefix = 'data/resized_image/E/'
-
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    all_keys = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.jpg')]
-    all_keys = sorted(all_keys, reverse=reverse)[:10]  # 상위 10개
-    
-    signed_urls = [
-        s3.generate_presigned_url('get_object', Params={'Bucket': bucket, 'Key': key}, ExpiresIn=3600)
-        for key in all_keys
-    ]
-    return signed_urls
-
 # === 중복 확인 함수 ===
 def is_duplicate(field_name, value):
     try:
@@ -217,24 +194,36 @@ def mypage():
     if request.method == "GET":
         try:
             user_json = get_user_info(username)
+            
             if user_json:
-                return render_template("mypage.html", user=user_json)
+                return render_template("mypage.html", user=user_json, today=datetime.today().strftime('%Y-%m-%d'))
             return "사용자 정보를 찾을 수 없습니다.", 404
         except RuntimeError as e:
             return str(e), 500
 
     elif request.method == "POST":
-        update_fields = ['NAME', 'GENDER', 'JOB_NM', 'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM']
-        updated_data = {field: request.form.get(field, "") for field in update_fields}
+        print("[📥 POST 요청 들어옴]")  # ✅ 이거 찍히는지 확인
+        update_fields = [
+            'NAME', 'GENDER', 'BIRTHDATE', 'phone_number',
+            'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'FAMILY_MEMB',
+            'JOB_NM', 'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM', 'TRAVEL_NUM',
+            'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
+            'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2', 'TRAVEL_COMPANIONS_NUM'
+        ] + [f'TRAVEL_STYL_{i}' for i in range(1, 9)]
 
+        print("[📥 FORM 데이터]", request.form)  # ✅ 이거 찍히는지 먼저 확인
+        updated_data = {field: request.form.get(field, "") for field in update_fields}
+        print("[🧾 업데이트 데이터]", updated_data)
         try:
             success = update_user_info(username, updated_data)
+            
             if success:
                 flash("회원 정보가 성공적으로 수정되었습니다.")
                 return redirect(url_for("home"))
             return "수정 대상 사용자를 찾을 수 없습니다.", 404
         except RuntimeError as e:
             return str(e), 500
+            
 # 추천 결과 페이지
 @app.route("/recommend_result")
 def recommend_result():
@@ -289,9 +278,8 @@ def xai():
 def inject_images():
     if "username" in session:
         images = get_user_recommended_images_and_areas(session["username"])
-        print(images)
     else:
-        images = get_s3_signed_urls()  # 랜덤 이미지
+        images = get_random_images_from_rds()
     return dict(images=images)
 
     
