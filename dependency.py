@@ -15,9 +15,9 @@ from modules.user import update_user_info
 from modules.s3_utils import get_user_recommended_images_and_areas, get_user_info
 from modules.ec2_utils import send_to_ec2
 from modules.rds_utils import get_images_by_travel_ids, get_random_images_from_rds
-from lee import find_nearest_neighbors
+
 from gnn_module import *
 
-import torch.multiprocessing as mp
-mp.set_sharing_strategy("file_system")  # macOS에서 안전
+# import torch.multiprocessing as mp
+# mp.set_sharing_strategy("file_system")  # macOS에서 안전
 
