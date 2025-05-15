@@ -9,6 +9,23 @@ with open("./pickle/visit_area_id_map.pkl", "rb") as f:
 with open("./pickle/dataset.pkl", "rb") as f:
     base_data = pickle.load(f)
 
+## 삐삐꼬는 GNN용
+# with open("./pickle/PPK/metadata_lite.pkl", "rb") as f:
+#     metadata = pickle.load(f)
+# with open("./pickle/PPK/visit_area_id_map.pkl", "rb") as f:
+#     visit_area_id_map = pickle.load(f)
+# with open("./pickle/PPK/dataset.pkl", "rb") as f:
+#     base_data = pickle.load(f)
+
+# model = PpiKkoTwistGNN(
+#         metadata=metadata,
+#         user_input_dim=25,
+#         travel_input_dim=29,
+#         hidden_dim=128,
+#         num_layers=8
+#     )
+
+
 model = LiteTwistGNN(
         metadata=metadata,
         user_input_dim=25,

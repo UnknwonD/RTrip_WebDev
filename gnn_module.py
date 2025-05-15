@@ -54,6 +54,102 @@ whowith_options = [
     ("부모 동반", "부모 동반"), ("3대 동반 여행", "3대 동반 여행")
 ]
 
+class PpiKkoTwistGNN(nn.Module):  # 삐삐꼬는 GNN
+    def __init__(self, metadata, user_input_dim, travel_input_dim, hidden_dim=128, num_layers=8):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+
+        # Input Projections
+        self.input_proj = nn.ModuleDict({
+            'user': nn.Linear(user_input_dim, hidden_dim),
+            'travel': nn.Linear(travel_input_dim, hidden_dim),
+            'visit_area': nn.Identity()
+        })
+
+        # Deep HeteroConv Layers
+        self.convs = nn.ModuleList([
+            HeteroConv(
+                {etype: SAGEConv((-1, -1), hidden_dim) for etype in metadata[1]},
+                aggr='sum'
+            ) for _ in range(num_layers)
+        ])
+        self.norms = nn.ModuleList([
+            nn.ModuleDict({ntype: nn.LayerNorm(hidden_dim) for ntype in metadata[0]})
+            for _ in range(num_layers)
+        ])
+
+        self.dropout = nn.Dropout(0.35)
+
+        # Multi-Expert System (location / preference / category)
+        self.expert_location = nn.Sequential(
+            nn.LayerNorm(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1)
+        )
+        self.expert_preference = nn.Sequential(
+            nn.LayerNorm(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1)
+        )
+        self.expert_category = nn.Sequential(
+            nn.LayerNorm(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1)
+        )
+
+        # Multihead Attention Gating: attend across experts
+        self.attn_gate = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=4, batch_first=True)
+        self.attn_query = nn.Parameter(torch.randn(1, hidden_dim))
+
+        self.final_proj = nn.Sequential(
+            nn.LayerNorm(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, x_dict, edge_index_dict, feedback_mask=None):
+        # 1. Input projection
+        x_dict = {k: self.input_proj[k](v) if k in self.input_proj else v for k, v in x_dict.items()}
+
+        # 2. Deep GNN layers with residuals
+        for i in range(self.num_layers):
+            h_dict = self.convs[i](x_dict, edge_index_dict)
+            h_dict = {
+                k: self.dropout(F.relu(self.norms[i][k](v))) + x_dict[k]
+                for k, v in h_dict.items() if k in x_dict
+            }
+            x_dict = h_dict
+
+        h_visit = x_dict['visit_area']  # [num_nodes, hidden_dim]
+
+        # 3. Expert Predictions
+        loc = self.expert_location(h_visit)         # [N, 1]
+        pref = self.expert_preference(h_visit)      # [N, 1]
+        cat = self.expert_category(h_visit)         # [N, 1]
+        experts = torch.cat([loc, pref, cat], dim=1).unsqueeze(1)  # [N, 1, 3]
+
+        # 4. Multi-head Attention Gating
+        q = self.attn_query.expand(h_visit.size(0), -1).unsqueeze(1)  # [N, 1, H]
+        attn_out, _ = self.attn_gate(q, h_visit.unsqueeze(1), h_visit.unsqueeze(1))  # [N, 1, H]
+        final_score = self.final_proj(attn_out.squeeze(1)).squeeze(-1)  # [N]
+
+        if feedback_mask is not None:
+            final_score = final_score + feedback_mask
+
+        return final_score
+
 class LiteTwistGNN(nn.Module):
     def __init__(self, metadata, user_input_dim, travel_input_dim, hidden_dim=64, num_layers=2):
         super().__init__()
@@ -126,7 +222,7 @@ def recommend_from_input(model: nn.Module,
     travel_tensor = torch.tensor(travel_input_df.values, dtype=torch.float)
 
     # 2. base_data 복사 및 입력 추가
-    data = base_data[2].clone()
+    data = base_data[3].clone()
     data['user'].x = torch.cat([data['user'].x, user_tensor], dim=0)
     data['travel'].x = torch.cat([data['travel'].x, travel_tensor], dim=0)
 
