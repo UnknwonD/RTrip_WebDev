@@ -49,13 +49,11 @@ def update_user_info(username, updated_data):
             continue
         
         if user_json.get("USER_ID") == username:
-            # 생년월일 변경 시 AGE_GRP도 갱신
             if 'BIRTHDATE' in updated_data:
                 updated_data["AGE_GRP"] = calculate_age_group(updated_data["BIRTHDATE"])
 
-            # 안전한 필드만 업데이트
             for k, v in updated_data.items():
-                if k in user_json:  # 기존 필드만 업데이트
+                if k in user_json:
                     user_json[k] = v
 
             put_json_to_s3(key, user_json)

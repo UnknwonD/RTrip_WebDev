@@ -20,10 +20,6 @@ DB_PASSWORD = os.getenv("RDB_PASSWORD")
 DB_NAME = os.getenv("RDB_NAME")
 DB_PORT = int(os.getenv("RDB_PORT"))
 
-print(DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER)
-
-
-
 s3 = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY,
