@@ -295,8 +295,10 @@ def xai():
 def inject_images():
     if "username" in session:
         images = get_user_recommended_images_and_areas(session["username"])
+        print(images)
     else:
         images = get_random_images_from_rds()
+
     return dict(images=images)
 
     

@@ -27,7 +27,7 @@
               }
               #slider-container {
                 display: flex;
-                width: 5000px; /* 500 * 10 (이미지 개수) */
+                width: 5000px;
                 transition: transform 0.8s ease-in-out;
               }
               #info {
@@ -79,8 +79,7 @@
                                 <li><a href="{{ url_for('mypage') }}">Profile</a></li>
                                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
                             {% else %}
-                                <!-- 로그인 안 되어 있을 경우 로그인 및 회원가입 추가 -->
-                                
+                                <!-- 로그인 안 되어 있을 경우 로그인 및 회원가입 추가 -->                                
                                 <li><a href="#" data-toggle="modal" data-target="#loginModal">login</a></li>
                                 <li><a href="{{ url_for('register_form') }}">register</a></li>
                             {% endif %}                         
@@ -101,7 +100,8 @@
                         <div class="col-md-7">
                             
                             <!-- /.logo -->
-                            <div class="logo wow fadeInDown"> <a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a></div>
+                            <div class="logo wow fadeInDown"> <a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo"></a>
+                            </div>
                             
                             <!-- /.main title -->
                             {% if session.username %}
@@ -141,7 +141,6 @@
                                     <a href="#download" class="btn option"><i class="fa fa-android"></i>Android</a>
                                 </p>
                             </div>			  
-
                         </div> 
 
                         <!-- /user image -->
@@ -169,7 +168,11 @@
                                 {% endfor %}
                             </div>
                                                           
-                            <div id="dots" class='landing-text wow fadeInRight'></div>
+                            <div id="dots" class="landing-text wow fadeInRight">
+                                {% for i in range(images|length) %}
+                                    <span class="dot"></span>
+                                {% endfor %}
+                            </div>
                             
                             {% if session.username %}
                                 <div class='landing-text wow fadeInRight text-center'> 
