@@ -1,0 +1,100 @@
+<div class ="form-step d-none"id="step-{{ 9 }}">
+            <!-- <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;"> -->
+                <div style="flex: 1;">
+                    <label>🎯 여행 유형</label><br>
+                        <input role="switch" type="checkbox" id="missionToggle" />
+                        <span id='missionToggleLabel'>일반 여행</span>
+                </div>
+
+
+                <div id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
+                    <label>🚩 여행 목적 </label><br>
+                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#missionModal">
+                        미션 선택하기
+                    </button>
+                    <input type="hidden" id="mission_ENC_hidden" name="mission_ENC">
+                </div>
+            </div>
+            <p id="selected_missions_text" class="text-muted" style="margin-top: 10px;"></p>
+
+            <!-- 여행 기간 -->
+            <div class="form-group">
+                <label for="date_range">📅 여행 기간 (출발일 ~ 도착일)</label>
+                <input type="text" id="date_range" name="date_range" class="form-control" required>
+                <input type="hidden" id="start_date" name="start_date">
+                <input type="hidden" id="end_date" name="end_date">
+            </div>
+
+            <!-- 예산 -->
+            <div class="form-group">
+                <label>💸 여행 예산</label>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1; position: relative;">
+                        <label for="LODGOUT_COST" style="font-weight: 500;">🏨 숙소</label>
+                        <input type="number" name="LODGOUT_COST" class="form-control cost-input" placeholder="예: 50" required>
+                        <span class="unit-label">만원</span>
+                    </div>
+                    <div style="flex: 1; position: relative;">
+                        <label for="ACTIVITY_COST" style="font-weight: 500;">🎫 활동</label>
+                        <input type="number" name="ACTIVITY_COST" class="form-control cost-input" placeholder="예: 30" required>
+                        <span class="unit-label">만원</span>
+                    </div>
+                    <div style="flex: 1; position: relative;">
+                        <label for="TOTAL_COST" style="font-weight: 500;">💰 총합</label>
+                        <input type="number" name="TOTAL_COST" class="form-control cost-input" placeholder="예: 100" required>
+                        <span class="unit-label">만원</span>
+                    </div>
+                </div>
+            </div>
+            <!-- 이동수단, 나이대, 동반자 -->
+            <div class="form-group">
+                <label for="MVMN_NM_ENC">🚗 이동수단</label>
+                <select name="MVMN_NM_ENC" class="form-control" required>
+                    {% for code, label in movement_options %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="whowith_ENC">🤝 동반자</label>
+                <select name="whowith_ENC" class="form-control" required>
+                    {% for label, value in whowith_options %}
+                        <option value="{{ loop.index }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <input type="hidden" id="mission_type_hidden" name="mission_type" value="normal">
+            <button type="submit" class="btn-submit">✨ 추천받기</button>
+        </form>
+
+        <!-- 미션 모달 -->
+        <!-- 미션 선택 모달 -->
+<div class="modal fade" id="missionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+  
+        <div class="modal-header">
+          <h4 class="modal-title">🎯 여행 미션 선택</h4>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+  
+        <div class="modal-body">
+            <div class="mission-grid">
+              {% for code, label in purpose_options %}
+                <div class="mission-button" data-code="{{ code }}">{{ label }}</div>
+              {% endfor %}
+            </div>
+          </div>
+          
+          
+  
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="confirmMission">확인</button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+        </div>
+  
+      </div>
+    </div>
+  </div>

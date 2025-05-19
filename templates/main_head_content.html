@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+   <!-- Flask-compatible HTML head (일부) -->
+    <head>
+        <title>Backyard App Landing Page</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+        <!-- CSS Files -->
+        <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
+        <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='fonts/icon-7-stroke/css/pe-icon-7-stroke.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/animate.css') }}" rel="stylesheet" media="screen">
+        <link href="{{ url_for('static', filename='css/owl.theme.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/owl.carousel.css') }}" rel="stylesheet">
+
+        <!-- Colors -->
+        <link href="{{ url_for('static', filename='css/css-app.css') }}" rel="stylesheet" media="screen">
+
+        <!-- Google Fonts -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:100,300,400,700,900,100italic,300italic,400italic,700italic,900italic" />
+
+        <style>
+            #slider {
+                overflow: hidden;
+                margin: auto;
+                position: relative;
+              }
+              #slider-container {
+                display: flex;
+                width: 5000px;
+                transition: transform 0.8s ease-in-out;
+              }
+              #info {
+                text-align: center;
+              }
+              #dots {
+                text-align: center;
+              }
+              .dot {
+                font-size: 20px;
+                color: #aaa;
+                cursor: pointer;
+                margin: 0 3px;
+              }
+              .active-dot {
+                color: #333;
+              }
+              
+        </style>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css" />
+        <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+    </head>
+
+
+    <body data-spy="scroll" data-target="#navbar-scroll">
+
+        <!-- NAVIGATION -->
+        
+        <!-- /.preloader -->
+        <div id="preloader"></div>
+        <div id="top"></div>
+
+       
+        {% block content%}
+        {% endblock %}
+
+        <!-- /.javascript files -->
+        <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/jquery.sticky.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ekko-lightbox-min.js') }}"></script>
+        <script type="text/javascript">
+            $( document ).delegate( '*[data-toggle="lightbox"]', 'click', function ( event ) {
+                event.preventDefault();
+                $( this ).ekkoLightbox();
+            } );
+        </script>
+        <script>
+            new WOW().init();
+        </script>
+        {% if error %}
+        <script>
+                $(document).ready(function() {
+                    $('#loginModal').modal('show');
+                });
+        </script>
+        {% endif %}
+
+        <script>
+            const descriptions = [
+              "설명 1번", "설명 2번", "설명 3번", "설명 4번", "설명 5번",
+              "설명 6번", "설명 7번", "설명 8번", "설명 9번", "설명 10번"
+            ];
+        
+            let current = 0;
+            const total = descriptions.length;
+            const slider = document.getElementById("slider-container");
+            const info = document.getElementById("info");
+            const dotsContainer = document.getElementById("dots");
+            const slides = document.querySelectorAll(".slide");
+
+            // dot 생성
+            for (let i = 0; i < total; i++) {
+            const dot = document.createElement("span");
+            dot.classList.add("dot");
+            dot.innerHTML = "●";
+            dot.addEventListener("click", () => goToSlide(i));
+            dotsContainer.appendChild(dot);
+            }
+
+            const dots = document.querySelectorAll(".dot");
+
+            function updateDots() {
+            dots.forEach((dot, idx) => {
+                dot.classList.toggle("active-dot", idx === current);
+                dot.innerHTML = idx === current ? "●" : "○";
+            });
+            }
+
+            function updateSlide() {
+            const width = slides[current].clientWidth;
+            slider.style.transform = `translateX(-${width * current}px)`;
+            info.innerText = descriptions[current];
+            updateDots();
+            }
+
+            function slideNext() {
+            current = (current + 1) % total;
+            updateSlide();
+            }
+
+            function goToSlide(index) {
+            current = index;
+            updateSlide();
+            }
+
+            window.addEventListener("load", () => {
+            updateSlide();
+            setInterval(slideNext, 5000);
+            });
+
+            window.addEventListener("resize", () => {
+            updateSlide();
+            });
+          </script>
+
+        <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+          
+                <form method="POST" action="{{ url_for('login') }}">
+                  <div class="modal-header">
+                    <h4 class="modal-title" id="loginModalLabel">로그인</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span>&times;</span>
+                    </button>
+                  </div>
+          
+                  <div class="modal-body">
+                    {% if error %}
+                      <div class="alert alert-danger">{{ error }}</div>
+                    {% endif %}
+                    <div class="form-group">
+                      <label for="USER_ID">아이디</label>
+                      <input type="text" class="form-control" name="USER_ID" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="PASSWORD">비밀번호</label>
+                      <input type="password" class="form-control" name="PASSWORD" required>
+                    </div>
+                  </div>
+          
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">로그인</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+                  </div>
+                </form>
+          
+              </div>
+            </div>
+          </div>
+    </body>
+</html>
