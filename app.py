@@ -103,6 +103,13 @@ def send_to_ec2(user_data):
     except Exception as e:
         print(f"[!] EC2 전송 중 오류 발생: {str(e)}")
 
+
+# 첫 페이지 (여행 선호도 -> 여행지 추천 -> 회원가입까지)
+@app.route("/main1")
+def main_home():
+    return render_template("main1.html")
+
+
 # 기본 페이지
 @app.route("/")
 def home():
