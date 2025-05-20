@@ -20,7 +20,7 @@
         <div class="main-wrapper">
             <div class="main-card" style="max-width: 1200px;">
                 <h2 class="form-title">🌏 R-Trip 여행 추천</h2>
-                <form method="POST" action="{{ url_for('recommended') }}">
+                <form method="POST" action="{{ url_for('main_recommended') }}">
                     <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;">
                         <div style="flex: 1;">
                         <label>🎯 여행 유형</label><br>
@@ -147,7 +147,7 @@
 <nav class="navbar navbar-default navbar-fixed-bottom">
   <div class="container text-center">
     <ul class="list-inline" style="margin: 10px 0;">
-      <li><a href="{{ url_for('main_home_1') }}"><i class="fa fa-home"></i><br>홈</a></li>      
+      <li><a href="{{ url_for('main') }}"><i class="fa fa-home"></i><br>홈</a></li>      
       <li><a href="{{ url_for('main_recommended') }}"><i class="fa fa-star"></i><br>추천받기</a></li>
       <li><a href="#" data-toggle="modal" data-target="#loginModal"><i class="fa fa-sign-in"></i><br>로그인</a></li>
       <li><a href="{{ url_for('main_register') }}"><i class="fa fa-user"></i><br>회원가입</a></li>
