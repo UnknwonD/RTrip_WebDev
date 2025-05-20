@@ -1,0 +1,276 @@
+{% extends 'main_head_content.html' %}
+
+{% block content %}
+
+<div class="main-wrapper">
+    <div class="main-card" style="max-width: 1200px;">
+        <h2 class="form-title">🌏 R-Trip 여행 추천 입력</h2>
+        <form method="POST" action="{{ url_for("main_register") }}">
+            
+            <!-- Page 1 -->
+            <div class="form-step" id="step1">
+                <div class="form-group">
+                    <!-- 아이디 입력란, 중복확인 함수 포함-->
+                    <label for="USER_ID">아이디</label>
+                    <div class="input-group">
+                        <input type="text" name="USER_ID" id="USER_ID" class="form-control" pattern="[a-z0-9]{4,20}" title="영어 소문자와 숫자만, 4~20자 입력" required>
+                        <span class="input-group-btn">
+                            <button type="button" class="btn" onclick="checkDuplicateId()">중복확인</button>
+                        </span>
+                    </div>
+                    <p id="id-check-result" class="help-block"></p>                
+                </div>
+                <!-- 비밀번호 입력란 -->
+                <div class="form-group">
+                    <label for="PASSWORD">비밀번호</label>
+                    <input type="password" name="PASSWORD" class="form-control" required>
+                </div>
+                <!-- 이름 입력란 -->                
+                <div class="form-group">
+                    <label for="USER_NAME">이름</label>
+                    <input type="text" name="NAME" class="form-control" required>
+                </div>
+                <!-- 성별 입력란 -->
+                <div class="form-group">
+                    <select name="GENDER" class="form-control" required>
+                        <option value="" disabled selected>성별</option>
+                        <option value="M">남자</option>
+                        <option value="F">여자</option>
+                    </select>
+                </div>
+                <!-- 생년월일 입력란 -->
+                <div class="form-group">
+                    <label>생년월일</label>
+                    <input type="date" name="BIRTHDATE" class="form-control" min="1900-01-01" max="{{ today }}" required>
+                </div>
+                <!-- 다음 페이지 버튼 -->
+                <div class="text-center mt-4">
+                    <button type="button" class="btn" onclick="nextStep(1)">다음</button>
+                </div>
+            </div>
+
+            <!-- Page 2 -->
+            <div class="form-step" id="step2">
+                <!-- 여행하는 기간 -->
+                <div class="form-group">
+                    <label>여행하는 기간</label> <!-- 여행하는 기간이 한달 내가 아님.-->
+                    <select name="TRAVEL_TERM" class="form-control">
+                        <option value="" disabled selected>여행하는 기간</option>
+                        <option value="1">일주일</option>
+                        <option value="2">한 달</option>
+                        <option value="3">일 년</option> 
+                        <option value="4">기타</option>
+                    </select>
+                </div>
+                <!-- 여행 빈도 -->
+                <div class="form-group">
+                    <label>여행 빈도</label>
+                    <input type="number" name="TRAVEL_NUM" class="form-control" min="1" max="100" required>
+                </div>
+                <!-- 여행 선호 지역 (1~3순위) -->
+                <div class="form-group">
+                <label>1순위 여행지(시도)</label>
+                    <select name="TRAVEL_LIKE_SIDO_1" class="form-control" required>
+                        <option value="">선택하세요</option>
+                        <option value="서울특별시">서울특별시</option>
+                        <option value="부산광역시">부산광역시</option>
+                        <option value="대구광역시">대구광역시</option>
+                        <option value="인천광역시">인천광역시</option>
+                        <option value="광주광역시">광주광역시</option>
+                        <option value="대전광역시">대전광역시</option>
+                        <option value="울산광역시">울산광역시</option>
+                        <option value="세종특별자치시">세종특별자치시</option>
+                        <option value="경기도">경기도</option>
+                        <option value="충청북도">충청북도</option>
+                        <option value="충청남도">충청남도</option>
+                        <option value="전북특별자치도">전북특별자치도</option>
+                        <option value="전라남도">전라남도</option>
+                        <option value="경상북도">경상북도</option>
+                        <option value="경상남도">경상남도</option>
+                        <option value="강원특별자치도">강원특별자치도</option>
+                        <option value="제주특별자치도">제주특별자치도</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>2순위 여행지(시도)</label>
+                    <select name="TRAVEL_LIKE_SIDO_2" class="form-control" required>
+                        <option value="">선택하세요</option>
+                        <option value="서울특별시">서울특별자치시</option>
+                        <option value="부산광역시">부산광역시</option>
+                        <option value="대구광역시">대구광역시</option>
+                        <option value="인천광역시">인천광역시</option>
+                        <option value="광주광역시">광주광역시</option>
+                        <option value="대전광역시">대전광역시</option>
+                        <option value="울산광역시">울산광역시</option>
+                        <option value="세종특별자치시">세종특별자치시</option>
+                        <option value="경기도">경기도</option>
+                        <option value="충청북도">충청북도</option>
+                        <option value="충청남도">충청남도</option>
+                        <option value="전북특별자치도">전북특별자치도</option>
+                        <option value="전라남도">전라남도</option>
+                        <option value="경상북도">경상북도</option>
+                        <option value="경상남도">경상남도</option>
+                        <option value="강원특별자치도">강원특별자치도</option>
+                        <option value="제주특별자치도">제주특별자치도</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>3순위 여행지(시도)</label>
+                    <select name="TRAVEL_LIKE_SIDO_3" class="form-control" required>
+                        <option value="">선택하세요</option>
+                        <option value="서울특별시">서울특별자치시</option>
+                        <option value="부산광역시">부산광역시</option>
+                        <option value="대구광역시">대구광역시</option>
+                        <option value="인천광역시">인천광역시</option>
+                        <option value="광주광역시">광주광역시</option>
+                        <option value="대전광역시">대전광역시</option>
+                        <option value="울산광역시">울산광역시</option>
+                        <option value="세종특별자치시">세종특별자치시</option>
+                        <option value="경기도">경기도</option>
+                        <option value="충청북도">충청북도</option>
+                        <option value="충청남도">충청남도</option>
+                        <option value="전북특별자치도">전북특별자치도</option>
+                        <option value="전라남도">전라남도</option>
+                        <option value="경상북도">경상북도</option>
+                        <option value="경상남도">경상남도</option>
+                        <option value="강원특별자치도">강원특별자치도</option>
+                        <option value="제주특별자치도">제주특별자치도</option>
+                    </select>
+                </div>
+                
+                <!-- 여행 동기 -->
+                 <div class="form-group">
+                    <label>1순위 여행 동기</label>
+                    <select name="TRAVEL_MOTIVE_1" class="form-control">
+                        <option value="" disabled selected>선택하세요</option>
+                        <option value="1">일상 탈출</option>
+                        <option value="2">휴식/충전</option>
+                        <option value="3">유대감</option>
+                        <option value="4">자아 성찰</option>
+                        <option value="5">SNS 과시</option>
+                        <option value="6">건강 증진</option>
+                        <option value="7">새로운 경험</option>
+                        <option value="8">역사/문화 체험</option>
+                        <option value="9">특별한 목적</option>
+                        <option value="10">기타</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>2순위 여행 동기</label>
+                    <select name="TRAVEL_MOTIVE_2" class="form-control">
+                        <option value="" disabled selected>선택하세요</option>
+                        <option value="1">일상 탈출</option>
+                        <option value="2">휴식/충전</option>
+                        <option value="3">유대감</option>
+                        <option value="4">자아 성찰</option>
+                        <option value="5">SNS 과시</option>
+                        <option value="6">건강 증진</option>
+                        <option value="7">새로운 경험</option>
+                        <option value="8">역사/문화 체험</option>
+                        <option value="9">특별한 목적</option>
+                        <option value="10">기타</option>
+                    </select>
+                </div>
+
+                <!-- 회원가입 완료 버튼, 메인 페이지로 이동 -->
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn">가입 완료</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+
+    .main-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 60px 20px;
+        background-color: #f0f2f5;
+    }
+    .main-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width:600px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease-in-out;
+    }
+    .main-card:hover {
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .form-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 30px;
+        color: #333;
+    }
+    .form-group label {
+        font-weight: 600;
+        margin-top: 10px;
+    }
+    
+    .form-step {
+        display: none;
+    }
+    .form-step.active {
+        display: block;
+    }
+
+</style>
+
+<script>
+    let currentStep = 1;
+
+    function showStep(step) {
+        document.querySelectorAll('.form-step').forEach((el) => {
+            el.classList.remove('active');
+        });
+        const target = document.getElementById(`step${step}`);
+        if (target) {
+            target.classList.add('active');
+            currentStep = step;
+        }
+    }
+
+    function nextStep() {
+        showStep(currentStep + 1);
+    }
+
+    function selectStyle(step, value) {
+        document.getElementById(`slider${step}`).value = value;
+        nextStep();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        showStep(currentStep);
+    });
+
+        function checkDuplicateId() {
+        const userId = document.getElementById("USER_ID").value;
+        fetch(`/check_duplicate?field=USER_ID&value=${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                const result = document.getElementById("id-check-result");
+                result.innerText = data.duplicate 
+                    ? "이미 사용 중인 아이디입니다." 
+                    : "사용 가능한 아이디입니다.";
+                result.classList.toggle("text-danger", data.duplicate);
+                result.classList.toggle("text-success", !data.duplicate);
+            })
+            .catch(() => alert("중복 확인 중 오류가 발생했습니다."));
+    }
+</script>
+
+
+{% endblock %}
+
