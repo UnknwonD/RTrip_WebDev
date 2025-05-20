@@ -1,0 +1,219 @@
+{% extends 'main_head_content.html' %}
+
+{% block content %}
+
+<div class="main-wrapper">
+    <div class="main-card" style="max-width: 1200px;">
+        <h2 class="form-title">🌏 R-Trip 여행 추천 입력</h2>
+        <form method="POST" action="{{ url_for('main_home_1') }}">
+
+            <div class="form-group"> 
+            {% set labels = [
+                '자연 vs 도시',
+                '숙박 vs 당일',
+                '새로운 지역 vs 익숙한 지역',
+                '편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소',
+                '휴양/휴식 vs 체험활동',
+                '잘 알려지지 않은 방문지 vs 유명한 방문지',
+                '계획에 따른 여행 vs 즉흥적 여행',
+                '사진촬영 중요하지 않음 vs 사진촬영 중요'
+            ] %}
+            {% for i in range(1,9) %}            
+            <div class="form-step" id="step{{ i }}">
+
+                <!-- 여행 스타일 선택 -->
+                <div class="form-group text-center">
+                    <h4 class="mb-4">나만의 여행 스타일{{ i }} / 8</h4>
+                    <p><strong>{{ labels[i-1] }}</strong></p>
+
+                        <div class="style-image-row">
+                            <!-- 첫 번째 카드 -->
+                            <div class="card-wrapper"  onclick="selectStyle({{ i }}, 1)">
+                                <div class="card">
+                                    <img src="/static/images/register_{{ i }}.jpg" alt="style {{ i }}-1" >
+                                    <div class="card-body text-center">
+                                        <p>{{ labels[i-1].split(' vs ')[0] }}</p>
+                                    </div> 
+                                </div>
+                            </div>       
+                            <!-- 두 번째 카드 -->
+                            <div class="card-wrapper" onclick="selectStyle({{ i }},7)">
+                                <div class="card">
+                                    <img src="/static/images/register_{{ i + 1 }}.jpg" alt="style {{ i }}-2" >
+                                    <div class="card-body text-center">
+                                        <p>{{ labels[i-1].split(' vs ')[1] }}</p>
+                                    </div>
+                                </div>
+                            </div>   
+                        </div>
+                </div>
+                <!-- 숨겨진 슬라이더 입력(From 제출용) -->
+                <input type="range" class="hidden-slider" name="TRAVEL_STYL_{{ i }}" id="slider{{ i }}" min="1" max="7" step="1" value="4">
+            </div>
+            {% endfor %}
+            </div>
+             <!-- 성향별 추천 + 회원가입 -->
+            <div class="form-step" id="step9">
+                <div class="form-group">
+                    <!-- 이전 스타일을 보고 성향 분석 추가할 것 -->
+
+                    <div class="text-center mt-4">
+                        <div class="btn-group">
+                            <!-- 계정이 있는 경우 -->
+                            <button type="button" class="btn btn-default" data-toggle="modal" data-target="#loginModal">
+                            로그인
+                            </button>
+                            <!-- 계정이 없는 경우 -->
+                             <a href="{{ url_for('main_register') }}" class="btn btn-primary">
+                                회원가입
+                            </a> 
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<style>
+    
+    .form-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 30px;
+        color: #333;
+    }
+    .form-group label {
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .main-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 60px 20px;
+        background-color: #f0f2f5;
+    }
+    .main-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width:600px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease-in-out;
+    }
+    .main-card:hover {
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    
+    .form-step {
+        display: none;
+    }
+    .form-step.active {
+        display: block;
+    }
+    
+    input[type=range].hidden-slider {
+        display: none !important;
+    }
+
+    .fixed-size-img {
+        width: 100%;
+        height: 500px;
+        object-fit: cover;
+    }
+    .card-wrapper {
+        width: 45%;
+        max-width: 350px;
+        margin: 10px;
+        display: inline-block;
+        border-radius: 20px;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .card-wrapper:hover {
+        transform: translateY(-5px);
+    }
+
+    .card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .card img {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+    }
+
+    .card-body {
+        padding: 15px;
+        background-color: #ffffff;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    @media screen and (max-width: 768px) {
+        .card-wrapper {
+            width: 90%;
+        }
+    }
+
+    .style-image-row {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap; /* 모바일 대응 */
+    }
+
+    @media screen and (max-width: 768px) {
+        .style-image-row {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+</style>
+
+<script>
+    let currentStep = 1;
+
+    function showStep(step) {
+        document.querySelectorAll('.form-step').forEach((el) => {
+            el.classList.remove('active');
+        });
+        const target = document.getElementById(`step${step}`);
+        if (target) {
+            target.classList.add('active');
+            currentStep = step;
+        }
+    }
+
+    function nextStep() {
+        showStep(currentStep + 1);
+    }
+
+    function selectStyle(step, value) {
+        document.getElementById(`slider${step}`).value = value;
+        nextStep();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        showStep(currentStep);
+    });
+</script>
+
+{% endblock %}
