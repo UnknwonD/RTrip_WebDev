@@ -174,6 +174,29 @@ def main_register():
 # 메인 페이지
 @app.route("/", methods=["GET", "POST"])
 def main_recommended():
+    # 테스트용 임시 travel_plans
+    travel_plans = [
+        {
+            "title": "제주 힐링 3일 코스",
+            "description": "바다와 자연을 즐기는 여정",
+            "main_image_url": "https://via.placeholder.com/800x300/89CFF0/ffffff?text=Jeju+Trip",
+            "route": [
+                {"name": "성산일출봉", "description": "일출로 하루를 시작"},
+                {"name": "우도", "description": "자전거로 한 바퀴"},
+                {"name": "용두암", "description": "돌하르방과 사진 한 컷"}
+            ]
+        },
+        {
+            "title": "서울 도심 속 하루 코스",
+            "description": "도시의 매력을 느끼는 코스",
+            "main_image_url": "https://via.placeholder.com/800x300/FFB6C1/ffffff?text=Seoul+Trip",
+            "route": [
+                {"name": "경복궁", "description": "한복 입고 투어"},
+                {"name": "북촌한옥마을", "description": "전통과 현대의 조화"},
+                {"name": "한강공원", "description": "야경 보며 피크닉"}
+            ]
+        }
+    ]
     user_json = None
     if request.method == "POST":
         travel_input = request.form.to_dict()
@@ -192,6 +215,7 @@ def main_recommended():
     else:
         return render_template(
             "main_recommended.html", # 이대호 recommended_result인가가
+            travel_plans=travel_plans,
             purpose_options=purpose_options,
             movement_options=movement_options,
             whowith_options=whowith_options,
