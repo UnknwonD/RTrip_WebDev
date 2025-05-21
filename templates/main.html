@@ -5,7 +5,7 @@
 <div class="main-wrapper">
     <div class="main-card" style="max-width: 1200px;">
         <h2 class="form-title">🌏 R-Trip 여행 추천 입력</h2>
-        <form method="POST" action="{{ url_for('main_home_1') }}">
+        <form method="POST" action="{{ url_for('main') }}">
 
             <div class="form-group"> 
             {% set labels = [
@@ -54,8 +54,10 @@
             </div>
              <!-- 성향별 추천 + 회원가입 -->
             <div class="form-step" id="step9">
-                <div class="form-group">
-                    <!-- 이전 스타일을 보고 성향 분석 추가할 것 -->
+                <div class="form-group">                    
+                    <div class="form-group" id="style-analysis">
+                        <!-- 이전 스타일을 보고 성향 분석 추가할 것 -->
+                    </div>
 
                     <div class="text-center mt-4">
                         <div class="btn-group">
@@ -90,7 +92,6 @@
         font-weight: 600;
         margin-top: 10px;
     }
-
     .main-wrapper {
         display: flex;
         justify-content: center;
@@ -111,8 +112,6 @@
     .main-card:hover {
         box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
     }
-
-    
     .form-step {
         display: none;
     }
@@ -123,7 +122,6 @@
     input[type=range].hidden-slider {
         display: none !important;
     }
-
     .fixed-size-img {
         width: 100%;
         height: 500px;
@@ -138,18 +136,15 @@
         overflow: hidden;
         transition: transform 0.3s ease;
     }
-
     .card-wrapper:hover {
         transform: translateY(-5px);
     }
-
     .card {
         border: none;
         border-radius: 20px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
         transition: all 0.3s ease;
     }
-
     .card img {
         width: 100%;
         aspect-ratio: 1 / 1;
@@ -157,7 +152,6 @@
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
     }
-
     .card-body {
         padding: 15px;
         background-color: #ffffff;
@@ -166,20 +160,17 @@
         font-weight: 500;
         color: #333;
     }
-
     @media screen and (max-width: 768px) {
         .card-wrapper {
             width: 90%;
         }
     }
-
     .style-image-row {
         display: flex;
         justify-content: center;
         gap: 20px;
         flex-wrap: wrap; /* 모바일 대응 */
     }
-
     @media screen and (max-width: 768px) {
         .style-image-row {
             flex-direction: column;
@@ -214,6 +205,47 @@
     document.addEventListener("DOMContentLoaded", () => {
         showStep(currentStep);
     });
+
+    function analyzeStyles() {
+    let summary = "";
+    let total = 0;
+
+    for (let i = 1; i <= 8; i++) {
+        const val = parseInt(document.getElementById(`slider${i}`).value);
+        total += val;
+    }
+
+    const avg = total / 8;
+
+    if (avg <= 3) {
+        summary = "📌 분석 결과: 당신은 자연, 휴식, 저렴한 숙소를 선호하는 여유형 여행자입니다.";
+    } else if (avg >= 5) {
+        summary = "📌 분석 결과: 당신은 도시, 체험, 즉흥적인 여행을 선호하는 활동형 여행자입니다.";
+    } else {
+        summary = "📌 분석 결과: 당신은 균형잡힌 스타일의 여행자입니다.";
+    }
+
+    document.getElementById("style-analysis").innerHTML = `
+        <div class="alert alert-info text-center" style="font-size: 1.1em; font-weight: bold;">
+            ${summary}
+        </div>
+    `;
+}
+
+    function showStep(step) {
+    document.querySelectorAll('.form-step').forEach((el) => {
+        el.classList.remove('active');
+    });
+    const target = document.getElementById(`step${step}`);
+    if (target) {
+        target.classList.add('active');
+        currentStep = step;
+
+        if (step === 9) {
+            analyzeStyles();  // 분석 결과 출력
+        }
+    }
+}
 </script>
 
 {% endblock %}

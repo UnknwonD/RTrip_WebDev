@@ -107,58 +107,69 @@ def send_to_ec2(user_data):
 
 
 
-# 초기 페이지
-@app.route("/main")
-def main_home_1():
+# 첫 페이지, 성향 분석 데이터 받아옴, 로그인/회원가입으로 연결 (로그인의 경우에는 자동으로 성향 업데이트)
+@app.route("/main", methods=["GET", "POST"])
+def main():
+    if request.method == "POST":
+        travel_styles = {
+            f"TRAVEL_STYL_{i}": request.form.get(f"TRAVEL_STYL_{i}", "4")
+            for i in range(1, 9)
+        }
+        session["travel_styles"] = travel_styles
+
+        return redirect(url_for("main_register"))
+
     return render_template("main.html")
 
 # 회원가입 페이지
 @app.route("/main_register", methods=["GET", "POST"])
 def main_register():
-    user_id = request.form.get("USER_ID")
+    if request.method == "POST":
+        user_id = request.form.get("USER_ID")
 
-    if is_duplicate("USER_ID", user_id):
-        return render_template("register.html", error="이미 사용 중인 아이디입니다.")  
+        if is_duplicate("USER_ID", user_id):
+            return render_template("main_register.html", error="이미 사용 중인 아이디입니다.")  
       
-    fields = [
-        'USER_ID', 'PASSWORD', 'CONFIRM_PASSWORD', 'NAME', 'BIRTHDATE',
-        'GENDER', 'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'JOB_NM',
-        'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM',
-        'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
-        'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
-        'TRAVEL_STYL_5', 'TRAVEL_STYL_6', 'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
-        'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2',
-        'FAMILY_MEMB', 'TRAVEL_NUM', 'TRAVEL_COMPANIONS_NUM'
-    ]
+        fields = [
+            'USER_ID', 'PASSWORD', 'NAME', 'GENDER', 'BIRTHDATE',
+            'TRAVEL_TERM', 'TRAVEL_NUM',
+            'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
+            'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
+            'TRAVEL_STYL_5', 'TRAVEL_STYL_6', 'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
+            'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2',
+        ]
 
-    user_data = {field: request.form.get(field, "") for field in fields}
-    user_data["uuid"] = str(uuid.uuid4())
+        user_data = {field: request.form.get(field, "") for field in fields}
 
-    birthdate_str = user_data.get("BIRTHDATE", "")
-    try:
-        birth_year = datetime.strptime(birthdate_str, "%Y-%m-%d").year
-        age = datetime.now().year - birth_year
-        age_group = (age // 10) * 10
-        user_data["AGE_GRP"] = "90" if age_group >= 90 else str(max(10, age_group))
-    except:
-        user_data["AGE_GRP"] = ""
+        travel_styles = session.get("travel_styles", {})
+        user_data.update(travel_styles)
 
-    try:
-        s3.put_object(
-            Bucket=BUCKET_NAME,
-            Key=f"users/{user_data['uuid']}.json",
-            Body=json.dumps(user_data, ensure_ascii=False).encode('utf-8'),
-            ContentType='application/json'
-        )
-        print(f"[✓] S3 저장 완료: {user_data['uuid']}")
-    except Exception as e:
-        print(f"[!] S3 저장 실패: {str(e)}")
-        return f"S3 저장 실패: {str(e)}", 500
+        user_data["uuid"] = str(uuid.uuid4())
 
-    return redirect(url_for("main_recommended"))
+        birthdate_str = user_data.get("BIRTHDATE", "")
+        try:
+            birth_year = datetime.strptime(birthdate_str, "%Y-%m-%d").year
+            age = datetime.now().year - birth_year
+            age_group = (age // 10) * 10
+            user_data["AGE_GRP"] = "90" if age_group >= 90 else str(max(10, age_group))
+        except:
+            user_data["AGE_GRP"] = ""
 
+        try:
+            s3.put_object(
+                Bucket=BUCKET_NAME,
+                Key=f"users/{user_data['uuid']}.json",
+                Body=json.dumps(user_data, ensure_ascii=False).encode('utf-8'),
+                ContentType='application/json'
+            )
+            print(f"S3 저장 완료: {user_data['uuid']}")
+        except Exception as e:
+            print(f"S3 저장 실패: {str(e)}")
+            return f"S3 저장 실패: {str(e)}", 500
+
+        return redirect(url_for("main_recommended"))
     
-    # return render_template("main_register.html")
+    return render_template("main_register.html")
 
 # 메인 페이지
 @app.route("/", methods=["GET", "POST"])
@@ -176,20 +187,21 @@ def main_recommended():
         
         results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
         session["results"] = results
+        # return redirect(url_for("main_recommended"))
         return redirect(url_for("recommend_result"))
     else:
         return render_template(
-            "recommended.html",
+            "main_recommended.html", # 이대호 recommended_result인가가
             purpose_options=purpose_options,
             movement_options=movement_options,
             whowith_options=whowith_options,
             user_feature_keys=user_feature_keys,
             user_info=user_json
         )
-    return render_template("main_recommended.html")
+    # return render_template("main_recommended.html")
 
 
-# 로그인 팝업
+# 로그인
 @app.route("/login", methods=["POST"])
 def login():
     input_id = request.form.get("USER_ID")
@@ -200,24 +212,38 @@ def login():
         for obj in response.get('Contents', []):
             key = obj['Key']
             if not key.endswith('.json'):
-                continue  # 폴더 객체 등은 무시
+                continue
 
             file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
             body = file_obj['Body'].read().decode('utf-8').strip()
 
             if not body:
-                print(f"[!] 빈 파일: {key}")
                 continue
             try:
                 user_json = json.loads(body)
             except json.JSONDecodeError as e:
-                print(f"[!] JSON 파싱 실패: {key} → {e}")
                 continue
 
             if user_json.get("USER_ID") == input_id and user_json.get("PASSWORD") == input_pw:
                 session["username"] = input_id
+
+                travel_styles = session.get("travel_styles")
+
+                if travel_styles:
+                    user_json.update(travel_styles)
+
+                uuid_key = user_json.get("uuid", str(uuid.uuid4()))
+
+                s3.put_object(
+                    Bucket=BUCKET_NAME,
+                    Key=f"users/{uuid_key}.json",
+                    Body=json.dumps(user_json, ensure_ascii=False).encode("utf-8"),
+                    ContentType="application/json"
+                )
                 return redirect(url_for("main_recommended"))
+
         return render_template("main_recommended.html", error="아이디 또는 비밀번호가 잘못되었습니다.")
+    
     except Exception as e:
         return f"S3 조회 오류: {str(e)}", 500
     
@@ -253,7 +279,6 @@ def check_duplicate():
 #             return str(e), 500
 
 #     elif request.method == "POST":
-#         print("[📥 POST 요청 들어옴]")  # ✅ 이거 찍히는지 확인
 #         update_fields = [
 #             'NAME', 'GENDER', 'BIRTHDATE', 'phone_number',
 #             'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'FAMILY_MEMB',
@@ -262,9 +287,8 @@ def check_duplicate():
 #             'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2', 'TRAVEL_COMPANIONS_NUM'
 #         ] + [f'TRAVEL_STYL_{i}' for i in range(1, 9)]
 
-#         print("[📥 FORM 데이터]", request.form)  # ✅ 이거 찍히는지 먼저 확인
 #         updated_data = {field: request.form.get(field, "") for field in update_fields}
-#         print("[🧾 업데이트 데이터]", updated_data)
+#         print("[ 업데이트 데이터]", updated_data)
 #         try:
 #             success = update_user_info(username, updated_data)
             
@@ -293,16 +317,6 @@ def check_duplicate():
 #         images = get_random_images_from_rds()
 
 #     return dict(images=images)
-
-# if __name__ == "__main__":
-#     app.run(debug=True)
-
-
-
-
-
-
-
 
 # @app.route("/register", methods=["POST"])
 # def register():
@@ -352,11 +366,6 @@ def check_duplicate():
 #         return f"S3 저장 실패: {str(e)}", 500
 
 #     return redirect(url_for("home"))
-
-
-
-            
-
 
 # 추천 페이지
 # @app.route("/recommended", methods=["GET", "POST"])
@@ -418,3 +427,9 @@ def check_duplicate():
 # def index():
 #     return render_template("index.html")
 
+
+
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

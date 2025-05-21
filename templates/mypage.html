@@ -1,4 +1,4 @@
-{% extends 'head_content.html' %}
+{% extends 'main_head_content.html' %}
 
 {% block content %}
 <style>
@@ -493,7 +493,7 @@
                             <button type="button" class="btn btn-primary" onclick="nextStep({{ i+2 }})">다음</button>
                             {% else %}
                             <button type="button" class="btn btn-success" onclick="submitForm()">✅ 수정 완료</button>
-                            <button type="button" class="btn btn-outline-dark" onclick="location.href='{{ url_for('home') }}'">🏠 메인으로</button>
+                            <button type="button" class="btn btn-outline-dark" onclick="location.href='{{ url_for('main_home_1') }}'">🏠 메인으로</button>
                             {% endif %}
                             </div>
                         </div>
