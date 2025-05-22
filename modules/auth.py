@@ -9,8 +9,3 @@ def authenticate(user_id, password): # 사용자가 입력한 ID, PW
             session["username"] = user_id # session에 유저 아이디 저장장
             return True
     return False
-
-# log out
-def logout_user():
-    session.pop("username", None) # session에서 아이디 제거 
-    return redirect(url_for("home"))

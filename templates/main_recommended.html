@@ -4,7 +4,6 @@
 <!-- 여행 추천-->
 
 <!-- section 1: hero / 소개 -->
-
 <section id="section-intro" class="section">
   <div class="container text-center">
     <h1>✨ R-Trip</h1>
@@ -22,10 +21,13 @@
                 <h2 class="form-title">🌏 R-Trip 여행 추천</h2>
                 <form method="POST" action="{{ url_for('main_recommended') }}">
                     <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;">
+                        <!-- 반려동물 동반 여부 (체크박스) -->
                         <div style="flex: 1;">
-                        <label>🎯 여행 유형</label><br>
-                            <input role="switch" type="checkbox" id="missionToggle" />
-                            <span id='missionToggleLabel'>일반 여행</span>
+                          <label>🐾 반려동물 동반 여부</label><br>
+                          <label for="pet_checkbox" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="pet_checkbox" style="margin: 0;" />
+                             함께 여행해요!
+                          </label>
                         </div>
                         <div id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
                             <label>🚩 여행 목적 </label><br>
@@ -45,31 +47,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label>💸 여행 예산</label>
+                        <label>💰 여행 예산</label>
                         <div style="display: flex; gap: 10px;">
                             <div style="flex: 1; position: relative;">
-                                <label for="LODGOUT_COST" style="font-weight: 500;">🏨 숙소</label>
-                                <select name="LODGOUT_COST" id="LODGOUT_COST" class="form-control cost-input" required>
-                                    {% for i in range(10, 110, 10) %}
+                                <select name="TOTAL_COST" id="TOTAL_COST" class="form-control cost-input" required>
+                                    <option value="10 이하">10만원 이하</option>
+                                    {% for i in range(20, 100, 10) %}
                                     <option value="{{ i }}">{{ i }} 만원</option>
                                     {% endfor %}
+                                    <option value="100 이상">100만원 이상</option>
                                 </select>
-                                </div>
-
-                                <div style="flex: 1; position: relative;">
-                                <label for="ACTIVITY_COST" style="font-weight: 500;">🎫 활동 (식비 포함)</label>
-                                <select name="ACTIVITY_COST" id="ACTIVITY_COST" class="form-control cost-input" required>
-                                    {% for i in range(10, 110, 10) %}
-                                    <option value="{{ i }}">{{ i }} 만원</option>
-                                    {% endfor %}
-                                </select>
-                                </div>
-
-                                <div style="flex: 1; position: relative;">
-                                <label for="TOTAL_COST" style="font-weight: 500;">💰 총합</label>
-                                <input type="number" name="TOTAL_COST" id="TOTAL_COST" class="form-control cost-input" placeholder="자동 계산됨" readonly>
-                                <span class="unit-label">만원</span>
-                                </div>
+                              </div>
                         </div>
                     </div>
 
@@ -192,10 +180,12 @@
 <nav class="navbar navbar-default navbar-fixed-bottom">
   <div class="container text-center">
     <ul class="list-inline" style="margin: 10px 0;">
-      <li><a href="{{ url_for('main') }}"><i class="fa fa-home"></i><br>홈</a></li>      
-      <li><a href="{{ url_for('main_recommended') }}"><i class="fa fa-star"></i><br>추천받기</a></li>
-      <li><a href="#" data-toggle="modal" data-target="#loginModal"><i class="fa fa-sign-in"></i><br>로그인</a></li>
-      <li><a href="{{ url_for('main_register') }}"><i class="fa fa-user"></i><br>회원가입</a></li>
+      <li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
+      <li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
+      {% if session.get("username") %}
+        <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
+
+      {% endif %}
     </ul>
   </div>
 </nav>
@@ -222,7 +212,6 @@
     .main-card:hover {
         box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
     }
-
     .form-title {
         text-align: center;
         font-size: 24px;
@@ -234,9 +223,6 @@
         font-weight: 600;
         margin-top: 10px;
     }
-
-
-
     .btn-submit {
         width: 100%;
         background-color: #655cff;
@@ -248,7 +234,6 @@
         margin-top: 20px;
         font-size: 16px;
     }
-
     .btn-submit:hover {
         background-color: rgb(150, 150, 150);
     }
@@ -284,7 +269,6 @@
         background-color: white;
         left: 1em;
     }
-
     [type="checkbox"]:checked {
         background-color: #4787ff;
         border-color: #4787ff;
@@ -294,11 +278,9 @@
         opacity: 0.7;
         cursor: not-allowed;
     }
-
     [type="checkbox"]:disabled:before {
         background-color: lightgray;
     }
-
     [type="checkbox"]:disabled + span {
         opacity: 0.7;
         cursor: not-allowed;
@@ -330,7 +312,6 @@
     .cost-input {
     padding-right: 40px; /* 여유 공간 확보 */
     }
-
     .unit-label {
     position: absolute;
     top: 50%;       
@@ -340,25 +321,24 @@
     color: #555;
     pointer-events: none;
     }
+  .section {
+      padding: 100px 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-    .section {
-        padding: 100px 20px;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        }
-
-        .bg-light {
-        background-color: #f7f9fc;
-        }
-        .bg-dark {
-        background-color: #222;
-        color: white;
-        }
+    .bg-light {
+      background-color: #f7f9fc;
+    }
+    .bg-dark {
+      background-color: #222;
+      color: white;
+    }
 
     .carousel .item {
-    padding: 40px 0;
+      padding: 40px 0;
     }
     .card {
         background: white;
@@ -380,52 +360,47 @@
         position: relative;
         transition: 0.6s ease-in-out left;
     }
-
     .carousel-inner > .active {
         display: block;
     }
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+  .mission-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    min-height: 60px;
+    word-break: keep-all;
+    user-select: none;
+  }
+
+  .mission-button:hover {
+    background-color: #ededf9;
+  }
+
+  .mission-button.selected {
+    background-color: #655cff;
+    color: white;
+    border-color: #655cff;
+    font-weight: bold;
+    box-shadow: 0 0 6px rgba(101, 92, 255, 0.4);
+  }
 
 </style>
 
-
-<style>
-.mission-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.mission-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  font-size: 15px;
-  font-weight: 500;
-  text-align: center;
-  border: 2px solid #ccc;
-  border-radius: 10px;
-  background-color: #f9f9f9;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-height: 60px;
-  word-break: keep-all;
-  user-select: none;
-}
-
-.mission-button:hover {
-  background-color: #ededf9;
-}
-
-.mission-button.selected {
-  background-color: #655cff;
-  color: white;
-  border-color: #655cff;
-  font-weight: bold;
-  box-shadow: 0 0 6px rgba(101, 92, 255, 0.4);
-}
-
-</style>
 <script>
     document.querySelectorAll('.mission-button').forEach(btn => {
       btn.addEventListener('click', function () {
@@ -437,7 +412,12 @@
       const selected = document.querySelectorAll('.mission-button.selected');
       const values = Array.from(selected).map(el => el.getAttribute('data-code'));
       const labels = Array.from(selected).map(el => el.textContent.trim());
-    
+      
+      const petChecked = document.getElementById('pet_checkbox').checked;
+      if (petChecked) {
+        values.unshift("0"); // 미션 코드 0으로 정의
+        labels.unshift("🐾 반려동물 동반 여행");
+      }
       document.getElementById('mission_ENC_hidden').value = values.join(',');
       document.getElementById('selected_missions_text').innerText =
         labels.length > 0 ? `선택한 미션: ${labels.join(', ')}` : '선택된 미션 없음';
@@ -524,6 +504,5 @@
     });
   });
 </script>
-
 
 {% endblock %}

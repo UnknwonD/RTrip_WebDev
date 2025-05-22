@@ -8,67 +8,85 @@
         <form method="POST" action="{{ url_for('main') }}">
 
             <div class="form-group"> 
-            {% set labels = [
-                '자연 vs 도시',
-                '숙박 vs 당일',
-                '새로운 지역 vs 익숙한 지역',
-                '편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소',
-                '휴양/휴식 vs 체험활동',
-                '잘 알려지지 않은 방문지 vs 유명한 방문지',
-                '계획에 따른 여행 vs 즉흥적 여행',
-                '사진촬영 중요하지 않음 vs 사진촬영 중요'
-            ] %}
-            {% for i in range(1,9) %}            
+            {% for i in range(1,11) %}            
             <div class="form-step" id="step{{ i }}">
-
+                <input type="hidden" id="TRAVEL_STYL_{{ i }}" name="TRAVEL_STYL_{{ i }}" value="4">
                 <!-- 여행 스타일 선택 -->
                 <div class="form-group text-center">
-                    <h4 class="mb-4">나만의 여행 스타일{{ i }} / 8</h4>
-                    <p><strong>{{ labels[i-1] }}</strong></p>
-
+                    <h4 class="mb-4 text-center">
+                        나만의 여행 스타일 
+                    </h4>
+                    <div class="progress-step-container">
+                        {% for j in range(1, 11) %}
+                            <div class="progress-step" id="progress-bar-{{ i }}-{{ j }}"></div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" id="slider{{ i }}" name="style_{{ i }}">
                         <div class="style-image-row">
                             <!-- 첫 번째 카드 -->
-                            <div class="card-wrapper"  onclick="selectStyle({{ i }}, 1)">
+                            <div class="card-wrapper" onclick="selectStyle({{ i }}, 1)">
                                 <div class="card">
-                                    <img src="/static/images/register_{{ i }}.jpg" alt="style {{ i }}-1" >
+                                    <img src="/static/images/register/register_{{ i }}_1.jpg" alt="style {{ i }}-1" >
                                     <div class="card-body text-center">
-                                        <p>{{ labels[i-1].split(' vs ')[0] }}</p>
                                     </div> 
                                 </div>
                             </div>       
                             <!-- 두 번째 카드 -->
-                            <div class="card-wrapper" onclick="selectStyle({{ i }},7)">
+                            <div class="card-wrapper" onclick="selectStyle({{ i }}, 2)">
                                 <div class="card">
-                                    <img src="/static/images/register_{{ i + 1 }}.jpg" alt="style {{ i }}-2" >
+                                    <img src="/static/images/register/register_{{ i }}_2.jpg" alt="style {{ i }}-2" >
                                     <div class="card-body text-center">
-                                        <p>{{ labels[i-1].split(' vs ')[1] }}</p>
                                     </div>
                                 </div>
                             </div>   
                         </div>
                 </div>
-                <!-- 숨겨진 슬라이더 입력(From 제출용) -->
-                <input type="range" class="hidden-slider" name="TRAVEL_STYL_{{ i }}" id="slider{{ i }}" min="1" max="7" step="1" value="4">
             </div>
             {% endfor %}
             </div>
              <!-- 성향별 추천 + 회원가입 -->
-            <div class="form-step" id="step9">
+            <div class="form-step" id="step11">
                 <div class="form-group">                    
-                    <div class="form-group" id="style-analysis">
-                        <!-- 이전 스타일을 보고 성향 분석 추가할 것 -->
+                    <div id="style-analysis" class="text-center mt-3">
+                        <div class="style-bar-progress">
+                        </div>
                     </div>
 
-                    <div class="text-center mt-4">
-                        <div class="btn-group">
-                            <!-- 계정이 있는 경우 -->
-                            <button type="button" class="btn btn-default" data-toggle="modal" data-target="#loginModal">
-                            로그인
-                            </button>
-                            <!-- 계정이 없는 경우 -->
-                             <a href="{{ url_for('main_register') }}" class="btn btn-primary">
-                                회원가입
-                            </a> 
+                        <div id = "slider-wrapper">
+                            <div id="slider-container">
+                                {% for img in images %}
+                                    <a>
+                                    <div class="slide">
+                                        <img 
+                                            src="{{ img.url | safe }}"
+                                            alt="image {{ loop.index }}"
+                                            class="header-phone img-responsive wow fadeInRight"
+                                            style="width: 100%; object-fit: cover;"
+                                            draggable="false">
+                                        <div class="landing-text text-center">
+                                            {{ img.area }}
+                                        </div>
+                                        </a>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                            
+                        <div class='landing-text wow fadeInRight text-center'> 
+                            <p>유사 성향 사용자들이 자주 방문한 장소입니다 </p>
+                        </div>
+          
+                        <div class="text-center">
+                            <div class="btn-group">
+                                <!-- 계정이 있는 경우 -->
+                                <button type="button" class="btn btn-default" data-toggle="modal" data-target="#loginModal">
+                                로그인
+                                </button>
+                                <!-- 계정이 없는 경우 -->
+                                <a href="{{ url_for('main_register') }}" class="btn btn-primary btn-lg">
+                                    회원가입
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -76,8 +94,6 @@
         </form>
     </div>
 </div>
-
-
 
 <style>
     
@@ -128,32 +144,33 @@
         object-fit: cover;
     }
     .card-wrapper {
-        width: 45%;
-        max-width: 350px;
+        width: 42%;
+        /* max-width: 260px; */
         margin: 10px;
-        display: inline-block;
-        border-radius: 20px;
-        overflow: hidden;
-        transition: transform 0.3s ease;
     }
     .card-wrapper:hover {
         transform: translateY(-5px);
+        transition: transform 0.3s ease-in-out;
     }
     .card {
         border: none;
+        /* width: 100%;
+        max-width: 300px; */
         border-radius: 20px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
         transition: all 0.3s ease;
     }
     .card img {
         width: 100%;
-        aspect-ratio: 1 / 1;
-        object-fit: cover;
-        border-top-left-radius: 20px;
-        border-top-right-radius: 20px;
+        /* height: 50rem; */
+        max-height: 300px;
+        height: 300px;
+        object-fit: cover; 
+        border-radius: 20px;
+        display: block;
     }
     .card-body {
-        padding: 15px;
+        padding: 14px;
         background-color: #ffffff;
         border-bottom-left-radius: 20px;
         border-bottom-right-radius: 20px;
@@ -163,6 +180,7 @@
     @media screen and (max-width: 768px) {
         .card-wrapper {
             width: 90%;
+            max-width: none;
         }
     }
     .style-image-row {
@@ -177,75 +195,364 @@
             align-items: center;
         }
     }
+
+    #slider-wrapper {
+        overflow: hidden;
+        width: 100%;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
+    #slider-container {
+        display: flex;
+        transition: transform 0.5s ease-in-out;
+        will-change: transform;
+        width: max-content;
+        justify-content: center;
+        gap: 16px;
+        
+    }
+    .slide {
+        flex: 0 0 18%;
+        max-width: 200px;
+        box-sizing: border-box;
+        padding: 5px;
+    }
+
+    .slide img {
+        width: 100%;
+        height: 200px;      
+        object-fit: cover;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        display: block;
+    }
+    .form-step {
+        overflow: hidden; 
+    }
+
+    @media (max-width: 768px) {
+        .slide {
+            flex: 0 0 40%;
+            max-width: 140px;
+        }
+
+        .slide img {
+            height: 100px;
+        }
+    }
+
+
 </style>
 
 <script>
     let currentStep = 1;
 
     function showStep(step) {
-        document.querySelectorAll('.form-step').forEach((el) => {
-            el.classList.remove('active');
-        });
-        const target = document.getElementById(`step${step}`);
-        if (target) {
-            target.classList.add('active');
-            currentStep = step;
+    document.querySelectorAll('.form-step').forEach((el) => {
+        el.classList.remove('active');
+    });
+
+    const target = document.getElementById(`step${step}`);
+    if (target) {
+        target.classList.add('active');
+        currentStep = step;
+
+        updateProgress(step);
+
+        if (step === 11) {
+            analyzeStyles();  // step10에서 분석 실행
         }
     }
+}
+    function updateProgress(step) {
+        const total = 10;
+        for (let i = 1; i <= total; i++) {
+            const el = document.getElementById(`progress-bar-${step}-${i}`);
+            if (el) {
+                el.classList.toggle('active', i <= step);
+            }
+        }
+
+        // 숫자 레이블도 업데이트
+        const label = document.getElementById(`progress-label-${step}`);
+        if (label) {
+            label.innerText = step;
+        }
+    }
+    function analyzeStyles() {
+        const labels = [
+            ["자연형", "도시형", "자연 vs 도시", "blue"],
+            ["숙박러", "당일러", "숙박 vs 당일", "orange"],
+            ["새로운 지역파", "익숙한 지역파", "지역 성향", "green"],
+            ["럭셔리파", "실속파", "숙소 성향", "pink"],
+            ["휴양러", "체험러", "여행 목적", "purple"],
+            ["숨은 장소 선호", "핫플 선호", "장소 취향", "red"],
+            ["계획형", "즉흥형", "여행 스타일", "indigo"],
+            ["사진 무관심", "사진 중요", "기억 방식", "teal"]
+        ];
+
+        let html = `<h4 class="text-center">📊 나의 여행 성향 분석</h4>`;
+
+        for (let i = 0; i < 8; i++) {
+            const score = scores[i];
+            const percent = Math.round((score / 8) * 100);
+            const leftPercent = 100 - percent;
+            const [leftLabel, rightLabel, title, color] = labels[i];
+
+            const isRightDominant = percent > 50;
+            const isEqual = percent === 50;
+            // console.log(`Style ${i + 1} / Score: ${score} / Percent: ${percent}% → ${isRightDominant ? '오른쪽' : '왼쪽'}`);
+
+            html += `
+                <div class="style-bar">
+                    <div class="style-bar-title">${title}</div>
+                    <div class="style-bar-labels">
+                        <span>${leftLabel} (${leftPercent}%)</span>
+                        <span>${rightLabel} (${percent}%)</span>
+                    </div>
+                    <div class="style-bar-progress">
+                        ${isRightDominant ? `
+                            <div class="style-bar-fill right-fill" style="width: ${percent}%;" data-color="${color}"></div>
+                        ` : `
+                            <div class="style-bar-fill left-fill" style="width: ${leftPercent}%;" data-color="${color}"></div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        document.getElementById("style-analysis").innerHTML = html;
+    }
+
+
 
     function nextStep() {
         showStep(currentStep + 1);
-    }
-
-    function selectStyle(step, value) {
-        document.getElementById(`slider${step}`).value = value;
-        nextStep();
     }
 
     document.addEventListener("DOMContentLoaded", () => {
         showStep(currentStep);
     });
 
-    function analyzeStyles() {
-    let summary = "";
-    let total = 0;
+    // 가중치 매핑 테이블 
+    const weightMap = {
+        1: {
+            1: [-1, 0, -1, 1, -1, 0, 1, 1],  // 해먹
+            2: [1, 0, 1, 0, 1, 0, 0, 1]      // 롯데월드
+        },
+        2: {
+            1: [1, 1, 0, -1, -1, 0, -1, 0],  // 호텔
+            2: [-1, 1, 0, 1, 1, 0, 0, 0]     // 캠핑
+        },
+        3: {
+            1: [1, 1, 1, 0, -1, 0, 1, -1],   // 백화점
+            2: [0, -1, -1, 0, 1, 0, 0, 1]    // 쁘띠프랑스
+        },
+        4: {
+            1: [-1, -1, 0, 1, 1, -1, -1, -1],// 계곡
+            2: [1, 1, 1, 0, -1, 1, 1, 1]     // 반포대교
+        },
+        5: {
+            1: [0, 0, -1, 0, 0, 1, 0, -1],   // 불국사
+            2: [0, -1, 0, 1, -1, 0, 1, 0]    // 게스트하우스
+        },
+        6: {
+            1: [-1, -1, -1, 0, 0, 1, -1, 1], // 전주 한옥마을
+            2: [1, 1, 1, -1, 0, 1, 1, 1]     // 서울 야경
+        },
+        7: {
+            1: [0, 0, -1, 0, 0, -1, 1, 1],   // 천안 미나릿길
+            2: [-1, 0, -1, 0, 0, -1, -1, 1]  // 덕진공원
+        },
+        8: {
+            1: [0, 0, 0, 1, 0, 0, 1, -1],    // 로데오거리
+            2: [1, 0, 1, -1, 0, 0, 0, -1]    // 인계동
+        },
+        9: {
+            1: [0, -1, 0, -1, -1, 1, -1, 0], // 여수
+            2: [-1, 0, 0, 0, 1, -1, 1, -1]   // 마이산
+        },
+        10: {
+            1: [1, 1, 0, 0, 1, -1, -1, -1],  // 안동하회마을
+            2: [-1, -1, 1, -1, 0, 0, -1, -1] // 그랜드 조선 부산
+        }
+    };
 
-    for (let i = 1; i <= 8; i++) {
-        const val = parseInt(document.getElementById(`slider${i}`).value);
-        total += val;
-    }
+    // 성향분석 이미지 계산 
+    const scores = Array(8).fill(4);
 
-    const avg = total / 8;
+    function selectStyle(step, choice) {
+        const weight = weightMap[step][choice];
+        for (let i = 0; i < 8; i++) {
+            scores[i] += weight[i];
+        }
 
-    if (avg <= 3) {
-        summary = "📌 분석 결과: 당신은 자연, 휴식, 저렴한 숙소를 선호하는 여유형 여행자입니다.";
-    } else if (avg >= 5) {
-        summary = "📌 분석 결과: 당신은 도시, 체험, 즉흥적인 여행을 선호하는 활동형 여행자입니다.";
-    } else {
-        summary = "📌 분석 결과: 당신은 균형잡힌 스타일의 여행자입니다.";
-    }
+        if (step === 10) {
+            for (let i = 0; i < 8; i++) {
+                scores[i] = Math.max(1, Math.min(7, scores[i]));
+            }
+        }
+        
+        // hidden input 반영
+        for (let i = 0; i < 8; i++) {
+            document.getElementById(`TRAVEL_STYL_${i + 1}`).value = scores[i];
+        }
 
-    document.getElementById("style-analysis").innerHTML = `
-        <div class="alert alert-info text-center" style="font-size: 1.1em; font-weight: bold;">
-            ${summary}
-        </div>
-    `;
-}
+        // 개별 질문 선택값 저장
+        document.getElementById(`slider${step}`).value = choice;
 
-    function showStep(step) {
-    document.querySelectorAll('.form-step').forEach((el) => {
-        el.classList.remove('active');
-    });
-    const target = document.getElementById(`step${step}`);
-    if (target) {
-        target.classList.add('active');
-        currentStep = step;
-
-        if (step === 9) {
-            analyzeStyles();  // 분석 결과 출력
+        
+        if (step === 10) {
+            showStep(11);  // 마지막이면 바로 step11로
+        } else {
+            nextStep();    // 그 외엔 평소대로
         }
     }
-}
+
+</script>
+
+<style>
+    .style-bar-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .style-bar {
+        margin-bottom: 25px;
+    }
+
+    .style-bar-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .style-bar-title {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 16px;
+    }
+
+    .style-bar-progress {
+        position: relative;
+        height: 24px;
+        background: #e0e0e0;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .style-bar-fill {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff;
+        padding: 0 8px;
+        line-height: 24px;
+    }
+
+    .left-fill {
+        left: 0;
+        text-align: left;
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+    }
+
+    .right-fill {
+        position: absolute;
+        right: 0;
+        top: 0;
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+
+    .style-bar-fill[data-color="blue"]    { background-color: #3CB3FF; }
+    .style-bar-fill[data-color="orange"]  { background-color: #FFB347; }
+    .style-bar-fill[data-color="green"]   { background-color: #61C09B; }
+    .style-bar-fill[data-color="pink"]    { background-color: #D58BD1; }
+    .style-bar-fill[data-color="purple"]  { background-color: #8378D5; }
+    .style-bar-fill[data-color="red"]     { background-color: #FF6F6F; }
+    .style-bar-fill[data-color="indigo"]  { background-color: #7E57C2; }
+    .style-bar-fill[data-color="teal"]    { background-color: #26A69A; }
+
+</style>
+<style>
+    .progress-step-container {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 20px;
+    gap: 4px;
+    }
+
+    .progress-step {
+    width: 20px;
+    height: 12px;
+    border-radius: 4px;
+    background-color: #e0e0e0;
+    transition: background-color 0.3s;
+    }
+
+    .progress-step.active {
+    background-color: #3CB3FF;  /* 파란색 or 원하는 색상 */
+    }
+
+</style>
+
+<script>
+let isDragging = false;
+let startX;
+let scrollLeft;
+
+const slider = document.getElementById("slider-container");
+const wrapper = document.getElementById("slider-wrapper");
+
+// Mouse events
+wrapper.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  wrapper.classList.add("dragging");
+  startX = e.pageX - wrapper.offsetLeft;
+  scrollLeft = wrapper.scrollLeft;
+});
+
+wrapper.addEventListener("mouseleave", () => {
+  isDragging = false;
+  wrapper.classList.remove("dragging");
+});
+
+wrapper.addEventListener("mouseup", () => {
+  isDragging = false;
+  wrapper.classList.remove("dragging");
+});
+
+wrapper.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  e.preventDefault();
+  const x = e.pageX - wrapper.offsetLeft;
+  const walk = (x - startX) * 1.2; // drag 속도 조절
+  wrapper.scrollLeft = scrollLeft - walk;
+});
+
+// Touch events
+wrapper.addEventListener("touchstart", (e) => {
+  isDragging = true;
+  startX = e.touches[0].pageX - wrapper.offsetLeft;
+  scrollLeft = wrapper.scrollLeft;
+});
+
+wrapper.addEventListener("touchend", () => {
+  isDragging = false;
+});
+
+wrapper.addEventListener("touchmove", (e) => {
+  if (!isDragging) return;
+  const x = e.touches[0].pageX - wrapper.offsetLeft;
+  const walk = (x - startX) * 1.2;
+  wrapper.scrollLeft = scrollLeft - walk;
+});
 </script>
 
 {% endblock %}

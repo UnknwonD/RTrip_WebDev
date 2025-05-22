@@ -7,6 +7,11 @@ import boto3
 import botocore
 
 
+
+
+
+
+
 load_dotenv(override=True)
 
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
@@ -27,36 +32,6 @@ s3 = boto3.client(
     region_name=REGION_NAME,
     config=botocore.client.Config(signature_version='s3v4')
 )
-
-def get_random_photo_filename(travel_id):
-    try:
-        conn = pymysql.connect(
-            host=DB_HOST,
-            user=DB_USER,
-            port = DB_PORT,
-            password=DB_PASSWORD,
-            db=DB_NAME,
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        with conn.cursor() as cursor:
-            sql = "SELECT PHOTO_FILE_NM FROM photo WHERE TRAVEL_ID = %s"
-            cursor.execute(sql, (travel_id,))
-            results = cursor.fetchall()
-
-            if not results:
-                print(f"[!] TRAVEL_ID에 해당하는 이미지 없음: {travel_id}")
-                return None
-
-            photo_file = random.choice(results)
-            return photo_file['PHOTO_FILE_NM']
-    except Exception as e:
-        print(f"[!] RDS 조회 오류: {e}")
-        return None
-    finally:
-        if 'conn' in locals():
-            conn.close()
-
 
 
 def get_images_by_travel_ids(travel_ids):
@@ -133,28 +108,4 @@ def get_images_by_travel_ids(travel_ids):
 
     except Exception as e:
         print(f"[!] 이미지 로딩 오류: {str(e)}")
-        return []
-    
-def get_random_images_from_rds(k=10):
-    try:
-        # RDS에서 travel_id 전체 중 일부만 랜덤으로 추출
-        conn = pymysql.connect(
-            host=DB_HOST,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            db=DB_NAME,
-            port=DB_PORT,
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT DISTINCT travel_id FROM place_info")
-            all_ids = [row['travel_id'] for row in cursor.fetchall()]
-        conn.close()
-
-        sampled_ids = random.sample(all_ids, k=min(k, len(all_ids)))
-        return get_images_by_travel_ids(sampled_ids)
-    
-    except Exception as e:
-        print(f"랜덤 이미지 오류: {str(e)}")
         return []
