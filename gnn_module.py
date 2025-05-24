@@ -1,18 +1,12 @@
-from typing import List, Dict
-import torch
-from torch import nn
-import torch.nn.functional as F
-from torch_geometric.nn import HeteroConv, SAGEConv
-from sklearn.preprocessing import MinMaxScaler
-from torch_geometric.data import HeteroData
-from typing import Dict, List
-
 import pickle
-from datetime import datetime
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-# app.py 안에서 템플릿에 넘겨줄 리스트
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import HeteroConv, SAGEConv, Linear
+
 user_feature_keys = [
     'GENDER', 'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'JOB_NM', 'HOUSE_INCOME',
     'TRAVEL_TERM', 'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
@@ -81,301 +75,331 @@ whowith_options = [
     ("기타", ["기타"])
 ]
 
-class PpiKkoTwistGNN(nn.Module):  # 삐삐꼬는 GNN
-    def __init__(self, metadata, user_input_dim, travel_input_dim, hidden_dim=128, num_layers=8):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-        self.num_layers = num_layers
 
-        # Input Projections
-        self.input_proj = nn.ModuleDict({
-            'user': nn.Linear(user_input_dim, hidden_dim),
-            'travel': nn.Linear(travel_input_dim, hidden_dim),
-            'visit_area': nn.Identity()
+class RouteGNN(nn.Module):
+    def __init__(self, metadata, hidden_channels=128):
+        super().__init__()
+        self.metadata = metadata
+
+        self.embeddings = nn.ModuleDict({
+            'user': Linear(17, hidden_channels),
+            'travel': Linear(21, hidden_channels),
+            'visit_area': Linear(34, hidden_channels),
         })
 
-        # Deep HeteroConv Layers
-        self.convs = nn.ModuleList([
-            HeteroConv(
-                {etype: SAGEConv((-1, -1), hidden_dim) for etype in metadata[1]},
-                aggr='sum'
-            ) for _ in range(num_layers)
-        ])
-        self.norms = nn.ModuleList([
-            nn.ModuleDict({ntype: nn.LayerNorm(hidden_dim) for ntype in metadata[0]})
-            for _ in range(num_layers)
-        ])
+        self.gnn1 = HeteroConv({
+            edge_type: SAGEConv((-1, -1), hidden_channels)
+            for edge_type in metadata[1]
+        }, aggr='sum')
 
-        self.dropout = nn.Dropout(0.35)
+        self.gnn2 = HeteroConv({
+            edge_type: SAGEConv((hidden_channels, hidden_channels), hidden_channels)
+            for edge_type in metadata[1]
+        }, aggr='sum')
 
-        # Multi-Expert System (location / preference / category)
-        self.expert_location = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.Linear(hidden_dim, hidden_dim),
+        self.link_predictor = nn.Sequential(
+            nn.Linear(2 * hidden_channels, hidden_channels),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Linear(hidden_dim // 2, 1)
-        )
-        self.expert_preference = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Linear(hidden_dim // 2, 1)
-        )
-        self.expert_category = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Linear(hidden_dim // 2, 1)
+            nn.Linear(hidden_channels, 1)
         )
 
-        # Multihead Attention Gating: attend across experts
-        self.attn_gate = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=4, batch_first=True)
-        self.attn_query = nn.Parameter(torch.randn(1, hidden_dim))
-
-        self.final_proj = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward(self, x_dict, edge_index_dict, feedback_mask=None):
-        # 1. Input projection
-        x_dict = {k: self.input_proj[k](v) if k in self.input_proj else v for k, v in x_dict.items()}
-
-        # 2. Deep GNN layers with residuals
-        for i in range(self.num_layers):
-            h_dict = self.convs[i](x_dict, edge_index_dict)
-            h_dict = {
-                k: self.dropout(F.relu(self.norms[i][k](v))) + x_dict[k]
-                for k, v in h_dict.items() if k in x_dict
-            }
-            x_dict = h_dict
-
-        h_visit = x_dict['visit_area']  # [num_nodes, hidden_dim]
-
-        # 3. Expert Predictions
-        loc = self.expert_location(h_visit)         # [N, 1]
-        pref = self.expert_preference(h_visit)      # [N, 1]
-        cat = self.expert_category(h_visit)         # [N, 1]
-        experts = torch.cat([loc, pref, cat], dim=1).unsqueeze(1)  # [N, 1, 3]
-
-        # 4. Multi-head Attention Gating
-        q = self.attn_query.expand(h_visit.size(0), -1).unsqueeze(1)  # [N, 1, H]
-        attn_out, _ = self.attn_gate(q, h_visit.unsqueeze(1), h_visit.unsqueeze(1))  # [N, 1, H]
-        final_score = self.final_proj(attn_out.squeeze(1)).squeeze(-1)  # [N]
-
-        if feedback_mask is not None:
-            final_score = final_score + feedback_mask
-
-        return final_score
-
-class LiteTwistGNN(nn.Module):
-    def __init__(self, metadata, user_input_dim, travel_input_dim, hidden_dim=64, num_layers=2):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-        self.num_layers = num_layers
-
-        # Input projection
-        self.input_proj = nn.ModuleDict({
-            'user': nn.Linear(user_input_dim, hidden_dim),
-            'travel': nn.Linear(travel_input_dim, hidden_dim),
-            'visit_area': nn.Identity()  # zero-init at inference
-        })
-
-        # Lightweight HeteroConv stack (2 layers)
-        self.convs = nn.ModuleList([
-            HeteroConv(
-                {etype: SAGEConv((-1, -1), hidden_dim) for etype in metadata[1]},
-                aggr='sum'
-            ) for _ in range(num_layers)
-        ])
-        self.norms = nn.ModuleList([
-            nn.ModuleDict({ntype: nn.LayerNorm(hidden_dim) for ntype in metadata[0]})
-            for _ in range(num_layers)
-        ])
-        self.dropout = nn.Dropout(0.25)
-
-        # Unified MLP scorer
-        self.mlp = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward(self, x_dict, edge_index_dict, feedback_mask=None):
-        # Projection
+    def forward(self, x_dict, edge_index_dict):
         x_dict = {
-            k: self.input_proj[k](v) if k in self.input_proj else v
-            for k, v in x_dict.items()
+            node_type: self.embeddings[node_type](x) if x is not None else None
+            for node_type, x in x_dict.items()
         }
 
-        # GNN Layers
-        for i in range(self.num_layers):
-            h_dict = self.convs[i](x_dict, edge_index_dict)
-            h_dict = {
-                k: self.dropout(F.relu(self.norms[i][k](v))) + x_dict[k]
-                for k, v in h_dict.items() if k in x_dict
-            }
-            x_dict = h_dict
+        x_dict = self.gnn1(x_dict, edge_index_dict)
+        x_dict = {k: F.relu(v) for k, v in x_dict.items() if v is not None}
+        x_dict = self.gnn2(x_dict, edge_index_dict)
 
-        h_visit = x_dict['visit_area']
-        out = self.mlp(h_visit).squeeze(-1)
+        return x_dict
 
-        if feedback_mask is not None:
-            out = out + feedback_mask
-
-        return out
-
-# 2. 추천 추론 함수
-def recommend_from_input(model: nn.Module,
-                         user_input_df,  # shape: (1, 25)
-                         travel_input_df,  # shape: (1, 29)
-                         base_data: HeteroData,
-                         visit_area_id_map: Dict[str, int],
-                         topk: int = 5) -> List[Dict[str, float]]:
+    def predict_link(self, node_embed, edge_index):
+        src, dst = edge_index
+        z_src = node_embed[src]
+        z_dst = node_embed[dst]
+        z = torch.cat([z_src, z_dst], dim=-1)
+        return self.link_predictor(z).squeeze(-1)
     
-    # 1. tensor 변환
-    user_tensor = torch.tensor(user_input_df.values, dtype=torch.float)
-    travel_tensor = torch.tensor(travel_input_df.values, dtype=torch.float)
+# 유저 정보
 
-    # 2. base_data 복사 및 입력 추가
-    data = base_data[3].clone()
-    data['user'].x = torch.cat([data['user'].x, user_tensor], dim=0)
-    data['travel'].x = torch.cat([data['travel'].x, travel_tensor], dim=0)
-
-    uid = data['user'].x.size(0) - 1
-    tid = data['travel'].x.size(0) - 1
-
-    # 3. 엣지 연결 (단방향 + 역방향)
-    data[('user', 'traveled', 'travel')].edge_index = torch.cat([
-        data[('user', 'traveled', 'travel')].edge_index,
-        torch.tensor([[uid], [tid]], dtype=torch.long)
-    ], dim=1)
-
-    data[('travel', 'traveled_by', 'user')].edge_index = torch.cat([
-        data[('travel', 'traveled_by', 'user')].edge_index,
-        torch.tensor([[tid], [uid]], dtype=torch.long)
-    ], dim=1)
-
-    # 4. 추론
-    with torch.no_grad():
-        scores = model(data.x_dict, data.edge_index_dict)
-        k = min(topk, scores.size(0))
-        topk_result = torch.topk(scores, k)
-        indices = topk_result.indices.tolist()
-        values = topk_result.values.tolist()
-
-    # 5. index → visit_area_id 변환
-    index_to_id = {v: k for k, v in visit_area_id_map.items()}
-    results = []
-
-    for i, v in zip(indices, values):
-        va_id = index_to_id.get(i, f"UNKNOWN_{i}")
-        results.append({
-            "visit_area_id": va_id,
-            "score": round(float(v), 4)
-        })
-
-    return results
-
-def preprocess_gnn(user_json: dict, travel_input_raw: dict):
-    # 1. USER 처리
-    user_input = {}
-    for key in user_feature_keys:
-        val = user_json.get(key, 0)
-        user_input[key] = float(val) if str(val).isdigit() else 0
-
-    # 2. TRAVEL 처리
-    travel_input = {k: 0.0 for k in travel_feature_keys}
+def get_age_group(birthdate_str):
+    """
+    'YYYY-MM-DD' 형식의 생년월일 문자열을 받아
+    20, 30, 40 등의 나이대로 변환하는 함수
+    """
+    from datetime import datetime
     
-    # for k in ['LODGOUT_COST', 'ACTIVITY_COST', 'TOTAL_COST']:
-    #     raw_val = travel_input_raw.get(k, "0")
-    #     travel_input[k] = float(raw_val) * 10000
+    birth_year = int(birthdate_str[:4])
+    current_year = datetime.now().year
+    age = current_year - birth_year + 1  # 한국식 나이
+    age_group = (age // 10) * 10
+    return age_group
 
+def map_sido(sido:str):
+    sido_code_map = {
+        '서울특별시': '11',
+        '부산광역시': '26',
+        '대구광역시': '27',
+        '인천광역시': '28',
+        '광주광역시': '29',
+        '대전광역시': '30',
+        '울산광역시': '31',
+        '세종특별자치시': '36',
+        '경기도': '41',
+        '강원도': '42',
+        '충청북도': '43',
+        '충청남도': '44',
+        '전라북도': '45',
+        '전라남도': '46',
+        '경상북도': '47',
+        '경상남도': '48',
+        '제주특별자치도': '50'
+    }
+
+    return int(sido_code_map[sido])
+
+def process_user_input(user_info:dict):
+    user_feature_cols = [
+    'GENDER', 'TRAVEL_TERM', 'TRAVEL_NUM',
+    'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
+    'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
+    'TRAVEL_STYL_5', 'TRAVEL_STYL_6', 'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
+    'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2',
+    'AGE_GRP'
+    ]
     
-    # 여행 기간 → DURATION 계산
-    date_range = travel_input_raw.get('date_range', '')
-    try:
-        start_str, end_str = [d.strip() for d in date_range.split('-')]
-        start = datetime.strptime(start_str, "%Y-%m-%d")
-        end = datetime.strptime(end_str, "%Y-%m-%d")
-        travel_input['DURATION'] = max((end - start).days, 1)
-    except:
-        travel_input['DURATION'] = 1.0
-
-    scaler = pickle.load(open('./pickle/cost_scaler.pkl', 'rb'))
-    # 1. 수치형 변수 목록
-    num_cols = ["LODGOUT_COST", "ACTIVITY_COST", "TOTAL_COST", "DURATION"]
-
-    # 2. travel_input_raw = 사용자가 입력한 문자열 딕셔너리 (ex. from Flask form)
-    #    예시: {'LODGOUT_COST': '2.5', 'DURATION': '3', ...}
-    #    → 값은 float으로, 예산은 ×10000 처리
-    input_vals = []
-    for col in num_cols:
-        val = float(travel_input_raw.get(col, 0))
-        if col in ["LODGOUT_COST", "ACTIVITY_COST", "TOTAL_COST"]:
-            val *= 10000  # 만원 단위 → 원 단위
-        input_vals.append(val)
-
-    # 3. transform 적용
-    # scaler는 이미 fit되어 있어야 함
-    scaled_vals = scaler.transform([input_vals])[0]  # 결과: [0.23, 0.41, 0.37, 0.67] 등
-
-    # 4. 다시 travel_input에 저장
-    for i, col in enumerate(num_cols):
-        travel_input[col] = scaled_vals[i]
+    # 1. 나잇대 계산
+    user_info['AGE_GRP'] = get_age_group(user_info['BIRTHDATE'])
     
-    # 이동수단, 나이대, 동반자
-    travel_input['MVMN_NM_ENC'] = float(travel_input_raw.get('MVMN_NM_ENC', 0))
-    travel_input['age_ENC'] = float(0) if int(user_json['AGE_GRP']) <= float(39) else 1.0
+    # 2. 시도 변환
+    for i in range(1, 4):
+        user_info[f"TRAVEL_LIKE_SIDO_{i}"] = map_sido(user_info[f"TRAVEL_LIKE_SIDO_{i}"])
+    
+    # 3. 컬럼 필터링 (순서에 맞게)
+    user_info = {k: int(user_info[k]) for k in user_feature_cols}
+    
+    return pd.DataFrame([user_info]).fillna(0).astype(np.float32).to_numpy()    
 
-    mission_type = travel_input_raw.get('mission_type', 'normal')
-    if mission_type == 'special':
-        travel_input['whowith_ENC'] = float(7)
-        # 모든 PURPOSE를 0으로 유지
+# 여행 정보
+def process_travel_input(travel_info:dict):
+    from datetime import datetime
+    travel_feature_cols = [
+        'TOTAL_COST_BINNED_ENCODED',
+        'WITH_PET',
+        'MONTH',
+        'DURATION',
+        'MVMN_기타',
+        'MVMN_대중교통',
+        'MVMN_자가용',
+        'TRAVEL_PURPOSE_1',
+        'TRAVEL_PURPOSE_2',
+        'TRAVEL_PURPOSE_3',
+        'TRAVEL_PURPOSE_4',
+        'TRAVEL_PURPOSE_5',
+        'TRAVEL_PURPOSE_6',
+        'TRAVEL_PURPOSE_7',
+        'TRAVEL_PURPOSE_8',
+        'TRAVEL_PURPOSE_9',
+        'WHOWITH_2인여행',
+        'WHOWITH_가족여행',
+        'WHOWITH_기타',
+        'WHOWITH_단독여행',
+        'WHOWITH_친구/지인 여행']
+    
+    
+    # mission_ENC에 0 = 반려동물 동반 (WITH_PET)
+    travel_info['mission_ENC'] = travel_info['mission_ENC'].strip().split(',')
+    if '0' in travel_info['mission_ENC']:
+        travel_info['WITH_PET'] = 1
     else:
-        whowith_label_to_index = {
-            '3대 동반 여행': 0,
-            '3인 이상 친구': 1,
-            '나홀로 여행': 2,
-            '부모 동반': 3,
-            '부부': 4,
-            '자녀동반': 5,
-            '커플': 6,
-            '특별미션': 7,
-        }
-        whowith_raw = travel_input_raw.get('whowith_ENC', '커플')
-        travel_input['whowith_ENC'] = float(whowith_label_to_index.get(whowith_raw, 0))
-
-        # mission_ENC → PURPOSE one-hot
-        missions = travel_input_raw.get('mission_ENC', '')
-        for code in missions.split(','):
-            code = code.strip()
-            if code.isdigit():
-                key = f"PURPOSE_{code}"
-                if key in travel_input:
-                    travel_input[key] = 1.0
-
-    # mission_ENC 원래 컬럼도 float로 추가
-    travel_input['mission_ENC'] = float(0) if mission_type == 'normal' and missions else 1.0
-
+        travel_info['WITH_PET'] = 0
+        
+    # TRAVEL_PURPOSE_1 ~~ TRAVEL_PURPOSE_9 (0으로 들어온 입력은 제거해줘야됨) 
+    for i in range(1,10):
+        if str(i) in travel_info['mission_ENC']:
+            travel_info[f'TRAVEL_PURPOSE_{i}'] = 1
+        else:
+            travel_info[f'TRAVEL_PURPOSE_{i}'] = 0
+        
+    # MONTH
+    dates = travel_info['date_range'].split(' - ')
+    travel_info['start_date'] = datetime.strptime(dates[0].strip(), "%Y-%m-%d")
+    travel_info['end_date'] = datetime.strptime(dates[1].strip(), "%Y-%m-%d")
     
-    user_df = pd.DataFrame([user_input]).reindex(columns=user_feature_keys, fill_value=0)
-    travel_df = pd.DataFrame([travel_input]).reindex(columns=travel_feature_keys, fill_value=0)
+    travel_info['MONTH'] = travel_info['end_date'].month
+    
+    # DURATION
+    travel_info['DURATION'] = (travel_info['end_date'] - travel_info['start_date']).days
+    
+    # MNVM_기타, MVMN_대중교통, MVMN_자가용
+    for m in ['자가용', '대중교통', '기타']:
+        travel_info[f"MVMN_{m}"] = False
+    
+    if travel_info['MVMN_NM_ENC'] == '1':
+        travel_info['MVMN_자가용'] = True
+    elif travel_info['MVMN_NM_ENC'] == '2':
+        travel_info['MVMN_대중교통'] = True
+    else:
+        travel_info['MVMN_기타'] = True
+    
+    # WHOWITH는 1부터 5까지 숫자로 들어옴 -> 원핫 인코딩으로 수정할 것
+    # dict에 들어오는 숫자 의미: WHOWITH_단독여행, WHOWITH_2인여행, WHOWITH_가족여행, WHOWITH_친구/지인여행, WHOWITH_기타
+    whowith_onehot = [0] * 5
+    idx = int(travel_info['whowith_ENC']) - 1
+    if 0 <= idx < 5:
+        whowith_onehot[idx] = 1
+    
+    travel_info.update({
+    'WHOWITH_단독여행': whowith_onehot[0],
+    'WHOWITH_2인여행': whowith_onehot[1],
+    'WHOWITH_가족여행': whowith_onehot[2],
+    'WHOWITH_친구/지인 여행': whowith_onehot[3],
+    'WHOWITH_기타': whowith_onehot[4],
+    })
+    
+    # TOTAL_COST_BINNED_ENCODED
+    travel_info['TOTAL_COST_BINNED_ENCODED'] = travel_info['TOTAL_COST'][-1]
+    
+    # 컬럼 필터링 (순서에 맞게)
+    travel_info = {k: int(travel_info[k]) for k in travel_feature_cols}
+    
+    return pd.DataFrame([travel_info]).fillna(0).astype(np.float32).to_numpy(), travel_info['DURATION']
 
-    ################# CSV 저장 (디버깅용) #################
-    # user_df.to_csv('user_input.csv', index=False)
-    # travel_df.to_csv('travel_input.csv', index=False)
-    ####################################################
+def recommend_route(node_embed, edge_index, edge_scores, start_node=None, max_steps=5):
+    """
+    visit_area 노드 임베딩, 엣지 index, score가 주어졌을 때
+    가장 높은 score 기준으로 동선을 구성하는 greedy 경로 추천 함수
+    """
+    from collections import defaultdict
 
-    return user_df, travel_df
+    # 엣지를 점수 기준으로 정렬
+    scored_edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist(), edge_scores.tolist()))
+    scored_edges.sort(key=lambda x: -x[2])  # 높은 점수 순
+
+    # 경로 생성
+    visited = set()
+    route = []
+
+    current = start_node if start_node is not None else scored_edges[0][0]
+    visited.add(current)
+    route.append(current)
+
+    for _ in range(max_steps - 1):
+        # current에서 시작하는 후보 중 아직 방문하지 않은 곳
+        candidates = [dst for src, dst, score in scored_edges if src == current and dst not in visited]
+        if not candidates:
+            break
+        next_node = candidates[0]  # greedy하게 최고 점수 선택
+        visited.add(next_node)
+        route.append(next_node)
+        current = next_node
+
+    return route  # index 형태
+
+
+def infer_route(model, data, user_input, travel_input, k=5, device='cpu', batch_size=1000000):
+    model.eval()
+    data = data.to(device)
+    user_input = user_input.to(device)
+    travel_input = travel_input.to(device)
+
+    with torch.no_grad():
+        # 유저/여행 feature + 기존 raw feature 합치기
+        x_dict_raw = {
+            'user': torch.cat([data['user'].x, user_input], dim=0),       # [N+1, 17]
+            'travel': torch.cat([data['travel'].x, travel_input], dim=0), # [M+1, 21]
+            'visit_area': data['visit_area'].x                             # [V, feature_dim]
+        }
+
+        # 모델 forward
+        x_dict = model(x_dict_raw, data.edge_index_dict)
+        visit_area_embed = x_dict['visit_area']
+
+        # 모든 visit_area 노드 쌍 조합 (너무 많으면 메모리 폭발!)
+        n = visit_area_embed.size(0)
+        all_edges = torch.combinations(torch.arange(n, device=device), r=2).t()
+
+        # batch-wise로 score 계산 (메모리 폭발 방지)
+        def predict_link_batch(node_embed, all_edges, batch_size=1000000):
+            from tqdm import tqdm
+            scores = []
+            for i in tqdm(range(0, all_edges.size(1), batch_size)):
+                batch_edges = all_edges[:, i:i+batch_size]
+                batch_scores = model.predict_link(node_embed, batch_edges)
+                scores.append(batch_scores)
+            return torch.cat(scores, dim=0)
+
+        edge_scores = predict_link_batch(visit_area_embed, all_edges, batch_size)
+
+        # 경로 구성 (Greedy 방식)
+        route = recommend_route(visit_area_embed, all_edges, edge_scores, max_steps=k)
+
+    return route
+
+def select_best_location_by_distance(route_ids, visit_area_df):
+    selected_names = []
+
+    for idx, vid in enumerate(route_ids):
+        candidates = visit_area_df[visit_area_df['VISIT_AREA_ID'] == vid]
+
+        # 후보가 하나일 경우 바로 선택
+        if len(candidates) == 1:
+            selected_names.append(candidates.iloc[0]['VISIT_AREA_NM'])
+            continue
+
+        # 이전/다음 위치 좌표 확보
+        prev_coord = None
+        next_coord = None
+
+        if idx > 0:
+            prev_id = route_ids[idx - 1]
+            prev_row = visit_area_df[visit_area_df['VISIT_AREA_ID'] == prev_id]
+            if not prev_row.empty:
+                prev_coord = (prev_row.iloc[0]['X_COORD'], prev_row.iloc[0]['Y_COORD'])
+
+        if idx < len(route_ids) - 1:
+            next_id = route_ids[idx + 1]
+            next_row = visit_area_df[visit_area_df['VISIT_AREA_ID'] == next_id]
+            if not next_row.empty:
+                next_coord = (next_row.iloc[0]['X_COORD'], next_row.iloc[0]['Y_COORD'])
+
+        # 거리 계산 함수
+        def total_distance(row):
+            x, y = row['X_COORD'], row['Y_COORD']
+            dist = 0
+            if prev_coord:
+                dist += np.linalg.norm(np.array([x, y]) - np.array(prev_coord))
+            if next_coord:
+                dist += np.linalg.norm(np.array([x, y]) - np.array(next_coord))
+            return dist
+
+        # 최단 거리 후보 선택
+        best_row = candidates.loc[candidates.apply(total_distance, axis=1).idxmin()]
+        selected_names.append(best_row['VISIT_AREA_NM'])
+
+    return selected_names
+
+
+#############################################
+#
+#           모델 추론 함수
+#
+#############################################
+def run_inference(user_info, travel_info, model, data, visit_area_id_to_index, visit_area_df):
+    
+    user_tensor = process_user_input(user_info)
+    travel_tensor, duration = process_travel_input(travel_info)
+    
+    user_input = torch.tensor(user_tensor, dtype=torch.float)  # 17차원
+    travel_input = torch.tensor(travel_tensor, dtype=torch.float)  # 21차원
+    
+    route_indices = infer_route(model, data, user_input, travel_input, k=(8 * duration))
+    
+    index_to_id = {v: k for k, v in visit_area_id_to_index.items()}
+    route_ids = [index_to_id[idx] for idx in route_indices]
+    
+    names = select_best_location_by_distance(route_ids, visit_area_df)
+    
+    return route_ids, names

@@ -2,41 +2,17 @@ from dependency import *
 from config import s3, BUCKET_NAME
 
 ############## 초기 모델 로드 ##################
-with open("./pickle/metadata_lite.pkl", "rb") as f:
-    metadata = pickle.load(f)
-with open("./pickle/visit_area_id_map.pkl", "rb") as f:
-    visit_area_id_map = pickle.load(f)
-    
-with open("./pickle/dataset.pkl", "rb") as f:
-    base_data = pickle.load(f)
+with open('./pickle/visit_area_id_to_index.pkl', 'rb') as f:
+    visit_area_id_to_index = pickle.load(f)
 
-## 삐삐꼬는 GNN용
-# with open("./pickle/PPK/metadata_lite.pkl", "rb") as f:
-#     metadata = pickle.load(f)
-# with open("./pickle/PPK/visit_area_id_map.pkl", "rb") as f:
-#     visit_area_id_map = pickle.load(f)
-# with open("./pickle/PPK/dataset.pkl", "rb") as f:
-#     base_data = pickle.load(f)
+with open('./pickle/dataset.pkl', 'rb') as f:
+    data = pickle.load(f)
 
-# model = PpiKkoTwistGNN(
-#         metadata=metadata,
-#         user_input_dim=25,
-#         travel_input_dim=29,
-#         hidden_dim=128,
-#         num_layers=8
-#     )
+visit_area_df = pd.read_pickle('./pickle/visit_area_df.pkl')
 
-
-model = LiteTwistGNN(
-        metadata=metadata,
-        user_input_dim=25,
-        travel_input_dim=29,
-        hidden_dim=128,
-        num_layers=8
-    )
-    
-state = torch.load('./pickle/ppk_lite.pt', map_location='cpu')
-model.load_state_dict(state)
+# 모델 로드
+model = RouteGNN(data.metadata())
+model.load_state_dict(torch.load('./pickle/routegnn_model.pt'))
 model.eval()
 #############################################
 
@@ -95,29 +71,18 @@ def main_recommended():
             if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
         }
 ####################################test########################################################################
+        dummy_ids, area_names = run_inference(raw_user, travel_input, model, data, visit_area_id_to_index, visit_area_df)
+        # dummy_ids = [2308260002, 2308260003, 2308260005, 2308260006, 2308260007, 2308260008]
 
-    dummy_ids = [2308260002, 2308260003, 2308260005, 2308260006, 2308260007, 2308260008]
 
-
-    route_lists = [dummy_ids[i:i+3] for i in range(0, len(dummy_ids), 3)]
-    travel_plan_data = travel_plans(route_lists)
-
+        route_lists = [dummy_ids[i:i+3] for i in range(0, len(dummy_ids), 3)]
+        travel_plan_list = travel_plans(dummy_ids)
 
 ####################################test########################################################################
-        
-        # gnn 학습
-        # user_input, travel_input = preprocess_gnn(user_json, travel_input)
-
-        # 장소 추론 (output : list 형태의 visit_area_id )
-        # visit_area_ids = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
-
-        # visit_area_ids 형태 가공 필요 -> 이중 배열 [[],[],...]
-        # 추천 결과 가공
-        # travel_plans = travel_plans(visit_area_ids)
     
     # Get 요청일 때 추천 데이터 제공 (입력 받기 전 예시 데이터)
-    # else:
-    #     travel_plans = default_travel_plans()
+    else:
+        travel_plan_list = default_travel_plans()
 
     return render_template(
         "main_recommended.html", 
@@ -126,7 +91,7 @@ def main_recommended():
         whowith_options=whowith_options,
         user_feature_keys=user_feature_keys,
         user_info=user_json,
-        travel_plans = travel_plan_data
+        travel_plans = travel_plan_list
     )
     
 # 로그인
