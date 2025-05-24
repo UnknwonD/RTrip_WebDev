@@ -85,6 +85,8 @@
         let isDragging = false;
         let startX;
         let scrollLeft;
+
+        
         
         // const slider = document.getElementById("slider-container");
         const wrapper = document.getElementById("slider-wrapper");

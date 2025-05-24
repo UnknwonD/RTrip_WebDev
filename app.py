@@ -71,13 +71,11 @@ def main_register():
         if not save_user_to_s3(s3, BUCKET_NAME, user_data):
             return "S3 저장 실패", 500
 
-        session["username"] = user_data["USER_ID"]  # ✅ 자동 로그인 처리 추가
+        session["username"] = user_data["USER_ID"]  
 
         return redirect(url_for("main_recommended"))
 
     return render_template("main_register.html")
-
-
 
 
 # 메인 페이지
@@ -138,9 +136,11 @@ def login():
     input_pw = request.form.get("PASSWORD")
 
     try:
+        
         user_json, s3_key = find_user_by_credentials(input_id, input_pw)
+    
         if not user_json:
-            return render_template("main_recommended.html", error="아이디 또는 비밀번호가 잘못되었습니다.")
+            return render_template("main.html", error="아이디 또는 비밀번호가 잘못되었습니다.", show_step = 11)
 
         session["username"] = input_id
         travel_styles = session.get("travel_styles")

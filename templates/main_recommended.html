@@ -548,9 +548,6 @@
         const lng = parseFloat(spot.x);
         if (!isNaN(lat) && !isNaN(lng)) latlngs.push([lat, lng]);
       });
-      console.log(`[${idx}] route points:`, plan.route);
-      console.log(`[${idx}] latlngs:`, latlngs);
-
       const map = L.map(mapId).setView(latlngs[0], 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18
