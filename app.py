@@ -142,7 +142,12 @@ def main_register():
         user_data = {field: request.form.get(field, "") for field in fields}
 
         travel_styles = session.get("travel_styles", {})
-        user_data.update(travel_styles)
+        if travel_styles and isinstance(travel_styles, list):
+            travel_style_dict = {
+                f"TRAVEL_STYL_{i+1}": val for i, val in enumerate(travel_styles)
+            }
+            user_data.update(travel_style_dict)
+
 
         user_data["uuid"] = str(uuid.uuid4())
 
@@ -234,8 +239,14 @@ def login():
                 session["username"] = input_id
 
                 travel_styles = session.get("travel_styles")
+                print("travel_styles from session:", travel_styles)
+
                 if travel_styles:
-                    user_json.update(travel_styles)
+                    travel_style_dict = {
+                        f"TRAVEL_STYL_{i+1}": val for i, val in enumerate(travel_styles)
+                    }
+                    user_json.update(travel_style_dict)  # ← 여기로 대체
+
 
                 uuid_key = user_json.get("uuid")
                 if not uuid_key:
@@ -348,6 +359,6 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  # 테스트용 input
-    ids = find_nearest_user_ids(style_vec, k=5)
+    ids = find_nearest_user(style_vec, k=5)
     print("유사한 유저 ID:", ids)
     

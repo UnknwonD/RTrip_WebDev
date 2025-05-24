@@ -17,6 +17,13 @@ def is_duplicate(field_name, value):
     objects = list_s3_objects("users/")
     for obj in objects:
         user_json = get_json_from_s3(obj['Key'])
+        print(f"user_json: {user_json}")  # Debug line
+        print(f"type: {type(user_json)}")
+
+        if user_json is None:
+            print("user_json is None!")
+            return False
+    
         if user_json.get(field_name) == value:
             return True
     return False

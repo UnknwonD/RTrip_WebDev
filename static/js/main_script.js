@@ -85,8 +85,8 @@
         let isDragging = false;
         let startX;
         let scrollLeft;
-
-        const slider = document.getElementById("slider-container");
+        
+        // const slider = document.getElementById("slider-container");
         const wrapper = document.getElementById("slider-wrapper");
 
         // Mouse events
@@ -218,12 +218,64 @@
         }
     }
 
-// 이미지 결과 렌더링
+
+
+let autoSlideInterval = null;
+let slideIndex = 0;
+let isTransitioning = false;
+
+function startAutoSlide(seconds = 3) {
+    const container = document.getElementById("slider-container");
+    const slides = document.querySelectorAll("#slider-container .slide");
+
+    if (!slides.length) return;
+
+    const slideWidth = slides[0].offsetWidth + 16; // gap: 16px 고려
+    slideIndex = 0;
+
+    // 기존 interval 정리
+    if (autoSlideInterval) {
+        clearInterval(autoSlideInterval);
+    }
+
+    autoSlideInterval = setInterval(() => {
+        if (isTransitioning) return;
+        
+        isTransitioning = true;
+        slideIndex++;
+        
+        const offset = slideIndex * slideWidth;
+        container.style.transform = `translateX(-${offset}px)`;
+
+        // 마지막 슬라이드(복사본 포함) 다음에 첫 번째로 순간이동
+        if (slideIndex >= slides.length - 1) { // 복사본을 고려해서 -1
+            setTimeout(() => {
+                container.style.transition = 'none'; // transition 임시 끄기
+                slideIndex = 0;
+                container.style.transform = `translateX(0px)`;
+                
+                // 다음 프레임에서 transition 다시 켜기
+                requestAnimationFrame(() => {
+                    container.style.transition = 'transform 0.5s ease-in-out';
+                    isTransitioning = false;
+                });
+            }, 500); // CSS transition 시간과 맞춤
+        } else {
+            setTimeout(() => {
+                isTransitioning = false;
+            }, 500);
+        }
+    }, seconds * 1000);
+}
+
 function renderImages() {
     const container = document.getElementById("slider-container");
     container.innerHTML = "";
 
-    (window.recommendedImages || []).forEach((img, index) => {
+    if (!window.recommendedImages || window.recommendedImages.length === 0) return;
+
+    // 원본 이미지들 추가
+    window.recommendedImages.forEach((img, index) => {
         container.innerHTML += `
             <div class="slide">
                 <img src="${img.url}" alt="image ${index + 1}" class="img-responsive" style="width: 100%; object-fit: cover;" draggable="false">
@@ -231,4 +283,26 @@ function renderImages() {
             </div>
         `;
     });
+
+    // 첫 번째 슬라이드 복사본을 마지막에 추가 (무한 루프용)
+    const firstSlide = window.recommendedImages[0];
+    container.innerHTML += `
+        <div class="slide">
+            <img src="${firstSlide.url}" alt="image 1 copy" class="img-responsive" style="width: 100%; object-fit: cover;" draggable="false">
+            <div class="landing-text text-center">${firstSlide.area}</div>
+        </div>
+    `;
+
+    // 초기 위치 설정
+    container.style.transform = 'translateX(0px)';
+    
+    setTimeout(() => startAutoSlide(3), 500); // 0.5초 지연
+}
+
+// 페이지를 떠날 때나 다른 단계로 이동할 때 interval 정리
+function stopAutoSlide() {
+    if (autoSlideInterval) {
+        clearInterval(autoSlideInterval);
+        autoSlideInterval = null;
+    }
 }

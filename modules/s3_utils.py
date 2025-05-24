@@ -12,20 +12,22 @@ import joblib
 import numpy as np
 import pandas as pd
 
-
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine,text
 
 
 
 load_dotenv(override=True)
 
+# AWS Setting
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 REGION_NAME = os.getenv("AWS_REGION")
 
+# EC2 URL
 EC2_API_URL = os.getenv("EC2_PUBLIC_ADDR")
 
+ # RDS Setting
 DB_HOST = os.getenv("RDB_HOST")
 DB_USER = os.getenv("RDB_USER")
 DB_PASSWORD = os.getenv("RDB_PASSWORD")
@@ -43,13 +45,27 @@ s3 = boto3.client(
 
 # S3에서 key로 파일을 읽고 json으로 반환환
 def get_json_from_s3(key):
-    file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-    return json.loads(file_obj['Body'].read().decode('utf-8'))
+    try:
+        file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
+        body = file_obj['Body'].read().decode('utf-8').strip()
+
+        print(f"[DEBUG] S3 body for key '{key}': {repr(body)}")  # 핵심 디버깅
+
+        if not body:
+            print(f"[SKIP] 빈 JSON 파일: {key}")
+            return None
+
+        return json.loads(body)
+
+    except Exception as e:
+        print(f"[ERROR] JSON 파싱 실패: {key} → {str(e)}")
+        return None
 
 # prefix로 시작하는 S3 객체 리스트 반환환
 def list_s3_objects(prefix):
     response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
-    return response.get('Contents', [])
+    return [obj for obj in response.get('Contents', []) if obj['Key'].endswith(".json")]
+
 
 # # key에 대해 1시간짜리 presigned URL 생성성
 def get_s3_signed_urls(reverse=False):
@@ -175,7 +191,15 @@ def put_json_to_s3(key, data):
 
 
 def get_images_by_travel_ids(travel_ids):
-    conn = pymysql.connect(...)
+    conn = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            db=DB_NAME,
+            port = DB_PORT,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
     try:
         with conn.cursor() as cursor:
             placeholders = ','.join(['%s'] * len(travel_ids))
@@ -229,7 +253,8 @@ def get_images_by_travel_ids(travel_ids):
                 "area": row["visit_area_nm"],
                 "area_id": row["visit_area_id"]
             })
-            
+        
+        print(f"최종이미지: {image_infos}")
         return image_infos
 
     finally:
@@ -274,16 +299,17 @@ def find_nearest_users(input_vec, k=5):
         id_col = "TRAVELER_ID" if "TRAVELER_ID" in user_df.columns else "USER_ID"
         traveler_ids = similar_users[id_col].tolist() if k > 1 else [similar_users[id_col]]
 
+        print(f"user ids: {traveler_ids}")
         # 여행 정보 필터링
         format_strings = ','.join(['%s'] * len(traveler_ids))
         sql = f"SELECT * FROM travel WHERE TRAVELER_ID IN ({format_strings})"
-        
         travel_df = pd.read_sql(sql, con=engine, params=tuple(traveler_ids))
+        print(f"travel_df: {travel_df}")
 
         travel_ids = travel_df['TRAVEL_ID'].tolist()
-
+        print(f"travel_ids:{travel_ids}")
         return get_images_by_travel_ids(travel_ids)
-
+        
     except Exception as e:
         print("[ERROR] find_nearest_users 실패:", e)
         return []
@@ -377,41 +403,7 @@ def get_user_recommended_images_and_areas(username):
     except Exception as e:
         print("추천 이미지 처리 오류:", e)
         return []
-    
-    with conn.cursor() as cursor:
-        sql = "SELECT * FROM user"
-        cursor.execute(sql)
-        user = cursor.fetchall()
-        # conn.close()
 
-    style_df = user[style_cols]
-    style_array = style_df.to_numpy().astype('float32')
-    
-    input_vec = np.array(input_vec, dtype='float32')
-    
-    d = style_array.shape[1]
-    index = faiss.IndexFlatL2(d)
-    index.add(style_array)
-    D, I = index.search(input_vec, k)
-    
-    # 유사 유저의 여행 정보 추출
-    similar_users = user.iloc[I[0]]
-
-    ############################################################################################################
-    # 여기서부터 S3 불러오기 필요함
-
-    traveler_ids = similar_users['TRAVELER_ID'].to_list()
-    format_str = ','.join(['%s'] * len(traveler_ids))
-    with conn.cursor() as cursor:
-        sql = "SELECT * FROM TRAVEL WHERE  in ({})".format(', '.join(format_str))
-        cursor.execute(sql, traveler_ids)
-        travel = cursor.fetchall()
-
-    # travel = pd.read_csv('./data/tn_travel_여행_E.csv') # 1번째 필터링하면 됨 - user정보에서 traveler_id가져올거임 where절에 넣어서
-    # travel = travel[travel['TRAVELER_ID'].isin()] ####### 여기를 travel 데이터 필터링
-    travel_ids = travel['TRAVEL_ID'].to_list()
-    
-    return get_user_recommended_images_and_areas(travel_ids)
 
 
 
@@ -508,36 +500,3 @@ def get_user_recommended_images_and_areas(username):
 
 #         print(f" 추천 이미지 처리 오류: {str(e)}")
 #         return []
-
-
-def find_nearest_user_ids(input_vec, k=5):
-    """
-    여행 성향 벡터(input_vec)를 기준으로 FAISS로 유사한 유저들의 ID 리스트만 반환
-    """
-    engine = create_engine(
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
-
-    try:
-        # 유저 전체 정보 불러오기
-        user_df = pd.read_sql("SELECT * FROM users", con=engine)
-        style_df = user_df[style_cols]
-        style_array = style_df.to_numpy().astype('float32')
-        input_vec = np.array(input_vec, dtype='float32').reshape(1, -1)
-
-        # FAISS 인덱스 생성 및 탐색
-        d = style_array.shape[1]
-        index = faiss.IndexFlatL2(d)
-        index.add(style_array)
-        _, I = index.search(input_vec, k)
-
-        # ID 컬럼 이름 판단 후 추출
-        id_col = "TRAVELER_ID" if "TRAVELER_ID" in user_df.columns else "USER_ID"
-        similar_users = user_df.iloc[I[0]]
-        traveler_ids = similar_users[id_col].tolist()
-
-        return traveler_ids
-
-    except Exception as e:
-        print("[ERROR] find_nearest_user_ids 실패:", e)
-        return []
