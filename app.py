@@ -1,4 +1,5 @@
 from dependency import *
+from config import s3, BUCKET_NAME
 
 ############## 초기 모델 로드 ##################
 with open("./pickle/metadata_lite.pkl", "rb") as f:
@@ -41,232 +42,115 @@ model.eval()
 
 app = Flask(__name__)
 
-load_dotenv(override=True)
-
 app.secret_key = 'test'
 
-# AWS Setting 
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
-REGION_NAME = os.getenv("AWS_REGION")
 
-# EC2 Setting
-EC2_PUBLIC_ADDR = os.getenv("EC2_PUBLIC_ADDR")
-
-
-# S3 Client setting
-s3 = boto3.client(
-    's3',
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
-    region_name=REGION_NAME
-)
-
-
-# 첫 페이지, 성향 분석 데이터 받아옴, 로그인/회원가입으로 연결 (로그인의 경우에는 자동으로 성향 업데이트)
+# app.py
 @app.route("/main", methods=["GET", "POST"])
 def main():
     if request.method == "POST":
-        travel_styles = {
-            f"TRAVEL_STYL_{i}": min(max(1, int(request.form.get(f"TRAVEL_STYL_{i}", "4"))), 7)
-            for i in range(1, 9)
-        }
-        session["travel_styles"] = list(travel_styles.values())
+        session["travel_styles"] = extract_travel_styles(request.form)
         return redirect(url_for("main_register"))
-    
-    images = []
+
     travel_styles = session.get("travel_styles")
-    print(travel_styles)
-    # if travel_styles:
-    #     images = find_nearest_users(travel_styles)
+    images = find_nearest_users(travel_styles, k=5) if travel_styles else []
 
     return render_template("main.html", images=images)
-
-@app.route("/analyze_styles", methods=["POST"])
-def analyze_styles():
-    data = request.get_json()
-    scores = data.get("scores", [])
-    session["travel_styles"] = scores
-
-    images = find_nearest_users(scores) 
-
-    return jsonify({
-        "images": images  # ex: [{ "url": ..., "area": ... }, ...]
-    })
-
-# @app.route("/main", methods=["GET", "POST"])
-# def main():
-#     if request.method == "POST":
-#         # 스타일 입력갑 수집
-#         travel_styles = {
-#             f"TRAVEL_STYL_{i}": request.form.get(f"TRAVEL_STYL_{i}", "4")
-#             for i in range(1, 9)
-#         }
-#         # 세션에 리스트로 저장
-        
-#         for k, v in travel_styles.items():
-#             travel_styles[k] = min(max(1, int(v)), 7)
-        
-#         travel_styles = session.get("travel_styles")
-        
-#         return redirect(url_for("main_register"))
-#     images = []
-#     travel_styles = session.get("travel_styles")
-#     if travel_styles:
-#         images = find_nearest_users(travel_styles)
-
-#     return render_template("main.html", images=images)
-
 
 # 회원가입 페이지
 @app.route("/main_register", methods=["GET", "POST"])
 def main_register():
     if request.method == "POST":
         user_id = request.form.get("USER_ID")
-
         if is_duplicate("USER_ID", user_id):
-            return render_template("main_register.html", error="이미 사용 중인 아이디입니다.")  
-      
-        fields = [
-            'USER_ID', 'PASSWORD', 'NAME', 'GENDER', 'BIRTHDATE',
+            return render_template("main_register.html", error="이미 사용 중인 아이디입니다.")
 
-            'TRAVEL_TERM', 'TRAVEL_NUM',
+        travel_styles = session.get("travel_styles", [])
+        user_data = extract_user_data(request.form, travel_styles)
 
-            'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
-            'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
-            'TRAVEL_STYL_5', 'TRAVEL_STYL_6', 'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
-            'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2',
-        ]
+        if not save_user_to_s3(s3, BUCKET_NAME, user_data):
+            return "S3 저장 실패", 500
 
-        user_data = {field: request.form.get(field, "") for field in fields}
-
-        travel_styles = session.get("travel_styles", {})
-        if travel_styles and isinstance(travel_styles, list):
-            travel_style_dict = {
-                f"TRAVEL_STYL_{i+1}": val for i, val in enumerate(travel_styles)
-            }
-            user_data.update(travel_style_dict)
-
-
-        user_data["uuid"] = str(uuid.uuid4())
-
-        birthdate_str = user_data.get("BIRTHDATE", "")
-        try:
-            birth_year = datetime.strptime(birthdate_str, "%Y-%m-%d").year
-            age = datetime.now().year - birth_year
-            age_group = (age // 10) * 10
-            user_data["AGE_GRP"] = "90" if age_group >= 90 else str(max(10, age_group))
-        except:
-            user_data["AGE_GRP"] = ""
-
-        try:
-            s3.put_object(
-                Bucket=BUCKET_NAME,
-                Key=f"users/{user_data['uuid']}.json",
-                Body=json.dumps(user_data, ensure_ascii=False).encode('utf-8'),
-                ContentType='application/json'
-            )
-            print(f"S3 저장 완료: {user_data['uuid']}")
-        except Exception as e:
-            print(f"S3 저장 실패: {str(e)}")
-            return f"S3 저장 실패: {str(e)}", 500
+        session["username"] = user_data["USER_ID"]  # ✅ 자동 로그인 처리 추가
 
         return redirect(url_for("main_recommended"))
-    
+
     return render_template("main_register.html")
+
+
+
 
 # 메인 페이지
 @app.route("/", methods=["GET", "POST"])
 def main_recommended():
     user_json = None    # user 정보
-    travel_plans = None # GNN 결과 여행 정보 
-
+    travel_plans_data = [] # GNN 결과 여행 정보 
+    
     if request.method == "POST":
-        # 유저로부터 입력 받은 여행 정보 (Dict)
-        travel_input = request.form.to_dict()
-        raw_user = get_user_info(session["username"])
-        print(travel_input)
+        
+        travel_input = request.form.to_dict()           # 설문 받은 유저 정보
+        raw_user = get_user_info(session["username"])   # 유저 S3 기본 데이터 정보 
+
         # 필요 없는 정보 제거
         user_json = {
             k: v for k, v in raw_user.items() 
             if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
         }
+####################################test########################################################################
+
+    dummy_ids = [2308260002, 2308260003, 2308260005, 2308260006, 2308260007, 2308260008]
+
+
+    route_lists = [dummy_ids[i:i+3] for i in range(0, len(dummy_ids), 3)]
+    travel_plan_data = travel_plans(route_lists)
+
+
+####################################test########################################################################
         
         # gnn 학습
-        user_input, travel_input = preprocess_gnn(user_json, travel_input)
+        # user_input, travel_input = preprocess_gnn(user_json, travel_input)
 
-        # 추천 추론
-        # results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
-        # travel_plans = results
+        # 장소 추론 (output : list 형태의 visit_area_id )
+        # visit_area_ids = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
+
+        # visit_area_ids 형태 가공 필요 -> 이중 배열 [[],[],...]
+        # 추천 결과 가공
+        # travel_plans = travel_plans(visit_area_ids)
     
-    else:
-        return render_template(
-            "main_recommended.html", 
-            purpose_options=purpose_options,
-            movement_options=movement_options,
-            whowith_options=whowith_options,
-            user_feature_keys=user_feature_keys,
-            user_info=user_json
-            # travel_plans = travel_plans
-        )
+    # Get 요청일 때 추천 데이터 제공 (입력 받기 전 예시 데이터)
+    # else:
+    #     travel_plans = default_travel_plans()
+
+    return render_template(
+        "main_recommended.html", 
+        purpose_options=purpose_options,
+        movement_options=movement_options,
+        whowith_options=whowith_options,
+        user_feature_keys=user_feature_keys,
+        user_info=user_json,
+        travel_plans = travel_plan_data
+    )
     
 # 로그인
 @app.route("/login", methods=["POST"])
 def login():
     input_id = request.form.get("USER_ID")
     input_pw = request.form.get("PASSWORD")
-    
+
     try:
-        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix="users/")
-        for obj in response.get('Contents', []):
-            key = obj['Key']
-            if not key.endswith('.json'):
-                continue
+        user_json, s3_key = find_user_by_credentials(input_id, input_pw)
+        if not user_json:
+            return render_template("main_recommended.html", error="아이디 또는 비밀번호가 잘못되었습니다.")
 
-            file_obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
-            body = file_obj['Body'].read().decode('utf-8').strip()
-            if not body:
-                continue
+        session["username"] = input_id
+        travel_styles = session.get("travel_styles")
+        handle_login_success(user_json, travel_styles)
 
-            try:
-                user_json = json.loads(body)
+        return redirect(url_for("main_recommended"))
 
-            except json.JSONDecodeError as e:
-                continue
+    except RuntimeError as e:
+        return str(e), 500
 
-            if user_json.get("USER_ID") == input_id and user_json.get("PASSWORD") == input_pw:
-                session["username"] = input_id
-
-                travel_styles = session.get("travel_styles")
-                print("travel_styles from session:", travel_styles)
-
-                if travel_styles:
-                    travel_style_dict = {
-                        f"TRAVEL_STYL_{i+1}": val for i, val in enumerate(travel_styles)
-                    }
-                    user_json.update(travel_style_dict)  # ← 여기로 대체
-
-
-                uuid_key = user_json.get("uuid")
-                if not uuid_key:
-                    uuid_key = key.split("/")[-1].replace(".json", "")
-                    user_json["uuid"] = uuid_key  
-
-                s3.put_object(
-                    Bucket=BUCKET_NAME,
-                    Key=f"users/{uuid_key}.json",
-                    Body=json.dumps(user_json, ensure_ascii=False).encode("utf-8"),
-                    ContentType="application/json"
-                )
-
-                return redirect(url_for("main_recommended"))
-
-        return render_template("main_recommended.html", error="아이디 또는 비밀번호가 잘못되었습니다.")
-
-    except Exception as e:
-        return f"S3 조회 오류: {str(e)}", 500
-    
 # logout
 @app.route("/logout")
 def logout():
@@ -279,31 +163,29 @@ def check_duplicate():
     value = request.args.get("value")
     return jsonify({"duplicate": is_duplicate(field, value)})
 
+
 @app.route("/preview_images")
 def preview_images():
     travel_styles = session.get("travel_styles")
-
     if not travel_styles:
         return jsonify({"error": "No style data"}), 400
 
-    # FAISS로 유사 유저 기반 이미지 추천
     photos = find_nearest_users(travel_styles)
-    
-    # S3 presigned URL 생성
-    image_data = []
-    for _, row in photos.iterrows():
-        url = s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": BUCKET_NAME, "Key": f"rtrip/images/{row['PHOTO_FILE_NM']}"},
-            ExpiresIn=3600
-        )
-        image_data.append({
-            "url": url,
-            "area": row["VISIT_AREA_NM"]
-        })
+    image_data = get_presigned_image_urls(photos)
 
     return render_template("main.html", images=image_data)
 
+@app.route("/analyze_styles", methods=["POST"])
+def analyze_styles():
+    data = request.get_json()
+    scores = data.get("scores", [])
+    session["travel_styles"] = scores
+
+    images = find_nearest_users(scores) 
+
+    return jsonify({
+        "images": images
+    })
 
 # 수정 해야함 -> 기존 정보 수정이 아닌 여행 동선 저장장
 # @app.route("/mypage", methods=["GET", "POST"])
@@ -344,21 +226,12 @@ def preview_images():
 #         except RuntimeError as e:
 #             return str(e), 500
 
-# 추천 결과 페이지
-# @app.route("/recommend_result")
-# def recommend_result():
-#     if not results:
-#         return redirect(url_for("main_recommended"))
-#     results = session.pop("results", None)
-#     return render_template("recommend_result.html", results=results)
-
-
 
 if __name__ == "__main__":
     app.run(debug=True)
 
 if __name__ == "__main__":
     style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  # 테스트용 input
-    ids = find_nearest_user(style_vec, k=5)
+    ids = find_nearest_users(style_vec, k=5)
     print("유사한 유저 ID:", ids)
     

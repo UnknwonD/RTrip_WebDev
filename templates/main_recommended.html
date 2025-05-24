@@ -125,37 +125,45 @@
 <section id="section-features" class="section bg-light">
   <div class="container">
     <h2 class="text-center">📌 나에게 맞는 여행 일정</h2>
-    <p class="text-center">각 여행지에 대한 의견을 남겨보세요! 마음에 들지 않으면 대체 장소로 업데이트됩니다.</p>
+    <p class="text-center">각 여행지에 대한 의견을 남겨보세요! 말에 드지 않으면 대체 장소로 업데이트됩니다.</p>
 
-    <!-- Carousel 슬라이더 -->
+    <!-- Carousel -->
     <div id="recommendation-carousel" class="carousel slide" data-ride="carousel" data-interval="false">
       <div class="carousel-inner">
         {% for plan in travel_plans %}
         {% set plan_index = loop.index0 %}
         <div class="item {% if loop.first %}active{% endif %}">
-          <div class="card text-center mb-5">
-            <img src="{{ plan.main_image_url }}" class="img-responsive center-block" style="max-height: 300px; object-fit: cover;" alt="대표 이미지">
-            <h4 class="mt-3">{{ plan.title }}</h4>
-            <p>{{ plan.description }}</p>
-            <ul class="list-group text-left mt-3">
-              {% for spot in plan.route %}
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <strong>{{ loop.index }}.</strong> {{ spot.name }} - {{ spot.description }}
-                </div>
-                <div>
-                  <button class="btn btn-xs btn-danger dislike-btn" data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">싫어요</button>
-                  <button class="btn btn-xs btn-success like-btn" data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">좋아요</button>
-                </div>
-              </li>
-              {% endfor %}
-            </ul>
+          <div class="row">
+            <!-- 지도 -->
+            <div class="col-sm-6">
+              <div id="map-plan-{{ plan_index }}" class="map-div"></div>
+            </div>
+            <!-- 여행 정보 -->
+            <div class="col-sm-6">
+              <div class="card text-left">
+                <h4>{{ plan.title }}</h4>
+                <p>{{ plan.description }}</p>
+                <ul class="list-group">
+                  {% for spot in plan.route %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>{{ loop.index }}.</strong> {{ spot.area or spot.name }}
+                    </div>
+                    <div>
+                      <button class="btn btn-xs btn-danger dislike-btn" data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">싫어요</button>
+                      <button class="btn btn-xs btn-success like-btn" data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">좋아요</button>
+                    </div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
         {% endfor %}
       </div>
 
-      <!-- Carousel Controls -->
+      <!-- Controls -->
       <a class="left carousel-control" href="#" data-slide="prev">
         <span class="glyphicon glyphicon-chevron-left"></span>
       </a>
@@ -398,7 +406,6 @@
     font-weight: bold;
     box-shadow: 0 0 6px rgba(101, 92, 255, 0.4);
   }
-
 </style>
 
 <script>
@@ -525,5 +532,87 @@
     });
   });
 </script>
+
+<!-- 지도 마커 스크립트 -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const travelPlans = {{ travel_plans | tojson }};
+    window.mapObjects = [];
+
+    travelPlans.forEach((plan, idx) => {
+      const mapId = `map-plan-${idx}`;
+      const latlngs = [];
+
+      plan.route.forEach((spot, i) => {
+        const lat = parseFloat(spot.y);
+        const lng = parseFloat(spot.x);
+        if (!isNaN(lat) && !isNaN(lng)) latlngs.push([lat, lng]);
+      });
+      console.log(`[${idx}] route points:`, plan.route);
+      console.log(`[${idx}] latlngs:`, latlngs);
+
+      const map = L.map(mapId).setView(latlngs[0], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+      }).addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 300);
+
+      latlngs.forEach((coord, i) => {
+        L.marker(coord, {
+          icon: L.divIcon({
+            className: 'custom-number-icon',
+            html: `<div class="number-icon">${i + 1}</div>`,
+            iconSize: [30, 30]
+          })
+        }).addTo(map).bindPopup(`${i + 1}. ${plan.route[i].area}`);
+      });
+
+      L.polyline(latlngs, { color: 'blue' }).addTo(map);
+      window.mapObjects.push(map);
+    });
+
+    $('#recommendation-carousel').on('slid.bs.carousel', function (e) {
+      const index = $(e.relatedTarget).index();
+      const map = window.mapObjects[index];
+      if (map) {
+        setTimeout(() => map.invalidateSize(), 300);
+      }
+    });
+  });
+</script>
+
+<style>
+  .number-icon {
+    background-color: #4787ff;
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    text-align: center;
+    line-height: 28px;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  }
+  .map-div {
+    width: 100%;
+    height: 300px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .custom-number-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #655cff;
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    border: 2px solid white;
+  }
+</style>
 
 {% endblock %}
