@@ -172,7 +172,8 @@ def process_user_input(user_info:dict):
     
     # 1. 나잇대 계산
     user_info['AGE_GRP'] = get_age_group(user_info['BIRTHDATE'])
-    
+    if user_info['GENDER'] in ('M', 'F'):
+        user_info['GENDER'] = '1' if user_info['GENDER'] == 'M' else '2'
     # 2. 시도 변환
     for i in range(1, 4):
         user_info[f"TRAVEL_LIKE_SIDO_{i}"] = map_sido(user_info[f"TRAVEL_LIKE_SIDO_{i}"])
