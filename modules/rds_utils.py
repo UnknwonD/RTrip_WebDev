@@ -146,8 +146,12 @@ def get_meta_photo_info(visit_area_id):
     with engine.connect() as conn:
         result = conn.execute(text(query), {"id": visit_area_id})
         row = result.fetchone()
-
-        photo = dict(row._mapping)
+        # print(row)
+        # print("=" * 100)
+        try:
+            photo = dict(row._mapping)
+        except:
+            return None
 
     url = s3.generate_presigned_url(
         "get_object",
@@ -166,8 +170,11 @@ def get_meta_photo_info(visit_area_id):
 
 # 여러 여행 경로 리스트를 받아서 여행 추천 정보를 구성
 
-def travel_plans(route_lists):
+def travel_plans(area_ids):
     plans = []
+
+    # 3개씩 나누기
+    route_lists = [area_ids[i:i+3] for i in range(0, len(area_ids), 3)]
 
     for i, route in enumerate(route_lists):
         route_infos = []
@@ -177,7 +184,7 @@ def travel_plans(route_lists):
             photo = get_meta_photo_info(area_id)
             if photo:
                 if idx == 0:
-                    main_img_url = photo["url"]  # 대표 이미지
+                    main_img_url = photo["url"]
 
                 route_infos.append({
                     "name": photo["area"],

@@ -1,5 +1,11 @@
+
 from dependency import *
 from config import s3, BUCKET_NAME
+
+import torch
+import torch.multiprocessing as mp
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 
 ############## 초기 모델 로드 ##################
 with open('./pickle/visit_area_id_to_index.pkl', 'rb') as f:
@@ -10,16 +16,16 @@ with open('./pickle/dataset.pkl', 'rb') as f:
 
 visit_area_df = pd.read_pickle('./pickle/visit_area_df.pkl')
 
-# 모델 로드
+# 모델 로드 - 안전한 방식으로 수정
 model = RouteGNN(data.metadata())
-model.load_state_dict(torch.load('./pickle/routegnn_model.pt'))
+model.load_state_dict(torch.load('./pickle/routegnn_model.pt', 
+                                map_location='cpu',
+                                weights_only=True))
 model.eval()
 #############################################
 
 app = Flask(__name__)
-
 app.secret_key = 'test'
-
 
 # app.py
 @app.route("/main", methods=["GET", "POST"])
@@ -72,11 +78,11 @@ def main_recommended():
         }
 ####################################test########################################################################
         dummy_ids, area_names = run_inference(raw_user, travel_input, model, data, visit_area_id_to_index, visit_area_df)
-        # dummy_ids = [2308260002, 2308260003, 2308260005, 2308260006, 2308260007, 2308260008]
-
-
-        route_lists = [dummy_ids[i:i+3] for i in range(0, len(dummy_ids), 3)]
         travel_plan_list = travel_plans(dummy_ids)
+
+        # dummy_ids = [2308260002, 2308260003, 2308260005, 2308260006, 2308260007, 2308260008]
+        
+        # route_lists = [dummy_ids[i:i+3] for i in range(0, len(dummy_ids), 3)]
 
 ####################################test########################################################################
     
@@ -93,6 +99,7 @@ def main_recommended():
         user_info=user_json,
         travel_plans = travel_plan_list
     )
+    
     
 # 로그인
 @app.route("/login", methods=["POST"])
@@ -152,6 +159,19 @@ def analyze_styles():
         "images": images
     })
 
+# 통합된 메인 실행 블록
+if __name__ == "__main__":
+    # multiprocessing 설정
+    mp.set_start_method('spawn', force=True)
+    
+    # Flask 앱 실행
+    app.run(debug=True, use_reloader=False, threaded=True)
+    
+    # 테스트 코드 (필요하면 별도 파일로 분리 권장)
+    # style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  
+    # ids = find_nearest_users(style_vec, k=5)
+    # print("유사한 유저 ID:", ids)
+
 # 수정 해야함 -> 기존 정보 수정이 아닌 여행 동선 저장장
 # @app.route("/mypage", methods=["GET", "POST"])
 # def mypage():
@@ -192,11 +212,11 @@ def analyze_styles():
 #             return str(e), 500
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(debug=True)
 
-if __name__ == "__main__":
-    style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  # 테스트용 input
-    ids = find_nearest_users(style_vec, k=5)
-    print("유사한 유저 ID:", ids)
+# if __name__ == "__main__":
+#     style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  # 테스트용 input
+#     ids = find_nearest_users(style_vec, k=5)
+#     print("유사한 유저 ID:", ids)
     
