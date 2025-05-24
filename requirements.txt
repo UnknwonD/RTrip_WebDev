@@ -6,14 +6,14 @@ pymysql==1.1.1
 SQLAlchemy==2.0.41
 
 # --- GNN + PyTorch 관련 ---
-torch==2.7.0
+torch==2.6.0
 torch-geometric==2.6.1
 torch_cluster==1.6.3
 torch_scatter==2.1.2
 torch_sparse==0.6.18
 torch_spline_conv==1.2.2
-torchaudio==2.7.0
-torchvision==0.22.0
+torchaudio==2.6.0
+torchvision==0.21.0
 faiss-cpu==1.8.0.post1
 
 # --- Data science ---
