@@ -4,7 +4,6 @@
 <!-- 여행 추천-->
 
 <!-- section 1: hero / 소개 -->
-
 <section id="section-intro" class="section">
   <div class="container text-center">
     <h1>✨ R-Trip</h1>
@@ -22,10 +21,13 @@
                 <h2 class="form-title">🌏 R-Trip 여행 추천</h2>
                 <form method="POST" action="{{ url_for('main_recommended') }}">
                     <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;">
+                        <!-- 반려동물 동반 여부 (체크박스) -->
                         <div style="flex: 1;">
-                        <label>🎯 여행 유형</label><br>
-                            <input role="switch" type="checkbox" id="missionToggle" />
-                            <span id='missionToggleLabel'>일반 여행</span>
+                          <label>🐾 반려동물 동반 여부</label><br>
+                          <label for="pet_checkbox" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="pet_checkbox" style="margin: 0;" />
+                             함께 여행해요!
+                          </label>
                         </div>
                         <div id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
                             <label>🚩 여행 목적 </label><br>
@@ -45,23 +47,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label>💸 여행 예산</label>
+                        <label>💰 여행 예산</label>
                         <div style="display: flex; gap: 10px;">
                             <div style="flex: 1; position: relative;">
-                                <label for="LODGOUT_COST" style="font-weight: 500;">🏨 숙소</label>
-                                <input type="number" name="LODGOUT_COST" class="form-control cost-input" placeholder="예: 50" required>
-                                <span class="unit-label">만원</span>
-                            </div>
-                            <div style="flex: 1; position: relative;">
-                                <label for="ACTIVITY_COST" style="font-weight: 500;">🎫 활동</label>
-                                <input type="number" name="ACTIVITY_COST" class="form-control cost-input" placeholder="예: 30" required>
-                                <span class="unit-label">만원</span>
-                            </div>
-                            <div style="flex: 1; position: relative;">
-                                <label for="TOTAL_COST" style="font-weight: 500;">💰 총합</label>
-                                <input type="number" name="TOTAL_COST" class="form-control cost-input" placeholder="예: 100" required>
-                                <span class="unit-label">만원</span>
-                            </div>
+                                <select name="TOTAL_COST" id="TOTAL_COST" class="form-control cost-input" required>
+                                    <option value="1">10만원 이하</option>
+                                    {% for i in range(2, 10) %}
+                                        <option value="{{ i }}">{{ i * 10 }}만원</option>
+                                    {% endfor %}
+                                    <option value="10">100만원 이상</option>
+                                </select>
+                              </div>
                         </div>
                     </div>
 
@@ -125,11 +121,56 @@
 </section>
 
 
-<!-- section 3: 기능 설명 -->
+<!-- Section 3: 추천 결과 카드 영역 (스와이프) -->
 <section id="section-features" class="section bg-light">
-  <div class="container text-center">
-    <h2>📌 주요 기능</h2>
-    <p>여행 스타일 분석, AI 기반 추천, 미션 기반 여행 설계 등</p>
+  <div class="container">
+    <h2 class="text-center">📌 나에게 맞는 여행 일정</h2>
+    <p class="text-center">각 여행지에 대한 의견을 남겨보세요! 말에 드지 않으면 대체 장소로 업데이트됩니다.</p>
+
+    <!-- Carousel -->
+    <div id="recommendation-carousel" class="carousel slide" data-ride="carousel" data-interval="false">
+      <div class="carousel-inner">
+        {% for plan in travel_plans %}
+        {% set plan_index = loop.index0 %}
+        <div class="item {% if loop.first %}active{% endif %}">
+          <div class="row">
+            <!-- 지도 -->
+            <div class="col-sm-6">
+              <div id="map-plan-{{ plan_index }}" class="map-div"></div>
+            </div>
+            <!-- 여행 정보 -->
+            <div class="col-sm-6">
+              <div class="card text-left">
+                <h4>{{ plan.title }}</h4>
+                <p>{{ plan.description }}</p>
+                <ul class="list-group">
+                  {% for spot in plan.route %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>{{ loop.index }}.</strong> {{ spot.area or spot.name }}
+                    </div>
+                    <div>
+                      <button class="btn btn-xs btn-danger dislike-btn" data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">싫어요</button>
+                      <button class="btn btn-xs btn-success like-btn" data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">좋아요</button>
+                    </div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Controls -->
+      <a class="left carousel-control" href="#" data-slide="prev">
+        <span class="glyphicon glyphicon-chevron-left"></span>
+      </a>
+      <a class="right carousel-control" href="#" data-slide="next">
+        <span class="glyphicon glyphicon-chevron-right"></span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -147,10 +188,12 @@
 <nav class="navbar navbar-default navbar-fixed-bottom">
   <div class="container text-center">
     <ul class="list-inline" style="margin: 10px 0;">
-      <li><a href="{{ url_for('main') }}"><i class="fa fa-home"></i><br>홈</a></li>      
-      <li><a href="{{ url_for('main_recommended') }}"><i class="fa fa-star"></i><br>추천받기</a></li>
-      <li><a href="#" data-toggle="modal" data-target="#loginModal"><i class="fa fa-sign-in"></i><br>로그인</a></li>
-      <li><a href="{{ url_for('main_register') }}"><i class="fa fa-user"></i><br>회원가입</a></li>
+      <li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
+      <li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
+      {% if session.get("username") %}
+        <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
+
+      {% endif %}
     </ul>
   </div>
 </nav>
@@ -177,7 +220,6 @@
     .main-card:hover {
         box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
     }
-
     .form-title {
         text-align: center;
         font-size: 24px;
@@ -189,9 +231,6 @@
         font-weight: 600;
         margin-top: 10px;
     }
-
-
-
     .btn-submit {
         width: 100%;
         background-color: #655cff;
@@ -203,7 +242,6 @@
         margin-top: 20px;
         font-size: 16px;
     }
-
     .btn-submit:hover {
         background-color: rgb(150, 150, 150);
     }
@@ -239,7 +277,6 @@
         background-color: white;
         left: 1em;
     }
-
     [type="checkbox"]:checked {
         background-color: #4787ff;
         border-color: #4787ff;
@@ -249,11 +286,9 @@
         opacity: 0.7;
         cursor: not-allowed;
     }
-
     [type="checkbox"]:disabled:before {
         background-color: lightgray;
     }
-
     [type="checkbox"]:disabled + span {
         opacity: 0.7;
         cursor: not-allowed;
@@ -285,7 +320,6 @@
     .cost-input {
     padding-right: 40px; /* 여유 공간 확보 */
     }
-
     .unit-label {
     position: absolute;
     top: 50%;       
@@ -295,24 +329,83 @@
     color: #555;
     pointer-events: none;
     }
+  .section {
+      padding: 100px 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-    .section {
-        padding: 100px 20px;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        }
+    .bg-light {
+      background-color: #f7f9fc;
+    }
+    .bg-dark {
+      background-color: #222;
+      color: white;
+    }
 
-        .bg-light {
-        background-color: #f7f9fc;
-        }
-        .bg-dark {
-        background-color: #222;
-        color: white;
-        }
+    .carousel .item {
+      padding: 40px 0;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .card:hover {
+        box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+    }
+    .list-group-item button {
+        margin-left: 5px;
+    }
+    .carousel-inner > .item {
+        display: none;
+        position: relative;
+        transition: 0.6s ease-in-out left;
+    }
+    .carousel-inner > .active {
+        display: block;
+    }
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
 
+  .mission-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    min-height: 60px;
+    word-break: keep-all;
+    user-select: none;
+  }
 
+  .mission-button:hover {
+    background-color: #ededf9;
+  }
+
+  .mission-button.selected {
+    background-color: #655cff;
+    color: white;
+    border-color: #655cff;
+    font-weight: bold;
+    box-shadow: 0 0 6px rgba(101, 92, 255, 0.4);
+  }
 </style>
 
 <script>
@@ -322,17 +415,43 @@
       });
     });
     
-    document.getElementById('confirmMission').addEventListener('click', function () {
-      const selected = document.querySelectorAll('.mission-button.selected');
-      const values = Array.from(selected).map(el => el.getAttribute('data-code'));
-      const labels = Array.from(selected).map(el => el.textContent.trim());
-    
-      document.getElementById('mission_ENC_hidden').value = values.join(',');
-      document.getElementById('selected_missions_text').innerText =
-        labels.length > 0 ? `선택한 미션: ${labels.join(', ')}` : '선택된 미션 없음';
-    
-      $('#missionModal').modal('hide');
+    document.addEventListener("DOMContentLoaded", function () {
+      const confirmBtn = document.getElementById("confirmMission");
+      if (confirmBtn) {
+        confirmBtn.addEventListener("click", function () {
+          try {
+            const selected = document.querySelectorAll(".mission-button.selected");
+            const values = Array.from(selected).map(el => el.getAttribute("data-code"));
+            const labels = Array.from(selected).map(el => el.textContent.trim());
+
+            const petCheckbox = document.getElementById("pet_checkbox");
+            if (petCheckbox && petCheckbox.checked) {
+              values.unshift("0");
+              labels.unshift("🐾 반려동물 동반 여행");
+            }
+
+            const missionInput = document.getElementById("mission_ENC_hidden");
+            const labelDisplay = document.getElementById("selected_missions_text");
+
+            if (missionInput) missionInput.value = values.join(",");
+            if (labelDisplay) labelDisplay.innerText =
+              labels.length > 0 ? `선택한 미션: ${labels.join(", ")}` : "선택된 미션 없음";
+
+            // Bootstrap 모달 닫기
+            $('#missionModal').modal('hide');
+
+            // 백드롭 강제 제거
+            setTimeout(() => {
+              $(".modal-backdrop").remove();
+              $("body").removeClass("modal-open");
+            }, 300);
+          } catch (e) {
+            console.error("Mission modal error:", e);
+          }
+        });
+      }
     });
+
 
     const picker = new Litepicker({
         element: document.getElementById('date_range'),
@@ -351,11 +470,11 @@
         const missionTypeHidden = document.getElementById('mission_type_hidden');
 
         if (isChecked) {
-            missionLabel.textContent = '특별 미션';
+            missionLabel.textContent = '무계획 여행';
             missionFields.style.display = 'none';
             missionTypeHidden.value = 'special';
         } else {
-            missionLabel.textContent = '일반 여행';
+            missionLabel.textContent = '테마 여행';
             missionFields.style.display = 'block';
             missionTypeHidden.value = 'normal';
         }
@@ -363,6 +482,134 @@
 
     // 초기화 시 미션 필드 보이도록
     document.getElementById('normal_mission_fields').style.display = 'block';
+
+
+    document.querySelectorAll('.dislike-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const planIdx = this.dataset.plan;
+      const spotIdx = this.dataset.spot;
+      console.log(`플랜 ${planIdx}의 장소 ${spotIdx} 싫어요 → 대체 장소 요청`);
+      $('#recommendation-carousel').carousel('next');
+    });
+  });
+
+  document.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const planIdx = this.dataset.plan;
+      const spotIdx = this.dataset.spot;
+      console.log(`플랜 ${planIdx}의 장소 ${spotIdx} 좋아요 저장`);
+    });
+  });
+
+    function updateTotalCost() {
+        const lodging = parseInt(document.getElementById("LODGOUT_COST").value) || 0;
+        const activity = parseInt(document.getElementById("ACTIVITY_COST").value) || 0;
+        document.getElementById("TOTAL_COST").value = lodging + activity;
+    }
+
+    document.getElementById("LODGOUT_COST").addEventListener("change", updateTotalCost);
+    document.getElementById("ACTIVITY_COST").addEventListener("change", updateTotalCost);
+
+    // 초기화 시 총합 계산
+    updateTotalCost();
 </script>
+
+
+<script>
+  $(document).ready(function () {
+    const scrollLockTop = $('#recommendation-carousel').offset().top;
+
+    // 왼쪽 버튼 클릭 시
+    $('.left.carousel-control').on('click', function (e) {
+      e.preventDefault();
+      $('#recommendation-carousel').carousel('prev');
+    });
+
+    // 오른쪽 버튼 클릭 시
+    $('.right.carousel-control').on('click', function (e) {
+      e.preventDefault();
+      $('#recommendation-carousel').carousel('next');
+    });
+  });
+</script>
+
+<!-- 지도 마커 스크립트 -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const travelPlans = {{ travel_plans | tojson }};
+    window.mapObjects = [];
+
+    travelPlans.forEach((plan, idx) => {
+      const mapId = `map-plan-${idx}`;
+      const latlngs = [];
+
+      plan.route.forEach((spot, i) => {
+        const lat = parseFloat(spot.y);
+        const lng = parseFloat(spot.x);
+        if (!isNaN(lat) && !isNaN(lng)) latlngs.push([lat, lng]);
+      });
+      const map = L.map(mapId).setView(latlngs[0], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+      }).addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 300);
+
+      latlngs.forEach((coord, i) => {
+        L.marker(coord, {
+          icon: L.divIcon({
+            className: 'custom-number-icon',
+            html: `<div class="number-icon">${i + 1}</div>`,
+            iconSize: [30, 30]
+          })
+        }).addTo(map).bindPopup(`${i + 1}. ${plan.route[i].area}`);
+      });
+
+      L.polyline(latlngs, { color: 'blue' }).addTo(map);
+      window.mapObjects.push(map);
+    });
+
+    $('#recommendation-carousel').on('slid.bs.carousel', function (e) {
+      const index = $(e.relatedTarget).index();
+      const map = window.mapObjects[index];
+      if (map) {
+        setTimeout(() => map.invalidateSize(), 300);
+      }
+    });
+  });
+</script>
+
+<style>
+  .number-icon {
+    background-color: #4787ff;
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    text-align: center;
+    line-height: 28px;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  }
+  .map-div {
+    width: 100%;
+    height: 300px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .custom-number-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #655cff;
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    border: 2px solid white;
+  }
+</style>
 
 {% endblock %}

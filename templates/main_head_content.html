@@ -19,6 +19,19 @@
         <!-- Google Fonts -->
         <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:100,300,400,700,900,100italic,300italic,400italic,700italic,900italic" />
 
+        <!-- main_head_content.html -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main_style.css') }}">
+        <script src="{{ url_for('static', filename='js/main_script.js') }}" defer></script>
+        
+        <!-- Leaflet CSS -->
+        <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+        <!-- Leaflet JS -->
+        <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+
+        <!-- main_register.html -->
+        <!-- main_recommended.html -->
+        {% block head_extra %}{% endblock %}
         <style>
             #slider {
                 overflow: hidden;
@@ -49,6 +62,10 @@
         </style>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css" />
         <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+        <script src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     </head>
 
 
