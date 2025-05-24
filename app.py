@@ -69,21 +69,54 @@ s3 = boto3.client(
 def main():
     if request.method == "POST":
         travel_styles = {
-            f"TRAVEL_STYL_{i}": request.form.get(f"TRAVEL_STYL_{i}", "4")
+            f"TRAVEL_STYL_{i}": min(max(1, int(request.form.get(f"TRAVEL_STYL_{i}", "4"))), 7)
             for i in range(1, 9)
         }
-
-        for k, v in travel_styles.items():
-            travel_styles[k] = min(max(1, int(v)), 7)
-
-        print("사용자 입력 성향 분석 결고 : ")
-        for k, v in travel_styles.items():
-            print(f"{k} : {v}")
-
-        session["travel_styles"] = travel_styles
+        session["travel_styles"] = list(travel_styles.values())
         return redirect(url_for("main_register"))
+    
+    images = []
+    travel_styles = session.get("travel_styles")
+    print(travel_styles)
+    # if travel_styles:
+    #     images = find_nearest_users(travel_styles)
 
-    return render_template("main.html")
+    return render_template("main.html", images=images)
+
+@app.route("/analyze_styles", methods=["POST"])
+def analyze_styles():
+    data = request.get_json()
+    scores = data.get("scores", [])
+    session["travel_styles"] = scores
+
+    images = find_nearest_users(scores) 
+
+    return jsonify({
+        "images": images  # ex: [{ "url": ..., "area": ... }, ...]
+    })
+
+# @app.route("/main", methods=["GET", "POST"])
+# def main():
+#     if request.method == "POST":
+#         # 스타일 입력갑 수집
+#         travel_styles = {
+#             f"TRAVEL_STYL_{i}": request.form.get(f"TRAVEL_STYL_{i}", "4")
+#             for i in range(1, 9)
+#         }
+#         # 세션에 리스트로 저장
+        
+#         for k, v in travel_styles.items():
+#             travel_styles[k] = min(max(1, int(v)), 7)
+        
+#         travel_styles = session.get("travel_styles")
+        
+#         return redirect(url_for("main_register"))
+#     images = []
+#     travel_styles = session.get("travel_styles")
+#     if travel_styles:
+#         images = find_nearest_users(travel_styles)
+
+#     return render_template("main.html", images=images)
 
 
 # 회원가입 페이지
@@ -141,68 +174,38 @@ def main_register():
 # 메인 페이지
 @app.route("/", methods=["GET", "POST"])
 def main_recommended():
+    user_json = None    # user 정보
+    travel_plans = None # GNN 결과 여행 정보 
 
-
-    # if request.method == "POST":
-    # travel_input = request.form.to_dict()
-
-    # raw_user = get_user_info(session["username"])
-    
-    # 테스트용 임시 travel_plans
-
-    user_json = None
-
-    
-    travel_plans = [
-        {
-            "title": "제주 힐링 3일 코스",
-            "description": "바다와 자연을 즐기는 여정",
-            "main_image_url": "https://via.placeholder.com/800x300/89CFF0/ffffff?text=Jeju+Trip",
-            "route": [
-                {"name": "성산일출봉", "description": "일출로 하루를 시작"},
-                {"name": "우도", "description": "자전거로 한 바퀴"},
-                {"name": "용두암", "description": "돌하르방과 사진 한 컷"}
-            ]
-        },
-        {
-            "title": "서울 도심 속 하루 코스",
-            "description": "도시의 매력을 느끼는 코스",
-            "main_image_url": "https://via.placeholder.com/800x300/FFB6C1/ffffff?text=Seoul+Trip",
-            "route": [
-                {"name": "경복궁", "description": "한복 입고 투어"},
-                {"name": "북촌한옥마을", "description": "전통과 현대의 조화"},
-                {"name": "한강공원", "description": "야경 보며 피크닉"}
-            ]
-        }
-    ]
-    user_json = None
     if request.method == "POST":
+        # 유저로부터 입력 받은 여행 정보 (Dict)
         travel_input = request.form.to_dict()
-
         raw_user = get_user_info(session["username"])
-        if raw_user:
-            exclude_fields = {"BIRTHDATE", "uuid", 'phone_number', "PASSWORD", "CONFIRM_PASSWORD"} # user 정보에서 필요 없는 정보들 입력
-            user_json = {k: v for k, v in raw_user.items() if k not in exclude_fields}
-
-        user_input, travel_input = preprocess_gnn(user_json, travel_input)
+        print(travel_input)
+        # 필요 없는 정보 제거
+        user_json = {
+            k: v for k, v in raw_user.items() 
+            if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
+        }
         
-        results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
-        session["results"] = results
-        # return redirect(url_for("main_recommended"))
-        return redirect(url_for("recommend_result"))
+        # gnn 학습
+        user_input, travel_input = preprocess_gnn(user_json, travel_input)
+
+        # 추천 추론
+        # results = recommend_from_input(model, user_input, travel_input, base_data, visit_area_id_map)
+        # travel_plans = results
+    
     else:
         return render_template(
             "main_recommended.html", 
-            travel_plans=travel_plans,
             purpose_options=purpose_options,
             movement_options=movement_options,
             whowith_options=whowith_options,
             user_feature_keys=user_feature_keys,
             user_info=user_json
+            # travel_plans = travel_plans
         )
-    # return render_template("main_recommended.html")
-
-
+    
 # 로그인
 @app.route("/login", methods=["POST"])
 def login():
@@ -265,30 +268,30 @@ def check_duplicate():
     value = request.args.get("value")
     return jsonify({"duplicate": is_duplicate(field, value)})
 
-# @app.route("/preview_images")
-# def preview_images():
-#     travel_styles = session.get("travel_styles")
+@app.route("/preview_images")
+def preview_images():
+    travel_styles = session.get("travel_styles")
 
-#     if not travel_styles:
-#         return jsonify({"error": "No style data"}), 400
+    if not travel_styles:
+        return jsonify({"error": "No style data"}), 400
 
-#     # FAISS로 유사 유저 기반 이미지 추천
-#     photos = find_nearest_neighbors(travel_styles)
+    # FAISS로 유사 유저 기반 이미지 추천
+    photos = find_nearest_users(travel_styles)
     
-#     # S3 presigned URL 생성
-#     image_data = []
-#     for _, row in photos.iterrows():
-#         url = s3.generate_presigned_url(
-#             "get_object",
-#             Params={"Bucket": BUCKET_NAME, "Key": f"rtrip/images/{row['PHOTO_FILE_NM']}"},
-#             ExpiresIn=3600
-#         )
-#         image_data.append({
-#             "url": url,
-#             "area": row["VISIT_AREA_NM"]
-#         })
+    # S3 presigned URL 생성
+    image_data = []
+    for _, row in photos.iterrows():
+        url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET_NAME, "Key": f"rtrip/images/{row['PHOTO_FILE_NM']}"},
+            ExpiresIn=3600
+        )
+        image_data.append({
+            "url": url,
+            "area": row["VISIT_AREA_NM"]
+        })
 
-#     return render_template("main_recommended.html", images=image_data)
+    return render_template("main.html", images=image_data)
 
 
 # 수정 해야함 -> 기존 정보 수정이 아닌 여행 동선 저장장
@@ -342,3 +345,9 @@ def check_duplicate():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+if __name__ == "__main__":
+    style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  # 테스트용 input
+    ids = find_nearest_user_ids(style_vec, k=5)
+    print("유사한 유저 ID:", ids)
+    

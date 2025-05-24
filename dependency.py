@@ -12,10 +12,9 @@ import json
 import pickle
 import botocore
 from modules.user import update_user_info, is_duplicate
-from modules.s3_utils import get_user_recommended_images_and_areas, get_user_info
+from modules.s3_utils import get_user_recommended_images_and_areas, get_user_info, find_nearest_users, find_nearest_user_ids
 from modules.ec2_utils import send_to_ec2
 from modules.rds_utils import get_images_by_travel_ids
-from lee import find_nearest_users
 from gnn_module import *
 
 # import torch.multiprocessing as mp

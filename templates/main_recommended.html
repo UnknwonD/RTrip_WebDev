@@ -51,11 +51,11 @@
                         <div style="display: flex; gap: 10px;">
                             <div style="flex: 1; position: relative;">
                                 <select name="TOTAL_COST" id="TOTAL_COST" class="form-control cost-input" required>
-                                    <option value="10 이하">10만원 이하</option>
-                                    {% for i in range(20, 100, 10) %}
-                                    <option value="{{ i }}">{{ i }} 만원</option>
+                                    <option value="1">10만원 이하</option>
+                                    {% for i in range(2, 10) %}
+                                        <option value="{{ i }}">{{ i * 10 }}만원</option>
                                     {% endfor %}
-                                    <option value="100 이상">100만원 이상</option>
+                                    <option value="10">100만원 이상</option>
                                 </select>
                               </div>
                         </div>
@@ -408,22 +408,43 @@
       });
     });
     
-    document.getElementById('confirmMission').addEventListener('click', function () {
-      const selected = document.querySelectorAll('.mission-button.selected');
-      const values = Array.from(selected).map(el => el.getAttribute('data-code'));
-      const labels = Array.from(selected).map(el => el.textContent.trim());
-      
-      const petChecked = document.getElementById('pet_checkbox').checked;
-      if (petChecked) {
-        values.unshift("0"); // 미션 코드 0으로 정의
-        labels.unshift("🐾 반려동물 동반 여행");
+    document.addEventListener("DOMContentLoaded", function () {
+      const confirmBtn = document.getElementById("confirmMission");
+      if (confirmBtn) {
+        confirmBtn.addEventListener("click", function () {
+          try {
+            const selected = document.querySelectorAll(".mission-button.selected");
+            const values = Array.from(selected).map(el => el.getAttribute("data-code"));
+            const labels = Array.from(selected).map(el => el.textContent.trim());
+
+            const petCheckbox = document.getElementById("pet_checkbox");
+            if (petCheckbox && petCheckbox.checked) {
+              values.unshift("0");
+              labels.unshift("🐾 반려동물 동반 여행");
+            }
+
+            const missionInput = document.getElementById("mission_ENC_hidden");
+            const labelDisplay = document.getElementById("selected_missions_text");
+
+            if (missionInput) missionInput.value = values.join(",");
+            if (labelDisplay) labelDisplay.innerText =
+              labels.length > 0 ? `선택한 미션: ${labels.join(", ")}` : "선택된 미션 없음";
+
+            // Bootstrap 모달 닫기
+            $('#missionModal').modal('hide');
+
+            // 백드롭 강제 제거
+            setTimeout(() => {
+              $(".modal-backdrop").remove();
+              $("body").removeClass("modal-open");
+            }, 300);
+          } catch (e) {
+            console.error("Mission modal error:", e);
+          }
+        });
       }
-      document.getElementById('mission_ENC_hidden').value = values.join(',');
-      document.getElementById('selected_missions_text').innerText =
-        labels.length > 0 ? `선택한 미션: ${labels.join(', ')}` : '선택된 미션 없음';
-    
-      $('#missionModal').modal('hide');
     });
+
 
     const picker = new Litepicker({
         element: document.getElementById('date_range'),

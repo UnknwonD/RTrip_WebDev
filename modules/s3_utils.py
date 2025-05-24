@@ -12,6 +12,11 @@ import joblib
 import numpy as np
 import pandas as pd
 
+
+from sqlalchemy import create_engine
+
+
+
 load_dotenv(override=True)
 
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
@@ -78,7 +83,7 @@ def get_user_info(username):
             return user_json                        # dict
     return None
 
-# S3에 앋앋
+# S3에 Json 저장
 def put_json_to_s3(key, data):
     s3.put_object(
         Bucket=BUCKET_NAME,
@@ -87,85 +92,148 @@ def put_json_to_s3(key, data):
         ContentType='application/json'
     )
 
+# 
+# def get_user_recommended_images_and_areas(travel_ids):
+#     try:
+        
+#         conn = pymysql.connect(
+#             host=DB_HOST,
+#             user=DB_USER,
+#             password=DB_PASSWORD,
+#             db=DB_NAME,
+#             port = DB_PORT,
+#             charset='utf8mb4',
+#             cursorclass=pymysql.cursors.DictCursor
+#         )
 
-def get_user_recommended_images_and_areas(travel_ids):
+#         with conn.cursor() as cursor:
+            
+#             format_str = ','.join(['%s'] * len(travel_ids))
+#             sql = """
+#                 WITH filtered_place AS (
+#                 SELECT *
+#                 FROM place_info
+#                 WHERE travel_id IN (
+#                     {}
+#                 ) 
+#             ),
+#             joined_data AS (
+#                 SELECT 
+#                     p.travel_id,
+#                     p.visit_area_id,
+#                     p.visit_area_nm,
+#                     m.photo_file_nm,
+#                     ROW_NUMBER() OVER (
+#                         PARTITION BY p.travel_id, p.visit_area_id
+#                         ORDER BY RAND()
+#                     ) AS rn
+#                 FROM filtered_place p
+#                 JOIN meta_photo m
+#                 ON p.travel_id = m.travel_id
+#                 AND p.visit_area_id = m.visit_area_id
+#                 WHERE m.photo_file_nm IS NOT NULL
+#             )
+#             SELECT
+#                 travel_id,
+#                 visit_area_id,
+#                 visit_area_nm,
+#                 photo_file_nm
+#             FROM joined_data
+#             WHERE rn = 1
+#             ORDER BY travel_id, visit_area_id;
+
+#             """.format(format_str)
+#             cursor.execute(sql, travel_ids)
+#             results = cursor.fetchall()
+#         conn.close()
+
+        
+#         prefix = "data/resized_image/E/"
+#         image_infos = []
+#         for row in results:
+#             file_name = row.get("photo_file_nm")
+#             area_name = row.get("visit_area_nm")
+#             area_id = row.get("visit_area_id")
+
+#             if file_name:
+#                 url = s3.generate_presigned_url(
+#                     'get_object',
+#                     Params={'Bucket': BUCKET_NAME, 'Key': f"{prefix}{file_name}"},
+#                     ExpiresIn=3600
+#                 )
+#                 image_infos.append({"url": url, "area": area_name, "area_id": area_id})
+#         print(file_name)
+#         print(url)
+#         return image_infos
+    
+#     except Exception as e:
+#         print("DB_HOST:", DB_HOST)
+
+#         print(f" 추천 이미지 처리 오류: {str(e)}")
+#         return []
+
+
+
+def get_images_by_travel_ids(travel_ids):
+    conn = pymysql.connect(...)
     try:
-        # 3. RDS 연결
-        conn = pymysql.connect(
-            host=DB_HOST,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            db=DB_NAME,
-            port = DB_PORT,
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor
-        )
-
         with conn.cursor() as cursor:
-            # 4. place_info → meta_photo 조인 쿼리
-            format_str = ','.join(['%s'] * len(travel_ids))
-            sql = """
+            placeholders = ','.join(['%s'] * len(travel_ids))
+            sql = f"""
                 WITH filtered_place AS (
-                SELECT *
-                FROM place_info
-                WHERE travel_id IN (
-                    {}
+                    SELECT *
+                    FROM place_info
+                    WHERE travel_id IN ({placeholders})
+                ),
+                joined_data AS (
+                    SELECT 
+                        p.travel_id,
+                        p.visit_area_id,
+                        p.visit_area_nm,
+                        m.photo_file_nm,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.travel_id, p.visit_area_id
+                            ORDER BY RAND()
+                        ) AS rn
+                    FROM filtered_place p
+                    JOIN meta_photo m
+                    ON p.travel_id = m.travel_id
+                    AND p.visit_area_id = m.visit_area_id
+                    WHERE m.photo_file_nm IS NOT NULL
                 )
-            ),
-            joined_data AS (
-                SELECT 
-                    p.travel_id,
-                    p.visit_area_id,
-                    p.visit_area_nm,
-                    m.photo_file_nm,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY p.travel_id, p.visit_area_id
-                        ORDER BY RAND()
-                    ) AS rn
-                FROM filtered_place p
-                JOIN meta_photo m
-                ON p.travel_id = m.travel_id
-                AND p.visit_area_id = m.visit_area_id
-                WHERE m.photo_file_nm IS NOT NULL
-            )
-            SELECT
-                travel_id,
-                visit_area_id,
-                visit_area_nm,
-                photo_file_nm
-            FROM joined_data
-            WHERE rn = 1
-            ORDER BY travel_id, visit_area_id;
-
-            """.format(format_str)
-            cursor.execute(sql, travel_ids)
+                SELECT
+                    travel_id,
+                    visit_area_id,
+                    visit_area_nm,
+                    photo_file_nm
+                FROM joined_data
+                WHERE rn = 1
+                ORDER BY travel_id, visit_area_id
+            """
+            cursor.execute(sql, tuple(travel_ids))
             results = cursor.fetchall()
-        conn.close()
 
-        # 5. presigned URL 생성
         prefix = "data/resized_image/E/"
         image_infos = []
         for row in results:
             file_name = row.get("photo_file_nm")
-            area_name = row.get("visit_area_nm")
-            area_id = row.get("visit_area_id")
-
-            if file_name:
-                url = s3.generate_presigned_url(
-                    'get_object',
-                    Params={'Bucket': BUCKET_NAME, 'Key': f"{prefix}{file_name}"},
-                    ExpiresIn=3600
-                )
-                image_infos.append({"url": url, "area": area_name, "area_id": area_id})
-          
+            if not file_name:
+                continue
+            url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': BUCKET_NAME, 'Key': f"{prefix}{file_name}"},
+                ExpiresIn=3600
+            )
+            image_infos.append({
+                "url": url,
+                "area": row["visit_area_nm"],
+                "area_id": row["visit_area_id"]
+            })
+            
         return image_infos
-    
-    except Exception as e:
-        print("DB_HOST:", DB_HOST)
 
-        print(f" 추천 이미지 처리 오류: {str(e)}")
-        return []
-
+    finally:
+        conn.close()
 
 style_cols = ['TRAVEL_STYL_1',
             'TRAVEL_STYL_2',
@@ -176,18 +244,140 @@ style_cols = ['TRAVEL_STYL_1',
             'TRAVEL_STYL_7',
             'TRAVEL_STYL_8']
 
-
+# 로그인 전 사용자용
+# input : 8개의 Style 점수 Output : Travel_ID -> get_images_by_travel_ids(Travel_ID)
 def find_nearest_users(input_vec, k=5):
-    # 불러와야되는 정보 (pymysql로 df로 불러와야됨)
-    conn = pymysql.connect(
+
+      # SQLAlhemy Engine
+    engine = create_engine(
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+    try:
+        # 유저 데이터 가져오기
+        user_df = pd.read_sql("SELECT * FROM users", con=engine)
+
+        
+        style_df = user_df[style_cols]
+        style_array = style_df.to_numpy().astype('float32')
+        
+        input_vec = np.array(input_vec, dtype='float32').reshape(1, -1)
+        
+        d = style_array.shape[1]
+        index = faiss.IndexFlatL2(d)
+        index.add(style_array)
+        D, I = index.search(input_vec, k)
+    
+        # 유사 유저 추출
+        similar_users = user_df.iloc[I[0]]
+
+        id_col = "TRAVELER_ID" if "TRAVELER_ID" in user_df.columns else "USER_ID"
+        traveler_ids = similar_users[id_col].tolist() if k > 1 else [similar_users[id_col]]
+
+        # 여행 정보 필터링
+        format_strings = ','.join(['%s'] * len(traveler_ids))
+        sql = f"SELECT * FROM travel WHERE TRAVELER_ID IN ({format_strings})"
+        
+        travel_df = pd.read_sql(sql, con=engine, params=tuple(traveler_ids))
+
+        travel_ids = travel_df['TRAVEL_ID'].tolist()
+
+        return get_images_by_travel_ids(travel_ids)
+
+    except Exception as e:
+        print("[ERROR] find_nearest_users 실패:", e)
+        return []
+
+# 로그인 사용자용
+def get_user_recommended_images_and_areas(username):
+
+    try:
+        user_data = get_user_info(username)
+        if not user_data:
+            raise Exception("사용자 정보 없음")
+
+        # EC2 서버 호출
+        res = requests.post(EC2_API_URL, json=user_data)
+        if res.status_code != 200:
+            raise Exception("EC2 요청 실패")
+        
+        recommended_ids = res.json().get("recommended_travel_ids", [])
+        if not recommended_ids:
+            raise Exception("추천 travel_id 없음")
+
+        # RDS 연결 및 조회
+        conn = pymysql.connect(
             host=DB_HOST,
             user=DB_USER,
             password=DB_PASSWORD,
             db=DB_NAME,
-            port = DB_PORT,
+            port=DB_PORT,
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
+
+        with conn.cursor() as cursor:
+            placeholders = ','.join(['%s'] * len(recommended_ids))
+            sql = f"""
+                WITH filtered_place AS (
+                    SELECT *
+                    FROM place_info
+                    WHERE travel_id IN ({placeholders})
+                ),
+                joined_data AS (
+                    SELECT 
+                        p.travel_id,
+                        p.visit_area_id,
+                        p.visit_area_nm,
+                        m.photo_file_nm,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.travel_id, p.visit_area_id
+                            ORDER BY RAND()
+                        ) AS rn
+                    FROM filtered_place p
+                    JOIN meta_photo m
+                    ON p.travel_id = m.travel_id
+                    AND p.visit_area_id = m.visit_area_id
+                    WHERE m.photo_file_nm IS NOT NULL
+                )
+                SELECT
+                    travel_id,
+                    visit_area_id,
+                    visit_area_nm,
+                    photo_file_nm
+                FROM joined_data
+                WHERE rn = 1
+                ORDER BY travel_id, visit_area_id
+            """
+            cursor.execute(sql, tuple(recommended_ids))
+            results = cursor.fetchall()
+
+        conn.close()
+        print(results)
+        # presigned URL 생성
+        prefix = "data/resized_image/E/"
+        image_infos = []
+        for row in results:
+            file_name = row.get("photo_file_nm")
+            if not file_name:
+                continue
+            url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': BUCKET_NAME, 'Key': f"{prefix}{file_name}"},
+                ExpiresIn=3600
+            )
+            image_infos.append({
+                "url": url,
+                "area": row["visit_area_nm"],
+                "area_id": row["visit_area_id"]
+            })
+        
+        return image_infos
+
+    except Exception as e:
+        print("추천 이미지 처리 오류:", e)
+        return []
+    
     with conn.cursor() as cursor:
         sql = "SELECT * FROM user"
         cursor.execute(sql)
@@ -318,3 +508,36 @@ def find_nearest_users(input_vec, k=5):
 
 #         print(f" 추천 이미지 처리 오류: {str(e)}")
 #         return []
+
+
+def find_nearest_user_ids(input_vec, k=5):
+    """
+    여행 성향 벡터(input_vec)를 기준으로 FAISS로 유사한 유저들의 ID 리스트만 반환
+    """
+    engine = create_engine(
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+    try:
+        # 유저 전체 정보 불러오기
+        user_df = pd.read_sql("SELECT * FROM users", con=engine)
+        style_df = user_df[style_cols]
+        style_array = style_df.to_numpy().astype('float32')
+        input_vec = np.array(input_vec, dtype='float32').reshape(1, -1)
+
+        # FAISS 인덱스 생성 및 탐색
+        d = style_array.shape[1]
+        index = faiss.IndexFlatL2(d)
+        index.add(style_array)
+        _, I = index.search(input_vec, k)
+
+        # ID 컬럼 이름 판단 후 추출
+        id_col = "TRAVELER_ID" if "TRAVELER_ID" in user_df.columns else "USER_ID"
+        similar_users = user_df.iloc[I[0]]
+        traveler_ids = similar_users[id_col].tolist()
+
+        return traveler_ids
+
+    except Exception as e:
+        print("[ERROR] find_nearest_user_ids 실패:", e)
+        return []
