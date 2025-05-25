@@ -7,6 +7,7 @@ import faiss
 from sqlalchemy import text
 import json
 import random
+import numbers
 
 style_cols = [
     'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3', 'TRAVEL_STYL_4',
@@ -75,6 +76,7 @@ def get_images_by_travel_ids(travel_ids):
 def find_nearest_users(input_vec, k=5):
     try:
         user_df = pd.read_sql("SELECT * FROM users", con=engine)
+        print(f"user_df : {user_df}")
         style_df = user_df[style_cols]
         style_array = style_df.to_numpy().astype('float32')
         
@@ -120,127 +122,110 @@ def get_user_recommended_images_and_areas(username):
         return []
 
 def get_meta_photo_info(new_visit_area_id):
-    """
-    NEW_VISIT_AREA_ID로 메타 포토 정보를 가져오는 함수
-    수정: 예외 처리 강화 및 디버깅 개선
-    """
-    print(f"[DEBUG] 🔍 요청된 NEW_VISIT_AREA_ID: {new_visit_area_id}")
+    print(f"[DEBUG] 요청된 NEW_VISIT_AREA_ID: {new_visit_area_id}")
     
-    # 입력값 검증
     if not new_visit_area_id:
         print(f"[DEBUG] ⚠️ 빈 NEW_VISIT_AREA_ID 입력")
         return None
+    
+    # 🚀 numpy.int64 등도 int로 변환
+    if isinstance(new_visit_area_id, (np.integer,)):
+        new_visit_area_id = int(new_visit_area_id)
+    
+    if not new_visit_area_id:
+        print(f"[DEBUG] ⚠️ 빈 NEW_VISIT_AREA_ID 입력")
+        return None
+    
+    if isinstance(new_visit_area_id, numbers.Integral):
+        new_visit_area_id = (new_visit_area_id,)
+    elif isinstance(new_visit_area_id, list):
+        new_visit_area_id = tuple(new_visit_area_id)
         
     try:
         query = """
-        WITH combined_data AS (
-            SELECT
-                pi.NEW_VISIT_AREA_ID,
-                pi.VISIT_AREA_NM,
-                mp.PHOTO_FILE_NM,
-                mp.PHOTO_FILE_X_COORD,
-                mp.PHOTO_FILE_Y_COORD,
-                pi.TRAVEL_ID,
-                ROW_NUMBER() OVER (
-                    PARTITION BY pi.NEW_VISIT_AREA_ID
-                    ORDER BY pi.TRAVEL_ID, mp.TOUR_PHOTO_SEQ
-                ) AS rn
-            FROM place_info_new pi
-            JOIN meta_photo_new mp ON pi.NEW_VISIT_AREA_ID = mp.NEW_VISIT_AREA_ID
-            AND pi.TRAVEL_ID = mp.TRAVEL_ID
-            WHERE pi.NEW_VISIT_AREA_ID = :id
-            AND mp.PHOTO_FILE_NM IS NOT NULL
+        (
+            SELECT 
+                NEW_VISIT_AREA_ID,
+                VISIT_AREA_NM,
+                X_COORD,
+                Y_COORD
+            FROM place_info_new
+            WHERE NEW_VISIT_AREA_ID IN :ids
         )
-        SELECT
-            NEW_VISIT_AREA_ID AS visit_area_id,
-            VISIT_AREA_NM,
-            PHOTO_FILE_NM,
-            PHOTO_FILE_X_COORD,
-            PHOTO_FILE_Y_COORD
-        FROM combined_data
-        WHERE rn = 1
+        UNION
+        (
+            SELECT 
+                NEW_VISIT_AREA_ID,
+                NULL AS VISIT_AREA_NM,
+                NULL AS X_COORD,
+                NULL AS Y_COORD
+            FROM meta_photo_new
+            WHERE NEW_VISIT_AREA_ID IN :ids
+            AND NEW_VISIT_AREA_ID NOT IN (
+                SELECT NEW_VISIT_AREA_ID FROM place_info_new WHERE NEW_VISIT_AREA_ID IN :ids
+            )
+        )
         """
-        
+
         with engine.connect() as conn:
-            result = conn.execute(text(query), {"id": new_visit_area_id})
-            row = result.fetchone()
-            
-            if not row:
+            result = conn.execute(text(query), {"ids": tuple(new_visit_area_id)})
+            rows = result.fetchall()
+
+            if not rows:
                 print(f"[DEBUG] ⚠️ 결과 없음 for NEW_VISIT_AREA_ID: {new_visit_area_id}")
                 return None
-                
-            try:
-                # SQLAlchemy 2.0 호환 방식으로 수정
-                photo = dict(row._mapping)
-                print(f"[DEBUG] ✅ 결과 행: {photo}")
-            except Exception as e:
-                print(f"[DEBUG] ❌ 행 변환 실패: {e}")
-                return None
-                
-            # S3 URL 생성
-            try:
-                url = s3.generate_presigned_url(
-                    "get_object",
-                    Params={"Bucket": BUCKET_NAME, "Key": f"data/resized_image/E/{photo['PHOTO_FILE_NM']}"},
-                    ExpiresIn=3600
-                )
-            except Exception as e:
-                print(f"[DEBUG] ❌ S3 URL 생성 실패: {e}")
-                url = ""
-            
-            return {
-                "file_name": photo["PHOTO_FILE_NM"],
-                "url": url,
-                "x": photo["PHOTO_FILE_X_COORD"],
-                "y": photo["PHOTO_FILE_Y_COORD"],
-                "area": photo["VISIT_AREA_NM"] or "[이름없음]"
-            }
+
+            data = {}
+            print(f"[DEBUG] ✅ 결과: {data}")
+
+            for row in rows:
+                data[row.NEW_VISIT_AREA_ID] = {
+                    "area_id": row.NEW_VISIT_AREA_ID,
+                    "area": row.VISIT_AREA_NM or "[이름없음]",
+                    "x": row.X_COORD,
+                    "y": row.Y_COORD
+                }
+        
+        return data
             
     except Exception as e:
         print(f"[DEBUG] ❌ get_meta_photo_info 전체 오류: {e}")
         return None
 
+
 def travel_plans_with_debug(area_ids):
  
     print(f"[DEBUG] 🔁 travel_plans_with_debug() 호출됨. area_ids: {area_ids}")
     
-    # 입력값 검증
     if not area_ids or len(area_ids) == 0:
         print(f"[DEBUG] ⚠️ 빈 area_ids 입력, 기본 계획 반환")
         return default_travel_plans()
  
     plans = []
-    route_lists = [area_ids[i:i+3] for i in range(0, len(area_ids), 3)]
-    
-    for i, route in enumerate(route_lists):
+
+    for i, route in enumerate(area_ids):
         print(f"[DEBUG] 📍 처리 중인 루트 {i+1}: {route}")
         
         route_infos = []
-        main_img_url = ""
         
-        for idx, area_id in enumerate(route):
-            try:
-                photo = get_meta_photo_info(area_id)
-                if photo:
-                    if idx == 0:  # 첫 번째 이미지를 메인 이미지로 설정
-                        main_img_url = photo["url"]
-                    route_infos.append({
-                        "name": photo["area"],
-                        "x": photo["x"],
-                        "y": photo["y"],
-                        "url": photo["url"]
-                    })
-                    print(f"[DEBUG] ✅ 장소 정보 추가: {photo['area']}")
-                else:
-                    print(f"[DEBUG] ⚠️ area_id {area_id}에 대한 사진 정보 없음")
-            except Exception as e:
-                print(f"[DEBUG] ❌ area_id {area_id} 처리 중 오류: {e}")
-                continue
+        # 🚀 Batch로 한 번에 가져오기
+        area_info_dict = get_meta_photo_info(route)
+        route_infos = []
         
-        # 루트에 최소 하나의 장소 정보가 있는 경우에만 계획에 추가
+        for area_id in route:
+            photo = area_info_dict.get(area_id)
+            if photo:
+                route_infos.append({
+                    "name": photo["area"],
+                    "x": photo["x"],
+                    "y": photo["y"]
+                })
+                print(f"[DEBUG] ✅ 장소 정보 추가: {photo['area']}")
+            else:
+                print(f"[DEBUG] ⚠️ area_id {area_id}에 대한 장소 정보 없음")
+        
         if route_infos:
             plans.append({
-                "main_image_url": main_img_url or "https://rtrip.s3.amazonaws.com/data/resized_image/E/default.jpg",
                 "title": f"추천 루트 {i+1}",
                 "description": f"{route_infos[0]['name']}을(를) 포함한 여행 경로입니다.",
                 "route": route_infos
@@ -249,13 +234,13 @@ def travel_plans_with_debug(area_ids):
         else:
             print(f"[DEBUG] ⚠️ 루트 {i+1}에서 유효한 장소 정보 없음")
     
-    # 결과가 없으면 기본 계획 반환
     if not plans:
         print(f"[DEBUG] ⚠️ 생성된 계획이 없음, 기본 계획 반환")
         return default_travel_plans()
     
     print(f"[DEBUG] 🎯 총 {len(plans)}개의 여행 계획 생성 완료")
     return plans
+
 
 def default_travel_plans():
     """

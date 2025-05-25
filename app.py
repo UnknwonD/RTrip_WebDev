@@ -68,7 +68,7 @@ def main_recommended():
         try:
             route = main_feedback_test(travel_input)
             dummy_ids = [[d['id'] for d in v] for k, v in route.items()] # 날짜별로, 순서대로 인덱스 갖고 있음
-            
+            print(dummy_ids)
             print(f"[DEBUG] 🤖 GNN 추론 결과: {dummy_ids[:5]}")
 
             travel_plan_list = travel_plans_with_debug(dummy_ids)

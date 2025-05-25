@@ -732,7 +732,6 @@
   <script>
   document.addEventListener("DOMContentLoaded", function () {
   const travelPlans = {{ travel_plans | tojson }};
-
   window.mapObjects = {};
 
   // 모달이 열릴 때 지도 초기화
@@ -746,7 +745,7 @@
   });
 
   // 지도 초기화 함수
-  function initializeMap(planIdx) {
+    function initializeMap(planIdx) {
     const plan = travelPlans[planIdx];
     const mapId = `map-plan-${planIdx}`;
     const mapContainer = document.getElementById(mapId);
@@ -828,8 +827,9 @@
 
     // 지도 객체 저장
     window.mapObjects[planIdx] = map;
-  }
+    }
   });
+  
   </script>
 
   {% endblock %}

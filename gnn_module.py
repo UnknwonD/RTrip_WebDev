@@ -311,9 +311,202 @@ class SmartRecommendationEngine:
         self.user_feedback_history = []
         self.preference_weights = None
         self.processor = EnhancedDataProcessor()
-        self.route_generator = OptimizedRouteGenerator(distance_threshold_km=50)  # 거리 임계값 줄임
+        self.route_generator = OptimizedRouteGenerator(distance_threshold_km=50)
+        
+        # 5. 최소 추천 개수 설정
+        self.min_recommendations_per_day = 3
+        self.min_total_recommendations = 10
+    
+    def get_recommendations(self, travel_context, top_k=50, diversity_weight=0.3, 
+                            excluded_ids=None, filter_useless=True, consider_distance=True):
+        """개선된 추천 로직 - 충분한 추천 보장"""
+        self.model.eval()
+        data = self.graph_data
+        
+        with torch.no_grad():
+            embeddings, preference_scores = self.model(data, travel_context)
+        
+        scores = preference_scores.squeeze()
+        
+        # 필터링 강도를 점진적으로 완화하면서 충분한 추천 확보
+        filter_strengths = [0.1, 0.3, 0.5, 0.7, 1.0]
+        recommendations = []
+        
+        for strength in filter_strengths:
+            temp_scores = scores.clone()
+            
+            # 필터링 적용 (강도에 따라 조절)
+            if filter_useless:
+                for idx in range(len(temp_scores)):
+                    name = self.visit_area_df.iloc[idx]['VISIT_AREA_NM']
+                    if self.processor.should_exclude_location(name):
+                        temp_scores[idx] *= strength
+            
+            # 제외된 ID 처리
+            if excluded_ids:
+                for exclude_id in excluded_ids:
+                    matching_indices = self.visit_area_df[
+                        self.visit_area_df['NEW_VISIT_AREA_ID'] == exclude_id
+                    ].index.tolist()
+                    for idx in matching_indices:
+                        temp_scores[idx] = -1.0
+            
+            # 최소 점수 설정
+            min_allowed_score = 0.01
+            temp_scores[temp_scores < min_allowed_score] = min_allowed_score
+            
+            # 추천 생성
+            if strength < 0.7 and consider_distance:
+                recommendations = self._distance_aware_recommendation(
+                    temp_scores, embeddings, top_k, diversity_weight
+                )
+            else:
+                # 거리 고려 없이 점수 기반 추천
+                recommendations = self._score_based_recommendation(temp_scores, top_k)
+            
+            # 충분한 추천이 생성되었는지 확인
+            if len(recommendations) >= self.min_total_recommendations:
+                break
+        
+        # 그래도 부족하면 상위 점수 장소들을 강제로 추가
+        if len(recommendations) < self.min_total_recommendations:
+            recommendations = self._force_add_recommendations(scores, excluded_ids)
+        
+        return recommendations, embeddings, preference_scores
+    
+    def _score_based_recommendation(self, scores, top_k):
+        """점수 기반 단순 추천"""
+        recommendations = []
+        valid_indices = [i for i in range(len(scores)) if scores[i] > 0]
+        
+        if valid_indices:
+            valid_scores = [(i, scores[i].item()) for i in valid_indices]
+            valid_scores = sorted(valid_scores, key=lambda x: x[1], reverse=True)
+            recommendations = [idx for idx, _ in valid_scores[:top_k]]
+        
+        return recommendations
+    
+    def _force_add_recommendations(self, scores, excluded_ids):
+        """강제로 최소 개수만큼 추천 추가"""
+        recommendations = []
+        sorted_indices = torch.argsort(scores, descending=True)
+        
+        for idx in sorted_indices:
+            if idx < len(self.visit_area_df):
+                row = self.visit_area_df.iloc[idx]
+                area_id = row['NEW_VISIT_AREA_ID']
+                
+                # 제외된 ID는 스킵
+                if excluded_ids and area_id in excluded_ids:
+                    continue
+                
+                if area_id != 0:
+                    recommendations.append(idx.item())
+                
+                if len(recommendations) >= self.min_total_recommendations:
+                    break
+        
+        return recommendations
+    
+    def optimize_routes(self, recommendations, travel_tensor):
+        """개선된 경로 최적화 - 빈 날짜 방지"""
+        unique_recommendations, seen_ids = [], set()
+        
+        # 중복 제거 및 유효성 검사 (조건 완화)
+        for idx in recommendations:
+            if idx < len(self.visit_area_df):
+                row = self.visit_area_df.iloc[idx]
+                area_id = row['NEW_VISIT_AREA_ID']
+                name = row['VISIT_AREA_NM']
+                
+                # 중복 체크만 수행 (필터링 조건 완화)
+                if area_id not in seen_ids and area_id != 0:
+                    unique_recommendations.append(idx)
+                    seen_ids.add(area_id)
+        
+        travel_duration = int(travel_tensor[0, 3])
+        
+        # 최소 추천 개수 확보
+        if len(unique_recommendations) < travel_duration * self.min_recommendations_per_day:
+            # 필터링 조건을 완화하여 더 많은 추천 추가
+            for idx in recommendations:
+                if idx < len(self.visit_area_df) and idx not in unique_recommendations:
+                    row = self.visit_area_df.iloc[idx]
+                    area_id = row['NEW_VISIT_AREA_ID']
+                    if area_id != 0 and area_id not in seen_ids:
+                        unique_recommendations.append(idx)
+                        seen_ids.add(area_id)
+                        
+                        if len(unique_recommendations) >= travel_duration * self.min_recommendations_per_day:
+                            break
+        
+        # 개선된 경로 생성
+        optimized_routes = self._generate_routes_with_guarantee(
+            unique_recommendations, self.visit_area_df, travel_duration
+        )
+        
+        return optimized_routes, unique_recommendations
+    
+    def _generate_routes_with_guarantee(self, recommendations, visit_area_df, travel_duration):
+        """최소 개수를 보장하는 경로 생성"""
+        if not recommendations:
+            return {}
+        
+        # RouteGenerator 사용 시도
+        try:
+            routes = self.route_generator.generate_daily_routes(
+                recommendations, visit_area_df, travel_duration
+            )
+            
+            # 빈 날짜 확인 및 보정
+            for day in range(travel_duration):
+                if day not in routes or len(routes[day]) < self.min_recommendations_per_day:
+                    routes = self._redistribute_routes(
+                        recommendations, visit_area_df, travel_duration
+                    )
+                    break
+            
+            return routes
+            
+        except Exception as e:
+            print(f"경로 생성 실패, 대체 방법 사용: {e}")
+            return self._redistribute_routes(
+                recommendations, visit_area_df, travel_duration
+            )
+    
+    def _redistribute_routes(self, recommendations, visit_area_df, travel_duration):
+        """균등하게 일정 재분배"""
+        routes = {}
+        locations = []
+        
+        for idx in recommendations:
+            if idx < len(visit_area_df):
+                row = visit_area_df.iloc[idx]
+                locations.append({
+                    'id': row['NEW_VISIT_AREA_ID'],
+                    'name': row['VISIT_AREA_NM'],
+                    'coords': [row['X_COORD'], row['Y_COORD']],
+                    'idx': idx,
+                    'type': row.get('VISIT_AREA_TYPE_CD', 0)
+                })
+        
+        # 일별 균등 분배
+        places_per_day = max(self.min_recommendations_per_day, len(locations) // travel_duration)
+        
+        start_idx = 0
+        for day in range(travel_duration):
+            end_idx = min(start_idx + places_per_day, len(locations))
+            routes[day] = locations[start_idx:end_idx]
+            start_idx = end_idx
+            
+            # 남은 장소가 있고 마지막 날이면 모두 추가
+            if day == travel_duration - 1 and start_idx < len(locations):
+                routes[day].extend(locations[start_idx:])
+        
+        return routes
     
     def feedback_model(self, feedback, travel_context_tensor, travel_duration, unique_recommendations, embeddings):
+        """개선된 피드백 처리"""
         liked_indices = [unique_recommendations[i] for i in feedback["liked"] if i < len(unique_recommendations)]
         disliked_indices = [unique_recommendations[i] for i in feedback["disliked"] if i < len(unique_recommendations)]
         
@@ -327,95 +520,29 @@ class SmartRecommendationEngine:
         # 제외된 항목 반영
         excluded_ids = {self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID'] for idx in disliked_indices}
         
+        # 개선된 추천 로직 사용
         recommendations, embeddings, _ = self.get_recommendations(
-            travel_context_tensor, top_k=30, diversity_weight=0.3, 
+            travel_context_tensor, top_k=50, diversity_weight=0.3, 
             excluded_ids=excluded_ids, filter_useless=True, consider_distance=True
         )
         
+        # 중복 제거 (조건 완화)
         unique_recommendations, seen_ids = [], set()
         for idx in recommendations:
             if idx < len(self.visit_area_df):
                 row = self.visit_area_df.iloc[idx]
                 area_id = row['NEW_VISIT_AREA_ID']
-                name = row['VISIT_AREA_NM']
                 
-                if (area_id not in seen_ids and 
-                    area_id not in excluded_ids and 
-                    area_id != 0 and
-                    not self.processor.should_exclude_location(name)):
+                if area_id not in seen_ids and area_id not in excluded_ids and area_id != 0:
                     unique_recommendations.append(idx)
                     seen_ids.add(area_id)
-                
-                if len(unique_recommendations) >= 15:
-                    break
         
-        optimized_routes = self.route_generator.generate_daily_routes(
+        # 개선된 경로 생성
+        optimized_routes = self._generate_routes_with_guarantee(
             unique_recommendations, self.visit_area_df, travel_duration
         )
         
         return optimized_routes
-    
-    # 중복 방문지 제거 및 유효성 검사
-    def optimize_routes(self, recommendations, travel_tensor):    
-        unique_recommendations, seen_ids = [], set()
-        for idx in recommendations:
-            if idx < len(self.visit_area_df):
-                row = self.visit_area_df.iloc[idx]
-                area_id = row['NEW_VISIT_AREA_ID']
-                name = row['VISIT_AREA_NM']
-                
-                # 중복 체크 및 쓸모없는 장소 재확인
-                if (area_id not in seen_ids and 
-                    area_id != 0 and 
-                    not self.processor.should_exclude_location(name)):
-                    unique_recommendations.append(idx)
-                    seen_ids.add(area_id)
-                
-                if len(unique_recommendations) >= 15:  # 여유있게 선택
-                    break
-        
-        # 최적화 경로 생성
-        travel_duration = int(travel_tensor[0, 3])
-        optimized_routes = self.route_generator.generate_daily_routes(
-            unique_recommendations, self.visit_area_df, travel_duration
-        )
-        return optimized_routes, unique_recommendations
-    
-    # SmartRecommendationEngine 클래스 내 get_recommendations 메소드
-    def get_recommendations(self, travel_context, top_k=10, diversity_weight=0.3, 
-                            excluded_ids=None, filter_useless=True, consider_distance=True):
-
-        self.model.eval()
-        data = self.graph_data
-        
-        with torch.no_grad():
-            embeddings, preference_scores = self.model(data, travel_context)
-        
-        scores = preference_scores.squeeze()
-
-        if filter_useless:
-            for idx in range(len(scores)):
-                name = self.visit_area_df.iloc[idx]['VISIT_AREA_NM']
-                if self.processor.should_exclude_location(name):
-                    scores[idx] *= 0.1  # 너무 낮지 않도록 수정 가능 (예: 0.3)
-
-        if excluded_ids:
-            for exclude_id in excluded_ids:
-                matching_indices = self.visit_area_df[
-                    self.visit_area_df['NEW_VISIT_AREA_ID'] == exclude_id
-                ].index.tolist()
-                for idx in matching_indices:
-                    scores[idx] *= 0.1
-        
-        # 추천 점수 최소 임계값 설정
-        min_allowed_score = 0.01
-        scores[scores < min_allowed_score] = min_allowed_score
-
-        recommendations = self._distance_aware_recommendation(
-            scores, embeddings, top_k, diversity_weight
-        )
-        
-        return recommendations, embeddings, preference_scores
 
     
     def _distance_aware_recommendation(self, scores, embeddings, top_k, diversity_weight):
@@ -1005,7 +1132,7 @@ def main_feedback_test(travel_example) -> dict:
     
     # 초기 추천 (필터링 적용, 거리 고려)
     recommendations, embeddings, _ = recommender.get_recommendations(
-        travel_context_tensor, top_k=30, diversity_weight=0.3, 
+        travel_context_tensor, top_k=50, diversity_weight=0.3, 
         filter_useless=True, consider_distance=True
     )
     
