@@ -37,6 +37,32 @@ whowith_options = [
     ("기타", ["기타"])
 ]
 
+# web_inference.py 상단에 추가
+import os
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
+import pandas as pd
+import numpy as np
+import torch
+import pickle
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import GATConv
+from torch_geometric.data import HeteroData
+from datetime import datetime
+from sklearn.cluster import KMeans
+from math import radians, cos, sin, sqrt, atan2
+import random
+import warnings
+warnings.filterwarnings('ignore')
+
+# M1 Mac에서 multiprocessing 문제 해결
+import multiprocessing
+multiprocessing.set_start_method('fork', force=True)
 
 import pandas as pd
 import numpy as np
@@ -256,6 +282,7 @@ class EnhancedDataProcessor:
 
 class SmartRecommendationEngine:
     def __init__(self, device, model_path='./pickle/improved_travel_recommendation_model.pt', data_path='./pickle/improved_travel_data.pkl'):
+        torch.set_num_threads(1)
         # 1. 데이터 로드
         with open(data_path, 'rb') as f:
             self.data_dict = pickle.load(f)
