@@ -200,127 +200,15 @@ def get_meta_photo_info(new_visit_area_id):
         print(f"[DEBUG] ❌ get_meta_photo_info 전체 오류: {e}")
         return None
 
-def travel_plans(area_ids):
-    """
-    area_ids 리스트를 받아서 여행 계획을 생성하는 함수
-    수정: 예외 처리 강화 및 빈 결과 처리 개선
-    """
-    print(f"[DEBUG] 🔁 travel_plans() 호출됨. area_ids: {area_ids}")
-    
-    # 입력값 검증
-    if not area_ids or len(area_ids) == 0:
-        print(f"[DEBUG] ⚠️ 빈 area_ids 입력, 기본 계획 반환")
-        return default_travel_plans()
-    
-    plans = []
-    route_lists = [area_ids[i:i+3] for i in range(0, len(area_ids), 3)]
-    
-    for i, route in enumerate(route_lists):
-        print(f"[DEBUG] 📍 처리 중인 루트 {i+1}: {route}")
-        
-        route_infos = []
-        main_img_url = ""
-        
-        for idx, area_id in enumerate(route):
-            try:
-                photo = get_meta_photo_info(area_id)
-                if photo:
-                    if idx == 0:  # 첫 번째 이미지를 메인 이미지로 설정
-                        main_img_url = photo["url"]
-                    route_infos.append({
-                        "name": photo["area"],
-                        "x": photo["x"],
-                        "y": photo["y"],
-                        "url": photo["url"]
-                    })
-                    print(f"[DEBUG] ✅ 장소 정보 추가: {photo['area']}")
-                else:
-                    print(f"[DEBUG] ⚠️ area_id {area_id}에 대한 사진 정보 없음")
-            except Exception as e:
-                print(f"[DEBUG] ❌ area_id {area_id} 처리 중 오류: {e}")
-                continue
-        
-        # 루트에 최소 하나의 장소 정보가 있는 경우에만 계획에 추가
-        if route_infos:
-            plans.append({
-                "main_image_url": main_img_url or "https://rtrip.s3.amazonaws.com/data/resized_image/E/default.jpg",
-                "title": f"추천 루트 {i+1}",
-                "description": f"{route_infos[0]['name']}을(를) 포함한 여행 경로입니다.",
-                "route": route_infos
-            })
-            print(f"[DEBUG] ✅ 루트 {i+1} 생성 완료, {len(route_infos)}개 장소")
-        else:
-            print(f"[DEBUG] ⚠️ 루트 {i+1}에서 유효한 장소 정보 없음")
-    
-    # 결과가 없으면 기본 계획 반환
-    if not plans:
-        print(f"[DEBUG] ⚠️ 생성된 계획이 없음, 기본 계획 반환")
-        return default_travel_plans()
-    
-    print(f"[DEBUG] 🎯 총 {len(plans)}개의 여행 계획 생성 완료")
-    return plans
-
-def debug_area_ids(area_ids_sample):
-    """
-    디버깅용: 실제 데이터베이스에 존재하는 NEW_VISIT_AREA_ID들을 확인
-    """
-    print(f"[DEBUG] 🔬 데이터베이스 존재 여부 확인 중...")
-    
-    try:
-        with engine.connect() as conn:
-            # meta_photo_new에서 사용 가능한 ID들 샘플 확인
-            sample_query = """
-            SELECT DISTINCT NEW_VISIT_AREA_ID 
-            FROM meta_photo_new 
-            WHERE PHOTO_FILE_NM IS NOT NULL 
-            LIMIT 10
-            """
-            result = conn.execute(text(sample_query))
-            available_ids = [row[0] for row in result.fetchall()]
-            print(f"[DEBUG] 📋 meta_photo_new에서 사용 가능한 ID 샘플: {available_ids}")
-            
-            # place_info_new에서 사용 가능한 ID들 샘플 확인  
-            place_query = """
-            SELECT DISTINCT NEW_VISIT_AREA_ID 
-            FROM place_info_new 
-            WHERE NEW_VISIT_AREA_ID IS NOT NULL 
-            LIMIT 10
-            """
-            result = conn.execute(text(place_query))
-            place_ids = [row[0] for row in result.fetchall()]
-            print(f"[DEBUG] 📋 place_info_new에서 사용 가능한 ID 샘플: {place_ids}")
-            
-            # GNN이 추천한 ID들과 실제 DB의 ID 범위 비교
-            if area_ids_sample:
-                print(f"[DEBUG] 🤖 GNN 추천 ID 샘플: {area_ids_sample[:5]}")
-                
-                # ID 범위 확인
-                max_meta_id_query = "SELECT MAX(NEW_VISIT_AREA_ID) FROM meta_photo_new"
-                max_place_id_query = "SELECT MAX(NEW_VISIT_AREA_ID) FROM place_info_new"
-                
-                max_meta = conn.execute(text(max_meta_id_query)).fetchone()[0]
-                max_place = conn.execute(text(max_place_id_query)).fetchone()[0]
-                
-                print(f"[DEBUG] 📊 DB ID 범위 - meta_photo_new 최대: {max_meta}, place_info_new 최대: {max_place}")
-                print(f"[DEBUG] 📊 GNN ID 범위 - 최소: {min(area_ids_sample)}, 최대: {max(area_ids_sample)}")
-                
-    except Exception as e:
-        print(f"[DEBUG] ❌ 디버깅 쿼리 실패: {e}")
-
 def travel_plans_with_debug(area_ids):
-    """
-    디버깅이 강화된 travel_plans 함수
-    """
+ 
     print(f"[DEBUG] 🔁 travel_plans_with_debug() 호출됨. area_ids: {area_ids}")
     
     # 입력값 검증
     if not area_ids or len(area_ids) == 0:
         print(f"[DEBUG] ⚠️ 빈 area_ids 입력, 기본 계획 반환")
         return default_travel_plans()
-    
-    # 디버깅 정보 출력
-    debug_area_ids(area_ids)
-    
+ 
     plans = []
     route_lists = [area_ids[i:i+3] for i in range(0, len(area_ids), 3)]
     
@@ -385,3 +273,63 @@ def default_travel_plans():
             ]
         }
     ]
+
+def travel_plans(area_ids):
+    """
+    area_ids 리스트를 받아서 여행 계획을 생성하는 함수
+    수정: 예외 처리 강화 및 빈 결과 처리 개선
+    """
+    print(f"[DEBUG] 🔁 travel_plans() 호출됨. area_ids: {area_ids}")
+    
+    # 입력값 검증
+    if not area_ids or len(area_ids) == 0:
+        print(f"[DEBUG] ⚠️ 빈 area_ids 입력, 기본 계획 반환")
+        return default_travel_plans()
+    
+    plans = []
+    route_lists = [area_ids[i:i+3] for i in range(0, len(area_ids), 3)]
+    
+    for i, route in enumerate(route_lists):
+        print(f"[DEBUG] 📍 처리 중인 루트 {i+1}: {route}")
+        
+        route_infos = []
+        main_img_url = ""
+        
+        for idx, area_id in enumerate(route):
+            try:
+                photo = get_meta_photo_info(area_id)
+                if photo:
+                    if idx == 0:  # 첫 번째 이미지를 메인 이미지로 설정
+                        main_img_url = photo["url"]
+                    route_infos.append({
+                        "name": photo["area"],
+                        "x": photo["x"],
+                        "y": photo["y"],
+                        "url": photo["url"]
+                    })
+                    print(f"[DEBUG] ✅ 장소 정보 추가: {photo['area']}")
+                else:
+                    print(f"[DEBUG] ⚠️ area_id {area_id}에 대한 사진 정보 없음")
+            except Exception as e:
+                print(f"[DEBUG] ❌ area_id {area_id} 처리 중 오류: {e}")
+                continue
+        
+        # 루트에 최소 하나의 장소 정보가 있는 경우에만 계획에 추가
+        if route_infos:
+            plans.append({
+                "main_image_url": main_img_url or "https://rtrip.s3.amazonaws.com/data/resized_image/E/default.jpg",
+                "title": f"추천 루트 {i+1}",
+                "description": f"{route_infos[0]['name']}을(를) 포함한 여행 경로입니다.",
+                "route": route_infos
+            })
+            print(f"[DEBUG] ✅ 루트 {i+1} 생성 완료, {len(route_infos)}개 장소")
+        else:
+            print(f"[DEBUG] ⚠️ 루트 {i+1}에서 유효한 장소 정보 없음")
+    
+    # 결과가 없으면 기본 계획 반환
+    if not plans:
+        print(f"[DEBUG] ⚠️ 생성된 계획이 없음, 기본 계획 반환")
+        return default_travel_plans()
+    
+    print(f"[DEBUG] 🎯 총 {len(plans)}개의 여행 계획 생성 완료")
+    return plans
