@@ -6,25 +6,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module=".*resource_track
 from dependency import *
 from config import s3, BUCKET_NAME
 
-############## 초기 모델 로드 ##################
-with open('./pickle/visit_area_id_to_index.pkl', 'rb') as f:
-    visit_area_id_to_index = pickle.load(f)
-
-with open('./pickle/dataset.pkl', 'rb') as f:
-    data = pickle.load(f)
-
-visit_area_df = pd.read_pickle('./pickle/visit_area_df.pkl')
-
-# 모델 로드
-model = RouteGNN(data.metadata())
-model.load_state_dict(torch.load('./pickle/routegnn_model.pt'))
-model.eval()
-#############################################
-
 app = Flask(__name__)
-
 app.secret_key = 'test'
-
 
 # app.py
 @app.route("/main", methods=["GET", "POST"])
@@ -65,7 +48,7 @@ def main_recommended():
     user_json = None  # 사용자 정보
     travel_plan_list = []
 
-    use_dummy = True 
+    use_dummy = False 
 
     if use_dummy:
         dummy_ids = [7858, 1869, 9863, 9858, 9855, 8691, 8032, 6478, 8580, 8729]
@@ -75,18 +58,17 @@ def main_recommended():
 
     elif request.method == "POST":
         travel_input = request.form.to_dict()
-        raw_user = get_user_info(session["username"])
+        # raw_user = get_user_info(session["username"])
 
-        user_json = {
-            k: v for k, v in raw_user.items()
-            if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
-        }
-
+        # user_json = {
+        #     k: v for k, v in raw_user.items()
+        #     if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
+        # }
+       
         try:
-            dummy_ids, area_names = run_inference(
-                raw_user, travel_input, model, data,
-                visit_area_id_to_index, visit_area_df
-            )
+            route = main_feedback_test(travel_input)
+            dummy_ids = [[d['id'] for d in v] for k, v in route.items()] # 날짜별로, 순서대로 인덱스 갖고 있음
+            
             print(f"[DEBUG] 🤖 GNN 추론 결과: {dummy_ids[:5]}")
 
             travel_plan_list = travel_plans_with_debug(dummy_ids)
