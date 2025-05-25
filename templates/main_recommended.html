@@ -1,367 +1,941 @@
-  {% extends 'main_head_content.html' %}
-  {% block content %}
-  <!-- 카카오맵 API 스크립트 -->
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4004b0e5596543751836a611c84e164f&libraries=services"></script>
+{% extends 'main_head_content.html' %}
+{% block content %}
+<!-- 카카오맵 API 스크립트 -->
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4004b0e5596543751836a611c84e164f&libraries=services"></script>
 
-  <!-- 여행 추천-->
-  <!-- section 1: hero / 소개 -->
-  <section id="section-intro" class="section">
-    <div class="container text-center">
-      <h1>✨ R-Trip</h1>
-      <p class="lead">나만의 여행을 찾아주는 여행 추천 시스템</p>
-      <a href="#section-recommend" class="btn btn-primary btn-lg">지금 시작하기</a>
-    </div>
-  </section>
+<!-- 여행 추천-->
+<!-- section 1: hero / 소개 -->
+<section id="section-intro" class="section">
+  <div class="container text-center">
+    <h1>✨ R-Trip</h1>
+    <p class="lead">나만의 여행을 찾아주는 여행 추천 시스템</p>
+    <a href="#section-recommend" class="btn btn-primary btn-lg">지금 시작하기</a>
+  </div>
+</section>
 
-  <!-- section 2: 추천 입력 폼 -->
-  <section id="section-recommend" class="section">
-    <div class="container">
-      <div class="main-wrapper">
-        <div class="main-card" style="max-width: 1200px;">
-        <h2 class="form-title">🌏 R-Trip 여행 추천</h2>
-          <form method="POST" action="{{ url_for('main_recommended') }}">
-            <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;">
-            <!-- 반려동물 동반 여부 (체크박스) -->
-              <div style="flex: 1;">
-              <label>🐾 반려동물 동반 여부</label><br>
-              <label for="pet_checkbox" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" id="pet_checkbox" style="margin: 0;" />
-              함께 여행해요!
-              </label>
-            </div>
-            
-            <div id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
-              <label>🚩 여행 목적 </label><br>
-              <button type="button" class="btn btn-info" data-toggle="modal" data-target="#missionModal">
-              미션 선택하기
-              </button>
-              <input type="hidden" id="mission_ENC_hidden" name="mission_ENC">
-            </div>
+<!-- section 2: 추천 입력 폼 -->
+<section id="section-recommend" class="section">
+  <div class="container">
+    <div class="main-wrapper">
+      <div class="main-card" style="max-width: 1200px;">
+      <h2 class="form-title">🌏 R-Trip 여행 추천</h2>
+        <form method="POST" action="{{ url_for('main_recommended') }}">
+          <div class="form-group" style="display: flex; align-items: flex-end; gap: 20px;">
+          <!-- 반려동물 동반 여부 (체크박스) -->
+            <div style="flex: 1;">
+            <label>🐾 반려동물 동반 여부</label><br>
+            <label for="pet_checkbox" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="pet_checkbox" style="margin: 0;" />
+            함께 여행해요!
+            </label>
           </div>
           
-          <p id="selected_missions_text" class="text-muted" style="margin-top: 10px;"></p>
-          <div class="form-group">
-            <label for="date_range">📅 여행 기간 (출발일 ~ 도착일)</label>
-            <input type="text" id="date_range" name="date_range" class="form-control" required>
-            <input type="hidden" id="start_date" name="start_date">
-            <input type="hidden" id="end_date" name="end_date">
+          <div id="normal_mission_fields" style="padding-top:1rem; flex: 1; display: block;">
+            <label>🚩 여행 목적 </label><br>
+            <button type="button" class="btn btn-info" data-toggle="modal" data-target="#missionModal" data-backdrop="false">
+            미션 선택하기
+            </button>
+            <input type="hidden" id="mission_ENC_hidden" name="mission_ENC">
           </div>
-          <div class="form-group">
-            <label>💰 여행 예산</label>
-            <div style="display: flex; gap: 10px;">
-              <div style="flex: 1; position: relative;">
-                <select name="TOTAL_COST" id="TOTAL_COST" class="form-control cost-input" required>
-                  <option value="1">10만원 이하</option>
-                  {% for i in range(2, 10) %}
-                  <option value="{{ i }}">{{ i * 10 }}만원</option>
-                  {% endfor %}
-                  <option value="10">100만원 이상</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="MVMN_NM_ENC">🚗 이동수단</label>
-              <select name="MVMN_NM_ENC" class="form-control" required>
-              {% for code, label in movement_options %}
-              <option value="{{ code }}">{{ label }}</option>
-              {% endfor %}
+        </div>
+        
+        <p id="selected_missions_text" class="text-muted" style="margin-top: 10px;"></p>
+        <div class="form-group">
+          <label for="date_range">📅 여행 기간 (출발일 ~ 도착일)</label>
+          <input type="text" id="date_range" name="date_range" class="form-control" required>
+          <input type="hidden" id="start_date" name="start_date">
+          <input type="hidden" id="end_date" name="end_date">
+        </div>
+        <div class="form-group">
+          <label>💰 여행 예산</label>
+          <div style="display: flex; gap: 10px;">
+            <div style="flex: 1; position: relative;">
+              <select name="TOTAL_COST" id="TOTAL_COST" class="form-control cost-input" required>
+                <option value="1">10만원 이하</option>
+                {% for i in range(2, 10) %}
+                <option value="{{ i }}">{{ i * 10 }}만원</option>
+                {% endfor %}
+                <option value="10">100만원 이상</option>
               </select>
+            </div>
           </div>
-          
-          <div class="form-group">
-            <label for="whowith_ENC">🤝 동반자</label>
-            <select name="whowith_ENC" class="form-control" required>
-            {% for label, value in whowith_options %}
-            <option value="{{ loop.index }}">{{ label }}</option>
+        </div>
+        
+        <div class="form-group">
+          <label for="MVMN_NM_ENC">🚗 이동수단</label>
+            <select name="MVMN_NM_ENC" class="form-control" required>
+            {% for code, label in movement_options %}
+            <option value="{{ code }}">{{ label }}</option>
             {% endfor %}
             </select>
-          </div>
-          
-            <input type="hidden" id="mission_type_hidden" name="mission_type" value="normal">
-            <button type="submit" class="btn-submit">✨ 추천받기</button>
-          </form>
-
-        <div class="modal fade" id="missionModal" tabindex="-1" role="dialog">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h4 class="modal-title">🎯 여행 미션 선택</h4>
-                <button type="button" class="close" data-dismiss="modal">
-                  <span>&times;</span>
-                </button>
-              </div>
-            <div class="modal-body">
-          <div class="mission-grid">
-          {% for code, label in purpose_options %}
-          <div class="mission-button" data-code="{{ code }}">
-            {{ label }}
-          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="whowith_ENC">🤝 동반자</label>
+          <select name="whowith_ENC" class="form-control" required>
+          {% for label, value in whowith_options %}
+          <option value="{{ loop.index }}">{{ label }}</option>
           {% endfor %}
+          </select>
         </div>
-      </div>
-        <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="confirmMission">
-        확인
-        </button>
-        <button type="button" class="btn btn-default" data-dismiss="modal">
-        닫기
-        </button>
-        </div>
-        </div>
-        </div>
-        </div>
-        </div>
-      </div>
-    </div>
-  </section>
+        
+          <input type="hidden" id="mission_type_hidden" name="mission_type" value="normal">
+          <button type="submit" class="btn-submit">✨ 추천받기</button>
+        </form>
 
-  <!-- Section 3: 추천 결과 카드 영역 (모달 형식으로 변경) -->
-  <section id="section-features" class="section bg-light">
-    <div class="container">
-      <h2 class="text-center">📌 나에게 맞는 여행 일정</h2>
-      <p class="text-center">각 여행지 카드를 클릭하여 자세한 정보를 확인하고 의견을 남겨보세요!</p>
-
-      <!-- 카드 그리드 -->
-      <div class="travel-cards-grid">
-        {% for plan in travel_plans %}
-        {% set plan_index = loop.index0 %}
-        <div class="travel-card" data-toggle="modal" data-target="#travelModal{{ plan_index }}">
-          <div class="card-header">
-            <h4>{{ plan.title }}</h4>
-            <span class="card-number">{{ loop.index }}</span>
-          </div>
-          <div class="card-preview">
-            <p>{{ plan.description[:100] }}{% if plan.description|length > 100 %}...{% endif %}</p>
-            <div class="spots-preview">
-              {% for spot in plan.route[:3] %}
-              <span class="spot-tag">{{ spot.area or spot.name }}</span>
-              {% endfor %}
-              {% if plan.route|length > 3 %}
-              <span class="spot-tag more">+{{ plan.route|length - 3 }}개 더</span>
-              {% endif %}
+      <!-- 백드롭 없는 미션 모달 -->
+      <div class="modal" id="missionModal" tabindex="-1" role="dialog" data-backdrop="false" data-keyboard="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title">🎯 여행 미션 선택</h4>
+              <button type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+              </button>
             </div>
-          </div>
-          <div class="card-footer">
-            <button class="btn btn-outline-primary btn-sm">자세히 보기</button>
-          </div>
-        </div>
-
-        <!-- 각 여행 계획에 대한 모달 -->
-        <div class="modal fade" id="travelModal{{ plan_index }}" tabindex="-1" role="dialog">
-          <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h4 class="modal-title">{{ plan.title }}</h4>
-                <button type="button" class="close" data-dismiss="modal">
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                <div class="row">
-                  <!-- 지도 -->
-                  <div class="col-md-6">
-                    <div id="map-plan-{{ plan_index }}" class="map-div"></div>
-                  </div>
-
-                  
-                  <script>
-                    var mapContainer = document.getElementById('map');
-                    var mapOption = {
-                      center: new kakao.maps.LatLng(37.54699, 127.09598),
-                      level: 4
-                    };
-                    var map = new kakao.maps.Map(mapContainer, mapOption);
-                  </script>
-
-
-                  <!-- 여행 정보 -->
-                  <div class="col-md-6">
-                    <div class="travel-info">
-                      <p class="travel-description">{{ plan.description }}</p>
-                      <h5>🗺️ 여행 코스</h5>
-                      <ul class="travel-route-list">
-                        {% for spot in plan.route %}
-                        <li class="route-item">
-                          <div class="route-info">
-                            <span class="route-number">{{ loop.index }}</span>
-                            <div class="route-details">
-                              <strong>{{ spot.area or spot.name }}</strong>
-                            </div>
-                          </div>
-                          <div class="route-actions">
-                            <button class="btn btn-sm btn-outline-danger dislike-btn" 
-                                    data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">
-                              👎 싫어요
-                            </button>
-                            <button class="btn btn-sm btn-outline-success like-btn" 
-                                    data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">
-                              👍 좋아요
-                            </button>
-                          </div>
-                        </li>
-                        {% endfor %}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
-                <button type="button" class="btn btn-primary">이 여행 선택하기</button>
-              </div>
-            </div>
-          </div>
+          <div class="modal-body">
+        <div class="mission-grid">
+        {% for code, label in purpose_options %}
+        <div class="mission-button" data-code="{{ code }}">
+          {{ label }}
         </div>
         {% endfor %}
       </div>
     </div>
-  </section>
+      <div class="modal-footer">
+      <button type="button" class="btn btn-primary" id="confirmMission">
+      확인
+      </button>
+      <button type="button" class="btn btn-default" data-dismiss="modal">
+      닫기
+      </button>
+      </div>
+      </div>
+      </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <!-- section 4: CTA -->
-  <section id="section-cta" class="section bg-dark text-white text-center">
+<!-- Section 3: 추천 결과 카드 영역 (모달 형식으로 변경) -->
+<section id="section-features" class="section bg-light">
   <div class="container">
-  <h2>나만의 여행을 지금 시작하세요!</h2>
-  <a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
-  </div>
-  </section>
+    <h2 class="text-center">📌 나에게 맞는 여행 일정</h2>
+    <p class="text-center">각 여행지 카드를 클릭하여 자세한 정보를 확인하고 의견을 남겨보세요!</p>
 
-  <!-- 하단 고정 내비게이션 -->
-  <nav class="navbar navbar-default navbar-fixed-bottom">
-  <div class="container text-center">
-  <ul class="list-inline" style="margin: 10px 0;">
-  <li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
-  <li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
-  {% if session.get("username") %}
-  <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
-  {% endif %}
-  </ul>
-  </div>
-  </nav>
+    <!-- 카드 그리드 -->
+    <div class="travel-cards-grid">
+      {% for plan in travel_plans %}
+      {% set plan_index = loop.index0 %}
+      <div class="travel-card" data-toggle="modal" data-target="#travelModal{{ plan_index }}" data-backdrop="false">
+        <div class="card-header">
+          <h4>{{ plan.title }}</h4>
+          <span class="card-number">{{ loop.index }}</span>
+        </div>
+        <div class="card-preview">
+          <p>{{ plan.description[:100] }}{% if plan.description|length > 100 %}...{% endif %}</p>
+          <div class="spots-preview">
+            {% for spot in plan.route[:3] %}
+            <span class="spot-tag">{{ spot.area or spot.name }}</span>
+            {% endfor %}
+            {% if plan.route|length > 3 %}
+            <span class="spot-tag more">+{{ plan.route|length - 3 }}개 더</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-outline-primary btn-sm">자세히 보기</button>
+        </div>
+      </div>
 
-  <style>
-  .main-wrapper {
+      <!-- 백드롭 없는 여행 계획 모달 -->
+      <div class="modal" id="travelModal{{ plan_index }}" tabindex="-1" role="dialog" data-backdrop="false" data-keyboard="true">
+        <div class="modal-dialog modal-lg" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title">{{ plan.title }}</h4>
+              <button type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <!-- 지도 -->
+                <div class="col-md-6">
+                  <div id="map-plan-{{ plan_index }}" class="map-div"></div>
+                </div>
+
+                <!-- 여행 정보 -->
+                <div class="col-md-6">
+                  <div class="travel-info">
+                    <p class="travel-description">{{ plan.description }}</p>
+                    <h5>🗺️ 여행 코스</h5>
+                    <ul class="travel-route-list">
+                      {% for spot in plan.route %}
+                      <li class="route-item">
+                        <div class="route-info">
+                          <span class="route-number">{{ loop.index }}</span>
+                          <div class="route-details">
+                            <strong>{{ spot.area or spot.name }}</strong>
+                          </div>
+                        </div>
+                        <div class="route-actions">
+                          <button class="btn btn-sm btn-outline-danger dislike-btn" 
+                                  data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">
+                            👎 싫어요
+                          </button>
+                          <button class="btn btn-sm btn-outline-success like-btn" 
+                                  data-plan="{{ plan_index }}" data-spot="{{ loop.index0 }}">
+                            👍 좋아요
+                          </button>
+                        </div>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+              <button type="button" class="btn btn-primary">이 여행 선택하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- section 4: CTA -->
+<section id="section-cta" class="section bg-dark text-white text-center">
+<div class="container">
+<h2>나만의 여행을 지금 시작하세요!</h2>
+<a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
+</div>
+</section>
+
+<!-- 하단 고정 내비게이션 -->
+<nav class="navbar navbar-default navbar-fixed-bottom">
+<div class="container text-center">
+<ul class="list-inline" style="margin: 10px 0;">
+<li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
+<li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
+{% if session.get("username") %}
+<li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
+{% endif %}
+</ul>
+</div>
+</nav>
+
+<style>
+  /* 백드롭 제거 (기존 유지) */
+.modal-backdrop {
+  display: none !important;
+}
+
+/* 메인 래퍼 개선 */
+.main-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   padding: 60px 20px;
-  background-color: #f0f2f5;
-  }
-  .main-card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+}
+
+.main-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(102, 126, 234, 0.3) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* 메인 카드 개선 */
+.main-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  padding: 50px;
   width: 100%;
-  max-width:600px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease-in-out;
-  }
-  .main-card:hover {
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
-  }
-  .form-title {
+  max-width: 600px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 10;
+}
+
+.main-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 
+    0 35px 70px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* 제목 개선 */
+.form-title {
   text-align: center;
-  font-size: 24px;
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 40px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+}
+
+.form-title::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 6px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 3px;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* 폼 그룹 및 라벨 개선 */
+.form-group label {
   font-weight: 700;
-  margin-bottom: 30px;
-  color: #333;
-  }
-  .form-group label {
-  font-weight: 600;
-  margin-top: 10px;
-  }
-  .btn-submit {
-  width: 100%;
-  background-color: #655cff;
-  color: white;
-  font-weight: bold;
-  padding: 12px;
-  border-radius: 6px;
-  border: none;
-  margin-top: 20px;
+  margin-top: 15px;
+  color: #2c3e50;
   font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  margin-bottom: 8px;
+}
+
+/* 폼 컨트롤 개선 */
+.form-control {
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.form-control:focus {
+  border-color: #667eea;
+  box-shadow: 
+    0 0 0 0.2rem rgba(102, 126, 234, 0.25),
+    0 8px 25px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 1);
+  outline: none;
+}
+
+/* 제출 버튼 개선 */
+.btn-submit {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-weight: 700;
+  padding: 16px;
+  border-radius: 16px;
+  border: none;
+  margin-top: 30px;
+  font-size: 18px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  cursor: pointer;
+}
+
+.btn-submit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.7s ease;
+  pointer-events: none;
+}
+
+.btn-submit:hover::before {
+  left: 100%;
+}
+
+.btn-submit:hover {
+  background: linear-gradient(135deg, #5a6fd8, #6b4190);
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+}
+
+/* 체크박스 개선 */
+[type="checkbox"] {
+  appearance: none;
+  position: relative;
+  border: 3px solid #cbd5e0;
+  border-radius: 1.5em;
+  width: 3em;
+  height: 1.6em;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  left: 0.1em;
+  top: 50%;
+  transform: translateY(-50%) scale(0.8);
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+[type="checkbox"]:checked::before {
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  left: 1.6em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+[type="checkbox"]:checked {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+[type="checkbox"]:hover {
+  box-shadow: 
+    inset 0 2px 4px rgba(0,0,0,0.1),
+    0 0 0 0.3rem rgba(102, 126, 234, 0.1);
+}
+
+/* 셀렉트 개선 */
+select.form-control {
+  padding: 12px 16px;
+  line-height: 1.4;
+  height: auto;
+  font-size: 15px;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px 12px;
+  padding-right: 40px;
+}
+
+/* 섹션 스타일 개선 */
+.section {
+  padding: 120px 20px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.bg-light {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  position: relative;
+}
+
+.bg-light::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.bg-dark {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-dark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(102, 126, 234, 0.2) 0%, transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(118, 75, 162, 0.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* 여행 카드 그리드 개선 */
+.travel-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 50px 20px;
+  position: relative;
+  z-index: 1;
+
+  
+}
+
+.travel-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 
+    0 20px 40px rgba(0,0,0,0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  border: 2px solid transparent;
+  overflow: hidden;
+}
+
+.travel-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 26px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.travel-card:hover::before {
+  opacity: 1;
+}
+
+.travel-card:hover {
+  transform: translateY(-15px) scale(1.02);
+  box-shadow: 
+    0 30px 60px rgba(0,0,0,0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.card-header h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 22px;
+  font-weight: 800;
+  flex: 1;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-number {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  margin-left: 16px;
+  box-shadow: 
+    0 8px 20px rgba(102, 126, 234, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-number::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: spinGlow 3s linear infinite;
+}
+
+@keyframes spinGlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.card-preview p {
+  color: #64748b;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.spots-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.spot-tag {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #475569;
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.spot-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.spot-tag.more {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.card-footer {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 2px solid rgba(102, 126, 234, 0.1);
+}
+
+.card-footer .btn {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border: 2px solid #667eea;
+  color: #667eea;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-footer .btn:hover {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+/* 모달 스타일 개선 */
+.modal {
+  z-index: 1050;
+}
+
+.modal-dialog {
+  margin: 30px auto;
+}
+
+.modal-content {
+  box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+  border: none;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 24px 32px;
+}
+
+.modal-title {
+  font-weight: 800;
+  font-size: 24px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.modal-body {
+  padding: 32px;
+  background: rgba(248, 250, 252, 0.5);
+}
+
+.modal-lg {
+  max-width: 1000px;
+}
+
+.travel-info {
+  padding: 24px 0;
+}
+
+.travel-description {
+  color: #64748b;
+  line-height: 1.7;
+  margin-bottom: 28px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border-left: 6px solid #667eea;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  font-weight: 500;
+}
+
+.travel-route-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.route-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  border: 2px solid rgba(102, 126, 234, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.route-item:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.route-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.route-number {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.route-details strong {
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.route-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.route-actions .btn {
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.route-actions .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* 미션 그리드 개선 */
+.mission-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.mission-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 70px;
+  word-break: keep-all;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.mission-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.mission-button:hover::before {
+  left: 100%;
+}
+
+.mission-button:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.mission-button.selected {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-color: #667eea;
+  font-weight: 700;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+/* 지도 개선 */
+.map-div {
+  width: 100%;
+  height: 400px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  border: 3px solid rgba(102, 126, 234, 0.2);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+/* 커스텀 마커 개선 */
+.custom-marker {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border: 3px solid white;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  font-size: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.custom-marker::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: markerGlow 2s linear infinite;
+}
+
+@keyframes markerGlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 반응형 개선 */
+@media (max-width: 768px) {
+  .travel-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 30px 15px;
   }
-  .btn-submit:hover {
-  background-color: rgb(150, 150, 150);
+  
+  .main-card {
+    padding: 30px 20px;
+    border-radius: 20px;
   }
-  label {
+  
+  .form-title {
+    font-size: 26px;
+  }
+  
+  .modal-dialog {
+    margin: 15px;
+  }
+  
+  .modal-body .row {
+    flex-direction: column;
+  }
+  
+  .map-div {
+    height: 280px;
+    margin-bottom: 20px;
+  }
+  
+  .mission-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+/* 라벨 개선 */
+label {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  }
-  [type="checkbox"] {
-  appearance: none;
-  }
-  [type="checkbox"] {
-  appearance: none;
-  position: relative;
-  border: max(2px, 0.1em) solid gray;
-  border-radius: 1.25em;
-  width: 2.25em;
-  height: 1.25em;
-  }
-  [type="checkbox"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 1em;
-  height: 1em;
-  border-radius: 50%;
-  transform: scale(0.8);
-  background-color: gray;
-  transition: left 250ms linear;
-  }
-  [type="checkbox"]:checked::before {
-  background-color: white;
-  left: 1em;
-  }
-  [type="checkbox"]:checked {
-  background-color: #4787ff;
-  border-color: #4787ff;
-  }
-  [type="checkbox"]:disabled {
-  border-color: lightgray;
-  opacity: 0.7;
-  cursor: not-allowed;
-  }
-  [type="checkbox"]:disabled:before {
-  background-color: lightgray;
-  }
-  [type="checkbox"]:disabled + span {
-  opacity: 0.7;
-  cursor: not-allowed;
-  }
-  [type="checkbox"]:focus-visible {
-  outline-offset: max(2px, 0.1em);
-  outline: max(2px, 0.1em) solid lightgray;
-  }
-  [type="checkbox"]:enabled:hover {
-  box-shadow: 0 0 0 max(4px, 0.2em) lightgray;
-  }
-  [type="checkbox"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 1em;
-  height: 1em;
-  border-radius: 50%;
-  transform: scale(0.8);
-  background-color: gray;
-  transition: left 250ms linear;
-  }
-  select.form-control {
-  padding: 10px 12px;
-  line-height: 1.4;
-  height: auto;
-  font-size: 14px;
-  }
-  .cost-input {
-  padding-right: 40px; /* 여유 공간 확보 */
-  }
-  .unit-label {
+  color: #2c3e50;
+}
+
+/* 코스트 인풋 개선 */
+.cost-input {
+  padding-right: 40px;
+}
+
+.unit-label {
   position: absolute;
   top: 50%;
   transform: translateY(35%);
@@ -369,396 +943,166 @@
   font-size: 13px;
   color: #555;
   pointer-events: none;
-  }
-  .section {
-  padding: 100px 20px;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  }
-  .bg-light {
-  background-color: #f7f9fc;
-  }
-  .bg-dark {
-  background-color: #222;
-  color: white;
-  }
+}
+</style>
 
-  /* 새로운 카드 그리드 스타일 */
-  .travel-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 25px;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 20px;
-  }
+<script>
+document.querySelectorAll('.mission-button').forEach(btn => {
+btn.addEventListener('click', function () {
+this.classList.toggle('selected');
+});
+});
 
-  .travel-card {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    border: 2px solid transparent;
-  }
+document.addEventListener("DOMContentLoaded", function () {
+const confirmBtn = document.getElementById("confirmMission");
+if (confirmBtn) {
+confirmBtn.addEventListener("click", function () {
+try {
+const selected = document.querySelectorAll(".mission-button.selected");
+const values = Array.from(selected).map(el => el.getAttribute("data-code"));
+const labels = Array.from(selected).map(el => el.textContent.trim());
+const petCheckbox = document.getElementById("pet_checkbox");
+if (petCheckbox && petCheckbox.checked) {
+values.unshift("0");
+labels.unshift("🐾 반려동물 동반 여행");
+}
+const missionInput = document.getElementById("mission_ENC_hidden");
+const labelDisplay = document.getElementById("selected_missions_text");
+if (missionInput) missionInput.value = values.join(",");
+if (labelDisplay) {
+labelDisplay.innerText = labels.length > 0 ? `선택한 미션: ${labels.join(", ")}` : "선택된 미션 없음";
+}
+// Bootstrap 모달 닫기 (백드롭 제거 코드 삭제)
+$('#missionModal').modal('hide');
+} catch (e) {
+console.error("Mission modal error:", e);
+}
+});
+}
+});
 
-  .travel-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.15);
-    border-color: #655cff;
-  }
+// Litepicker 초기화 시 null 체크 추가
+const dateRangeElement = document.getElementById('date_range');
+if (dateRangeElement) {
+const picker = new Litepicker({
+element: dateRangeElement,
+singleMode: false,
+format: 'YYYY-MM-DD',
+onSelect: (start, end) => {
+const startDateElement = document.getElementById('start_date');
+const endDateElement = document.getElementById('end_date');
+if (startDateElement) startDateElement.value = start.format('YYYY-MM-DD');
+if (endDateElement) endDateElement.value = end.format('YYYY-MM-DD');
+}
+});
+}
 
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-  }
+// missionToggle 요소가 존재할 때만 이벤트 리스너 추가
+const missionToggleElement = document.getElementById('missionToggle');
+if (missionToggleElement) {
+missionToggleElement.addEventListener('change', function () {
+const isChecked = this.checked;
+const missionLabel = document.getElementById('missionToggleLabel');
+const missionFields = document.getElementById('normal_mission_fields');
+const missionTypeHidden = document.getElementById('mission_type_hidden');
+if (isChecked) {
+if (missionLabel) missionLabel.textContent = '무계획 여행';
+if (missionFields) missionFields.style.display = 'none';
+if (missionTypeHidden) missionTypeHidden.value = 'special';
+} else {
+if (missionLabel) missionLabel.textContent = '테마 여행';
+if (missionFields) missionFields.style.display = 'block';
+if (missionTypeHidden) missionTypeHidden.value = 'normal';
+}
+});
+}
 
-  .card-header h4 {
-    margin: 0;
-    color: #333;
-    font-size: 20px;
-    font-weight: 700;
-    flex: 1;
-  }
+// 초기화 시 미션 필드 보이도록 (요소 존재 확인)
+const normalMissionFields = document.getElementById('normal_mission_fields');
+if (normalMissionFields) {
+normalMissionFields.style.display = 'block';
+}
 
-  .card-number {
-    background: linear-gradient(135deg, #655cff, #4f46e5);
-    color: white;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 16px;
-    margin-left: 12px;
+// 좋아요/싫어요 버튼 이벤트
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('dislike-btn')) {
+    const planIdx = e.target.dataset.plan;
+    const spotIdx = e.target.dataset.spot;
+    console.log(`Plan ${planIdx}, Spot ${spotIdx}: 싫어요`);
+    // 여기에 싫어요 처리 로직 추가
   }
+  
+  if (e.target.classList.contains('like-btn')) {
+    const planIdx = e.target.dataset.plan;
+    const spotIdx = e.target.dataset.spot;
+    console.log(`Plan ${planIdx}, Spot ${spotIdx}: 좋아요`);
+    // 여기에 좋아요 처리 로직 추가
+  }
+});
 
-  .card-preview p {
-    color: #666;
-    line-height: 1.6;
-    margin-bottom: 16px;
-    font-size: 14px;
-  }
+function updateTotalCost() {
+const lodgingElement = document.getElementById("LODGOUT_COST");
+const activityElement = document.getElementById("ACTIVITY_COST");
+const totalElement = document.getElementById("TOTAL_COST");
 
-  .spots-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
+if (lodgingElement && activityElement && totalElement) {
+const lodging = parseInt(lodgingElement.value) || 0;
+const activity = parseInt(activityElement.value) || 0;
+totalElement.value = lodging + activity;
+}
+}
 
-  .spot-tag {
-    background: #f1f5f9;
-    color: #475569;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-  }
+// 요소 존재 확인 후 이벤트 리스너 추가
+const lodgingCostElement = document.getElementById("LODGOUT_COST");
+const activityCostElement = document.getElementById("ACTIVITY_COST");
 
-  .spot-tag.more {
-    background: #655cff;
-    color: white;
-  }
+if (lodgingCostElement) {
+lodgingCostElement.addEventListener("change", updateTotalCost);
+}
+if (activityCostElement) {
+activityCostElement.addEventListener("change", updateTotalCost);
+}
 
-  .card-footer {
-    text-align: center;
-    padding-top: 16px;
-    border-top: 1px solid #e2e8f0;
-  }
+// 초기화 시 총합 계산
+updateTotalCost();
+</script>
 
-  /* 모달 내부 스타일 */
-  .modal-lg {
-    max-width: 900px;
-  }
+<!-- 카카오맵 마커 스크립트 -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+const travelPlans = {{ travel_plans | tojson }};
 
-  .travel-info {
-    padding: 20px 0;
-  }
+window.mapObjects = {};
 
-  .travel-description {
-    color: #666;
-    line-height: 1.6;
-    margin-bottom: 24px;
-    padding: 16px;
-    background: #f8fafc;
-    border-radius: 8px;
-    border-left: 4px solid #655cff;
-  }
-
-  .travel-route-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .route-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    margin-bottom: 12px;
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    transition: all 0.2s ease;
-  }
-
-  .route-item:hover {
-    border-color: #655cff;
-    box-shadow: 0 4px 12px rgba(101, 92, 255, 0.1);
-  }
-
-  .route-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-  }
-
-  .route-number {
-    background: #655cff;
-    color: white;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 14px;
-  }
-
-  .route-details strong {
-    color: #333;
-    font-size: 15px;
-  }
-
-  .route-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .route-actions .btn {
-    font-size: 12px;
-    padding: 6px 12px;
-  }
-
-  .mission-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  }
-  .mission-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  font-size: 15px;
-  font-weight: 500;
-  text-align: center;
-  border: 2px solid #ccc;
-  border-radius: 10px;
-  background-color: #f9f9f9;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-height: 60px;
-  word-break: keep-all;
-  user-select: none;
-  }
-  .mission-button:hover {
-  background-color: #ededf9;
-  }
-  .mission-button.selected {
-  background-color: #655cff;
-  color: white;
-  border-color: #655cff;
-  font-weight: bold;
-  box-shadow: 0 0 6px rgba(101, 92, 255, 0.4);
-  }
-  .map-div {
-  width: 100%;
-  height: 350px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  border: 1px solid #e2e8f0;
-  }
-  /* 카카오맵 커스텀 마커 스타일 */
-  .custom-marker {
-  background-color: #655cff;
-  color: white;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  font-size: 14px;
-  }
-
-  /* 반응형 */
-  @media (max-width: 768px) {
-    .travel-cards-grid {
-      grid-template-columns: 1fr;
-      gap: 20px;
-      padding: 20px 10px;
-    }
-    
-    .modal-dialog {
-      margin: 10px;
-    }
-    
-    .modal-body .row {
-      flex-direction: column;
-    }
-    
-    .map-div {
-      height: 250px;
-      margin-bottom: 20px;
-    }
-  }
-  </style>
-
-  <script>
-  document.querySelectorAll('.mission-button').forEach(btn => {
-  btn.addEventListener('click', function () {
-  this.classList.toggle('selected');
-  });
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
-  const confirmBtn = document.getElementById("confirmMission");
-  if (confirmBtn) {
-  confirmBtn.addEventListener("click", function () {
-  try {
-  const selected = document.querySelectorAll(".mission-button.selected");
-  const values = Array.from(selected).map(el => el.getAttribute("data-code"));
-  const labels = Array.from(selected).map(el => el.textContent.trim());
-  const petCheckbox = document.getElementById("pet_checkbox");
-  if (petCheckbox && petCheckbox.checked) {
-  values.unshift("0");
-  labels.unshift("🐾 반려동물 동반 여행");
-  }
-  const missionInput = document.getElementById("mission_ENC_hidden");
-  const labelDisplay = document.getElementById("selected_missions_text");
-  if (missionInput) missionInput.value = values.join(",");
-  if (labelDisplay) labelDisplay.innerText =
-  labels.length > 0 ? `선택한 미션: ${labels.join(", ")}` : "선택된 미션 없음";
-  // Bootstrap 모달 닫기
-  $('#missionModal').modal('hide');
-  // 백드롭 강제 제거
+// 모달이 열릴 때 지도 초기화
+$(document).on('shown.bs.modal', '[id^="travelModal"]', function() {
+  const modalId = $(this).attr('id');
+  const planIndex = modalId.replace('travelModal', '');
+  
   setTimeout(() => {
-  $(".modal-backdrop").remove();
-  $("body").removeClass("modal-open");
-  }, 300);
-  } catch (e) {
-  console.error("Mission modal error:", e);
-  }
-  });
-  }
-  });
+    initializeMap(parseInt(planIndex));
+  }, 100);
+});
 
-  const picker = new Litepicker({
-  element: document.getElementById('date_range'),
-  singleMode: false,
-  format: 'YYYY-MM-DD',
-  onSelect: (start, end) => {
-  document.getElementById('start_date').value = start.format('YYYY-MM-DD');
-  document.getElementById('end_date').value = end.format('YYYY-MM-DD');
-  }
-  });
+// 지도 초기화 함수 - 안전성 강화
+function initializeMap(planIdx) {
+  const plan = travelPlans[planIdx];
+  const mapId = `map-plan-${planIdx}`;
+  const mapContainer = document.getElementById(mapId);
 
-  document.getElementById('missionToggle').addEventListener('change', function () {
-  const isChecked = this.checked;
-  const missionLabel = document.getElementById('missionToggleLabel');
-  const missionFields = document.getElementById('normal_mission_fields');
-  const missionTypeHidden = document.getElementById('mission_type_hidden');
-  if (isChecked) {
-  missionLabel.textContent = '무계획 여행';
-  missionFields.style.display = 'none';
-  missionTypeHidden.value = 'special';
-  } else {
-  missionLabel.textContent = '테마 여행';
-  missionFields.style.display = 'block';
-  missionTypeHidden.value = 'normal';
-  }
-  });
-
-  // 초기화 시 미션 필드 보이도록
-  document.getElementById('normal_mission_fields').style.display = 'block';
-
-  // 좋아요/싫어요 버튼 이벤트
-  document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('dislike-btn')) {
-      const planIdx = e.target.dataset.plan;
-      const spotIdx = e.target.dataset.spot;
-      console.log(`Plan ${planIdx}, Spot ${spotIdx}: 싫어요`);
-      // 여기에 싫어요 처리 로직 추가
-    }
-    
-    if (e.target.classList.contains('like-btn')) {
-      const planIdx = e.target.dataset.plan;
-      const spotIdx = e.target.dataset.spot;
-      console.log(`Plan ${planIdx}, Spot ${spotIdx}: 좋아요`);
-      // 여기에 좋아요 처리 로직 추가
-    }
-  });
-
-  function updateTotalCost() {
-  const lodging = parseInt(document.getElementById("LODGOUT_COST").value) || 0;
-  const activity = parseInt(document.getElementById("ACTIVITY_COST").value) || 0;
-  document.getElementById("TOTAL_COST").value = lodging + activity;
+  if (!mapContainer || !plan) {
+    console.warn(`지도 컨테이너 또는 계획을 찾을 수 없습니다: ${mapId}`);
+    return;
   }
 
-  document.getElementById("LODGOUT_COST").addEventListener("change", updateTotalCost);
-  document.getElementById("ACTIVITY_COST").addEventListener("change", updateTotalCost);
+  // 이미 초기화된 지도가 있으면 제거
+  if (window.mapObjects[planIdx]) {
+    window.mapObjects[planIdx] = null;
+  }
 
-  // 초기화 시 총합 계산
-  updateTotalCost();
-  </script>
-
-  <!-- 카카오맵 마커 스크립트 -->
-  <script>
-  document.addEventListener("DOMContentLoaded", function () {
-  const travelPlans = {{ travel_plans | tojson }};
-  window.mapObjects = {};
-
-  // 모달이 열릴 때 지도 초기화
-  $(document).on('shown.bs.modal', '[id^="travelModal"]', function() {
-    const modalId = $(this).attr('id');
-    const planIndex = modalId.replace('travelModal', '');
-    
-    setTimeout(() => {
-      initializeMap(parseInt(planIndex));
-    }, 100);
-  });
-
-  // 지도 초기화 함수
-    function initializeMap(planIdx) {
-    const plan = travelPlans[planIdx];
-    const mapId = `map-plan-${planIdx}`;
-    const mapContainer = document.getElementById(mapId);
-
-    if (!mapContainer || !plan) return;
-
-    // 이미 초기화된 지도가 있으면 제거
-    if (window.mapObjects[planIdx]) {
-      window.mapObjects[planIdx] = null;
-    }
-
-    // 좌표 수집
-    const positions = [];
+  // 좌표 수집
+  const positions = [];
+  if (plan.route && Array.isArray(plan.route)) {
     plan.route.forEach((spot, i) => {
       const lat = parseFloat(spot.y);
       const lng = parseFloat(spot.x);
@@ -770,9 +1114,14 @@
         });
       }
     });
+  }
 
-    if (positions.length === 0) return;
+  if (positions.length === 0) {
+    console.warn('유효한 좌표가 없습니다.');
+    return;
+  }
 
+  try {
     // 지도 옵션
     const mapOption = {
       center: positions[0].latlng,
@@ -827,9 +1176,12 @@
 
     // 지도 객체 저장
     window.mapObjects[planIdx] = map;
-    }
-  });
-  
-  </script>
+    
+  } catch (error) {
+    console.error('지도 초기화 중 오류:', error);
+  }
+}
+});
+</script>
 
-  {% endblock %}
+{% endblock %}

@@ -252,10 +252,25 @@ def default_travel_plans():
             "main_image_url": "https://rtrip.s3.amazonaws.com/data/resized_image/E/sample.jpg",
             "description": "많은 사람들이 방문한 인기 루트예요!",
             "route": [
-                {"name": "청계천", "description": "산책하기 좋은 도심 속 힐링 장소", "x": 0, "y": 0, "url": ""},
-                {"name": "경복궁", "description": "조선의 중심, 서울의 상징", "x": 0, "y": 0, "url": ""},
-                {"name": "남산타워", "description": "서울의 전경을 한눈에", "x": 0, "y": 0, "url": ""}
-            ]
+                        {
+                            "name": "청계천",
+                            "description": "산책하기 좋은 도심 속 힐링 장소",
+                            "x": 126.9784,
+                            "y": 37.5703
+                        },
+                        {
+                            "name": "경복궁",
+                            "description": "조선의 중심, 서울의 상징",
+                            "x": 126.9770,
+                            "y": 37.5788
+                        },
+                        {
+                            "name": "남산타워",
+                            "description": "서울의 전경을 한눈에",
+                            "x": 126.9882,
+                            "y": 37.5512
+                        }
+                    ]
         }
     ]
 
@@ -303,7 +318,7 @@ def travel_plans(area_ids):
         if route_infos:
             plans.append({
                 "main_image_url": main_img_url or "https://rtrip.s3.amazonaws.com/data/resized_image/E/default.jpg",
-                "title": f"추천 루트 {i+1}",
+                "title": f"{i+1} 일차",
                 "description": f"{route_infos[0]['name']}을(를) 포함한 여행 경로입니다.",
                 "route": route_infos
             })
