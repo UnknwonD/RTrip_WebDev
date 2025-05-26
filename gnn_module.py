@@ -1,10 +1,17 @@
 # 최적화된 GNN 추천 시스템
 import os
+# 기존 환경변수들 + 추가
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
+os.environ['NUMBA_NUM_THREADS'] = '1'  # 추가
+os.environ['NUMBA_DISABLE_INTEL_SVML'] = '1'  # 추가
+
+# Numba 캐시 비활성화 (디버깅용)
+os.environ['NUMBA_CACHE_DIR'] = '/tmp'
+os.environ['NUMBA_DISABLE_JIT'] = '0'  # JIT 유지하되 안전 모드
 
 import pandas as pd
 import numpy as np
@@ -90,7 +97,8 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     
     return R * c
 
-@jit(nopython=True, parallel=True)
+# @jit(nopython=True, parallel=True)
+@jit(nopython=True)
 def calculate_distance_matrix(coords):
     """병렬화된 거리 행렬 계산"""
     n = len(coords)
@@ -444,7 +452,6 @@ class FastRecommendationEngine:
                 num_valid = torch.sum(valid_scores).item()
         
         # 빠른 상위 k 선택
-        print(top_k, len(scores))
         if consider_distance and top_k > 10 and num_valid > 10:
             recommendations = self._fast_distance_recommendation(scores, top_k)
         else:

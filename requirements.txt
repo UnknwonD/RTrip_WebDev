@@ -15,6 +15,7 @@ torch_spline_conv==1.2.2
 torchaudio==2.6.0
 torchvision==0.21.0
 faiss-cpu==1.8.0.post1
+numba==0.61.2
 
 # --- Data science ---
 pandas==2.2.3

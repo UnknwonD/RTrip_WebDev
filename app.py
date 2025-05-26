@@ -188,7 +188,7 @@ def analyze_styles():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, threaded=False)
+    app.run(debug=True, threaded=False)
 
 if __name__ == "__main__":
     style_vec = [5, 5, 3, 2, 4, 5, 3, 6]  # 테스트용 input
