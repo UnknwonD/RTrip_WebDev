@@ -64,14 +64,13 @@ def main_recommended():
         #     k: v for k, v in raw_user.items()
         #     if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
         # }
-       
         try:
-            route = main_feedback_test(travel_input)
+            route = main_optimized_test(travel_input)
             dummy_ids = [[d['id'] for d in v] for k, v in route.items()] # 날짜별로, 순서대로 인덱스 갖고 있음
             print(dummy_ids)
             print(f"[DEBUG] 🤖 GNN 추론 결과: {dummy_ids[:5]}")
 
-            travel_plan_list = travel_plans_with_debug(dummy_ids)
+            travel_plan_list = travel_plans_with_debug(dummy_ids, travel_input['date_range'])
 
         except Exception as e:
             print(f"[DEBUG] ❌ GNN 추론 실패, 기본 계획 사용: {e}")

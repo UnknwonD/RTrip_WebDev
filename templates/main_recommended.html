@@ -42,9 +42,9 @@
         <p id="selected_missions_text" class="text-muted" style="margin-top: 10px;"></p>
         <div class="form-group">
           <label for="date_range">📅 여행 기간 (출발일 ~ 도착일)</label>
-          <input type="text" id="date_range" name="date_range" class="form-control" required>
-          <input type="hidden" id="start_date" name="start_date">
-          <input type="hidden" id="end_date" name="end_date">
+          <input type="text" id="date_range" name="date_range" class="form-control" autocomplete="off" required>
+          <input type="hidden" id="start_date" autocomplete="off" name="start_date">
+          <input type="hidden" id="end_date" autocomplete="off" name="end_date">
         </div>
         <div class="form-group">
           <label>💰 여행 예산</label>
@@ -136,11 +136,11 @@
         <div class="card-preview">
           <p>{{ plan.description[:100] }}{% if plan.description|length > 100 %}...{% endif %}</p>
           <div class="spots-preview">
-            {% for spot in plan.route[:3] %}
+            {% for spot in plan.route[:9] %}
             <span class="spot-tag">{{ spot.area or spot.name }}</span>
             {% endfor %}
-            {% if plan.route|length > 3 %}
-            <span class="spot-tag more">+{{ plan.route|length - 3 }}개 더</span>
+            {% if plan.route|length > 9 %}
+            <span class="spot-tag more">+{{ plan.route|length - 9 }}개 더</span>
             {% endif %}
           </div>
         </div>
@@ -608,7 +608,6 @@ select.form-control {
   gap: 10px;
   margin-bottom: 24px;
 }
-
 .spot-tag {
   background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
   color: #475569;
@@ -619,6 +618,13 @@ select.form-control {
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   transition: all 0.3s ease;
+
+  /* 고정 높이 추가 */
+  line-height: 20px; /* 글자 높이 고정 */
+  height: 36px; /* 높이를 패딩 + line-height에 맞춰 고정 */
+  overflow: hidden; /* 혹시 글자가 넘치면 가림 */
+  display: inline-flex; /* 높이를 유지하면서 가운데 정렬 */
+  align-items: center;
 }
 
 .spot-tag:hover {

@@ -192,9 +192,27 @@ def get_meta_photo_info(new_visit_area_id):
         print(f"[DEBUG] ❌ get_meta_photo_info 전체 오류: {e}")
         return None
 
+def pares_dates(travel_date):
+    from datetime import datetime, timedelta
+    # 시작일과 종료일 파싱
+    start_str, end_str = travel_date.split(' - ')
+    start_date = datetime.strptime(start_str, '%Y-%m-%d')
+    end_date = datetime.strptime(end_str, '%Y-%m-%d')
 
-def travel_plans_with_debug(area_ids):
- 
+    # 시작일 ~ 종료일 리스트 생성
+    date_list = []
+    current_date = start_date
+    while current_date <= end_date:
+        formatted_date = f'{current_date.month}월 {current_date.day}일'
+        date_list.append(formatted_date)
+        current_date += timedelta(days=1)
+
+    return date_list
+
+
+def travel_plans_with_debug(area_ids, travel_date:str):
+    # travel_date = '2025-06-18 - 2025-06-21' 이런식으로 들어옴
+    
     print(f"[DEBUG] 🔁 travel_plans_with_debug() 호출됨. area_ids: {area_ids}")
     
     if not area_ids or len(area_ids) == 0:
@@ -202,6 +220,7 @@ def travel_plans_with_debug(area_ids):
         return default_travel_plans()
  
     plans = []
+    date_list = pares_dates(travel_date) # 6월 8일, 6월 10일 ....
 
     for i, route in enumerate(area_ids):
         print(f"[DEBUG] 📍 처리 중인 루트 {i+1}: {route}")
@@ -226,7 +245,7 @@ def travel_plans_with_debug(area_ids):
         
         if route_infos:
             plans.append({
-                "title": f"추천 루트 {i+1}",
+                "title": f"{i+1}일차 추천루트 | {date_list[i]}",
                 "description": f"{route_infos[0]['name']}을(를) 포함한 여행 경로입니다.",
                 "route": route_infos
             })
