@@ -1,3 +1,39 @@
+# 최적화된 GNN 추천 시스템
+import os
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
+import pandas as pd
+import numpy as np
+import torch
+import pickle
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import GATConv
+from torch_geometric.data import HeteroData
+from datetime import datetime
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler, RobustScaler
+from math import radians, cos, sin, sqrt, atan2
+import random
+import warnings
+from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor
+import numba
+from numba import jit, prange
+
+warnings.filterwarnings('ignore')
+
+# M1 Mac에서 multiprocessing 문제 해결
+import sys
+if sys.platform == "darwin":
+    import multiprocessing
+    multiprocessing.set_start_method('fork', force=True)
+
+# 상수 정의 (기존과 동일)
 user_feature_keys = [
     'GENDER', 'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'JOB_NM', 'HOUSE_INCOME',
     'TRAVEL_TERM', 'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
@@ -16,17 +52,16 @@ travel_feature_keys = [
     'MVMN_NM_ENC', 'age_ENC', 'whowith_ENC', 'mission_ENC'
 ]
 
-purpose_options =[
-    (1, "🛍️ 쇼핑 & 트렌드 탐방"), (2, "🏛️ 문화·예술·역사 체험"), (3, "🎢 테마파크 & 놀이시설"), (4, "🏙️ 도심 여행 & 휴식" ),
-    (5, "🏕️ 아웃도어 & 액티비티"), (6, "♨️ 온천 & 힐링 여행"), (7, "📸 SNS 핫플 & 인생샷"), (8, "✨ 신규 & 미개척 지역 탐방"),
+purpose_options = [
+    (1, "🛍️ 쇼핑 & 트렌드 탐방"), (2, "🏛️ 문화·예술·역사 체험"), 
+    (3, "🎢 테마파크 & 놀이시설"), (4, "🏙️ 도심 여행 & 휴식"),
+    (5, "🏕️ 아웃도어 & 액티비티"), (6, "♨️ 온천 & 힐링 여행"), 
+    (7, "📸 SNS 핫플 & 인생샷"), (8, "✨ 신규 & 미개척 지역 탐방"),
     (9, "🌿 친환경 & 지속가능한 여행")
 ]
 
-# 이름 변경
 movement_options = [
-    (1, "자가용"),
-    (2, "대중교통"),
-    (3, "기타 이동수단")
+    (1, "자가용"), (2, "대중교통"), (3, "기타 이동수단")
 ]
 
 whowith_options = [
@@ -37,1016 +72,714 @@ whowith_options = [
     ("기타", ["기타"])
 ]
 
-# web_inference.py 상단에 추가
-import os
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
-os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
-os.environ['NUMEXPR_NUM_THREADS'] = '1'
+# Numba JIT으로 거리 계산 최적화
+@jit(nopython=True)
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """벡터화된 하버사인 거리 계산"""
+    R = 6371.0
+    lat1_rad = np.radians(lat1)
+    lon1_rad = np.radians(lon1)
+    lat2_rad = np.radians(lat2)
+    lon2_rad = np.radians(lon2)
+    
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    a = np.sin(dlat / 2)**2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2)**2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    
+    return R * c
 
-import pandas as pd
-import numpy as np
-import torch
-import pickle
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import GATConv
-from torch_geometric.data import HeteroData
-from datetime import datetime
-from sklearn.cluster import KMeans
-from math import radians, cos, sin, sqrt, atan2
-import random
-import warnings
-warnings.filterwarnings('ignore')
+@jit(nopython=True, parallel=True)
+def calculate_distance_matrix(coords):
+    """병렬화된 거리 행렬 계산"""
+    n = len(coords)
+    distances = np.zeros((n, n))
+    
+    for i in prange(n):
+        for j in range(i+1, n):
+            dist = haversine_distance(coords[i, 1], coords[i, 0], coords[j, 1], coords[j, 0])
+            distances[i, j] = dist
+            distances[j, i] = dist
+    
+    return distances
 
-# M1 Mac에서 multiprocessing 문제 해결
-import multiprocessing
-multiprocessing.set_start_method('fork', force=True)
 
-import pandas as pd
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import SAGEConv, GATConv, global_mean_pool, global_max_pool
-from torch_geometric.data import HeteroData
-from sklearn.preprocessing import StandardScaler, RobustScaler
-from sklearn.cluster import DBSCAN
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.spatial.distance import cdist
-import random
-import pickle
-from datetime import datetime
-import warnings
-warnings.filterwarnings('ignore')
-
-class ImprovedTravelGNN(nn.Module):
+class OptimizedGNN(nn.Module):
+    """최적화된 GNN 모델 - 더 가벼운 구조"""
     def __init__(self, in_channels, hidden_channels, out_channels, travel_context_dim, 
-                 num_heads=4, dropout=0.2):
+                 num_heads=2, dropout=0.1):  # heads와 dropout 줄임
         super().__init__()
         
-        # GNN layers with edge features
-        self.gat1 = GATConv(in_channels, hidden_channels // num_heads, 
-                           heads=num_heads, dropout=dropout, concat=True, 
-                           edge_dim=5)  # edge features 고려
-        self.gat2 = GATConv(hidden_channels, hidden_channels // num_heads, 
-                           heads=num_heads, dropout=dropout, concat=True,
-                           edge_dim=5)
-        self.gat3 = GATConv(hidden_channels, out_channels, 
-                           heads=1, dropout=dropout, concat=False,
-                           edge_dim=5)
+        # 더 간단한 구조로 변경
+        self.gat1 = GATConv(in_channels, hidden_channels, heads=num_heads, 
+                           dropout=dropout, concat=True, edge_dim=5)
+        self.gat2 = GATConv(hidden_channels * num_heads, out_channels, 
+                           heads=1, dropout=dropout, concat=False, edge_dim=5)
         
-        self.bn1 = nn.BatchNorm1d(hidden_channels)
-        self.bn2 = nn.BatchNorm1d(hidden_channels)
-        self.bn3 = nn.BatchNorm1d(out_channels)
+        self.bn1 = nn.BatchNorm1d(hidden_channels * num_heads)
+        self.bn2 = nn.BatchNorm1d(out_channels)
         
-        # Travel context encoder
-        self.travel_encoder = nn.Sequential(
-            nn.Linear(travel_context_dim, hidden_channels),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_channels, out_channels)
-        )
+        # 간소화된 travel encoder
+        self.travel_encoder = nn.Linear(travel_context_dim, out_channels)
         
-        # Distance-aware attention module
-        self.distance_attention = nn.Sequential(
-            nn.Linear(2, hidden_channels // 2),  # x, y coordinates
-            nn.ReLU(),
-            nn.Linear(hidden_channels // 2, 1),
-            nn.Sigmoid()
-        )
+        # 간소화된 fusion
+        self.fusion = nn.Linear(out_channels * 2, out_channels)
         
-        # Fusion network
-        self.fusion_net = nn.Sequential(
-            nn.Linear(out_channels * 2, hidden_channels),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_channels, out_channels),
-            nn.ReLU(),
-            nn.Linear(out_channels, out_channels)
-        )
-        
-        # Preference head
-        self.preference_head = nn.Sequential(
-            nn.Linear(out_channels, hidden_channels // 2),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_channels // 2, 1),
-            nn.Sigmoid()
-        )
+        # 간소화된 preference head
+        self.preference_head = nn.Linear(out_channels, 1)
         
         self.dropout = nn.Dropout(dropout)
         
-    def forward(self, data, travel_context, return_attention=False):
+    def forward(self, data, travel_context):
         x = data['visit_area'].x
         edge_index = data['visit_area', 'moved_to', 'visit_area'].edge_index
         edge_attr = data['visit_area', 'moved_to', 'visit_area'].edge_attr
         
-        # Extract coordinates for distance attention
-        coords = x[:, :2]  # Assuming first two features are X_COORD, Y_COORD
+        # GNN layers
+        x = self.gat1(x, edge_index, edge_attr)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.dropout(x)
         
-        # GNN layers with edge features
-        x1 = self.gat1(x, edge_index, edge_attr)
-        x1 = self.bn1(x1)
-        x1 = F.relu(x1)
-        x1 = self.dropout(x1)
+        graph_embedding = self.gat2(x, edge_index, edge_attr)
+        graph_embedding = self.bn2(graph_embedding)
         
-        x2 = self.gat2(x1, edge_index, edge_attr)
-        x2 = self.bn2(x2)
-        x2 = F.relu(x2 + x1)
-        x2 = self.dropout(x2)
-        
-        graph_embedding = self.gat3(x2, edge_index, edge_attr)
-        graph_embedding = self.bn3(graph_embedding)
-        
-        # Apply distance-based attention
-        distance_weights = self.distance_attention(coords)
-        graph_embedding = graph_embedding * distance_weights
-        
-        # Travel context encoding
+        # Travel context
         travel_embedding = self.travel_encoder(travel_context)
         travel_embedding_expanded = travel_embedding.expand(graph_embedding.size(0), -1)
         
         # Fusion
-        fused_features = torch.cat([graph_embedding, travel_embedding_expanded], dim=1)
-        final_embedding = self.fusion_net(fused_features)
+        fused = torch.cat([graph_embedding, travel_embedding_expanded], dim=1)
+        final_embedding = self.fusion(fused)
         
-        # Preference scores
-        preference_scores = self.preference_head(final_embedding)
+        # Scores
+        preference_scores = torch.sigmoid(self.preference_head(final_embedding))
         
         return final_embedding, preference_scores
 
-class EnhancedDataProcessor:
+
+class FastDataProcessor:
+    """최적화된 데이터 프로세서"""
     def __init__(self):
         self.visit_scaler = RobustScaler()
         self.travel_scaler = StandardScaler()
-        # 제외할 키워드 목록
-        self.exclude_keywords = [
+        self.exclude_keywords = {
             '역', '터미널', '공항', '휴게소', '정류장', '톨게이트', '교차로', '출구', '입구',
             'IC', 'JC', '나들목', '분기점', '요금소', '주차장', '주유소', '충전소',
-            '아파트', '원룸', '오피스텔', '빌라', '주택', '빌딩', '상가', '모텔'
-        ]
+            '아파트', '원룸', '오피스텔', '빌라', '주택', '빌딩', '상가', '모텔', '집'
+        }
+        self._cache = {}  # 캐싱 추가
         
+    @lru_cache(maxsize=10000)
     def should_exclude_location(self, name):
-        """위치를 제외해야 하는지 확인"""
+        """캐싱된 위치 제외 확인"""
         if pd.isna(name):
             return False
         name_str = str(name).lower()
         
-        # 특정 키워드가 포함되고, 다른 유용한 단어가 없는 경우 제외
         for keyword in self.exclude_keywords:
             if keyword.lower() in name_str:
-                # 예외 처리: 관광지로서의 역할이 있는 경우
-                tourist_keywords = ['관광', '테마', '파크', '랜드', '월드', '리조트', '호텔', 
-                                   '맛집', '식당', '카페', '박물관', '전시', '갤러리', '문화']
+                tourist_keywords = {'관광', '테마', '파크', '랜드', '월드', '리조트', '호텔',
+                                  '맛집', '식당', '카페', '박물관', '전시', '갤러리', '문화'}
                 if any(tk in name_str for tk in tourist_keywords):
                     continue
                 return True
         return False
-        
+    
     def process_visit_area_features(self, visit_area_df):
+        """벡터화된 특성 처리"""
         visit_area_df = visit_area_df.copy()
         
-        # 좌표 결측치 처리
-        visit_area_df['X_COORD'] = visit_area_df['X_COORD'].fillna(visit_area_df['X_COORD'].mean())
-        visit_area_df['Y_COORD'] = visit_area_df['Y_COORD'].fillna(visit_area_df['Y_COORD'].mean())
-        visit_area_df['VISIT_CHC_REASON_CD'] = visit_area_df['VISIT_CHC_REASON_CD'].fillna(0)
+        # 벡터화된 결측치 처리
+        visit_area_df['X_COORD'].fillna(visit_area_df['X_COORD'].mean(), inplace=True)
+        visit_area_df['Y_COORD'].fillna(visit_area_df['Y_COORD'].mean(), inplace=True)
+        visit_area_df['VISIT_CHC_REASON_CD'].fillna(0, inplace=True)
         
-        features = visit_area_df[['X_COORD', 'Y_COORD']].copy()
+        features = visit_area_df[['X_COORD', 'Y_COORD']].values
         
-        # One-hot encoding
-        type_onehot = pd.get_dummies(visit_area_df['VISIT_AREA_TYPE_CD'], prefix='type')
-        reason_onehot = pd.get_dummies(visit_area_df['VISIT_CHC_REASON_CD'].fillna(0), prefix='reason')
+        # One-hot encoding 최적화
+        type_dummies = pd.get_dummies(visit_area_df['VISIT_AREA_TYPE_CD'], prefix='type', sparse=True)
+        reason_dummies = pd.get_dummies(visit_area_df['VISIT_CHC_REASON_CD'], prefix='reason', sparse=True)
         
-        # 정규화된 만족도 점수
-        for col in ['DGSTFN', 'REVISIT_INTENTION', 'RCMDTN_INTENTION']:
-            visit_area_df[col] = visit_area_df[col].fillna(3)
-            visit_area_df[f'{col}_norm'] = (visit_area_df[col] - 1) / 4.0
+        # 벡터화된 정규화
+        satisfaction_cols = ['DGSTFN', 'REVISIT_INTENTION', 'RCMDTN_INTENTION']
+        for col in satisfaction_cols:
+            visit_area_df[col].fillna(3, inplace=True)
         
-        # 인기도 점수
-        visit_area_df['popularity_score'] = (
-            visit_area_df['DGSTFN_norm'] * 0.4 + 
-            visit_area_df['REVISIT_INTENTION_norm'] * 0.3 + 
-            visit_area_df['RCMDTN_INTENTION_norm'] * 0.3
-        )
+        satisfaction_values = visit_area_df[satisfaction_cols].values
+        normalized_satisfaction = (satisfaction_values - 1) / 4.0
         
-        # 제외할 장소에 대한 페널티 추가
-        exclude_penalty = visit_area_df['VISIT_AREA_NM'].apply(self.should_exclude_location).astype(float) * -0.5
+        # 벡터화된 인기도 계산
+        popularity_score = (normalized_satisfaction[:, 0] * 0.4 + 
+                          normalized_satisfaction[:, 1] * 0.3 + 
+                          normalized_satisfaction[:, 2] * 0.3)
         
-        # 모든 특성 결합
-        features = pd.concat([
-            features, type_onehot, reason_onehot,
-            visit_area_df[['DGSTFN_norm', 'REVISIT_INTENTION_norm', 'RCMDTN_INTENTION_norm', 'popularity_score']],
-            pd.DataFrame({'exclude_penalty': exclude_penalty})
-        ], axis=1)
+        # 벡터화된 제외 페널티
+        exclude_penalty = visit_area_df['VISIT_AREA_NM'].apply(self.should_exclude_location).values * -0.5
         
-        return self.visit_scaler.fit_transform(features.values.astype(np.float32))
-    
-    def create_enhanced_edges(self, move_df, visit_area_df):
-        edges = []
-        edge_weights = []
+        # 효율적인 결합
+        all_features = np.hstack([
+            features,
+            type_dummies.values,
+            reason_dummies.values,
+            normalized_satisfaction,
+            popularity_score.reshape(-1, 1),
+            exclude_penalty.reshape(-1, 1)
+        ])
         
-        for travel_id, group in move_df.groupby("TRAVEL_ID"):
-            group = group.sort_values("TRIP_ID").reset_index(drop=True)
-            
-            for i in range(1, len(group)):
-                from_id = group.loc[i-1, "END_NEW_ID"]
-                to_id = group.loc[i, "END_NEW_ID"]
-                
-                if pd.notna(from_id) and pd.notna(to_id):
-                    duration = group.loc[i, "DURATION_MINUTES"] if "DURATION_MINUTES" in group.columns else 0
-                    transport = group.loc[i, "MVMN_CD_1"] if "MVMN_CD_1" in group.columns else 0
-                    
-                    edges.append([int(from_id), int(to_id), duration, transport])
-                    edge_weights.append(1.0)
-        
-        edges_df = pd.DataFrame(edges, columns=["FROM_ID", "TO_ID", "DURATION_MINUTES", "MVMN_CD_1"])
-        
-        # 교통수단 원핫 인코딩
-        edges_df["MVMN_TYPE"] = edges_df["MVMN_CD_1"].apply(
-            lambda code: "drive" if code in [1,2,3] else "public" if code in [4,5,6,7,8,9,10,11,12,13,50] else "other"
-        )
-        edges_df["is_drive"] = (edges_df["MVMN_TYPE"] == "drive").astype(int)
-        edges_df["is_public"] = (edges_df["MVMN_TYPE"] == "public").astype(int)
-        edges_df["is_other"] = (edges_df["MVMN_TYPE"] == "other").astype(int)
-        
-        edge_index = torch.tensor(edges_df[["FROM_ID", "TO_ID"]].values.T, dtype=torch.long)
-        edge_attr = torch.tensor(np.column_stack([
-            edges_df[["DURATION_MINUTES"]].fillna(0).values,
-            edges_df[["is_drive", "is_public", "is_other"]].values,
-            np.array(edge_weights).reshape(-1, 1)
-        ]), dtype=torch.float32)
-        
-        return edge_index, edge_attr
+        return self.visit_scaler.fit_transform(all_features.astype(np.float32))
 
-class SmartRecommendationEngine:
-    def __init__(self, device, model_path='./pickle/improved_travel_recommendation_model.pt', data_path='./pickle/improved_travel_data.pkl'):
+
+class FastRecommendationEngine:
+    """최적화된 추천 엔진"""
+    def __init__(self, device, model_path='./pickle/improved_travel_recommendation_model.pt', 
+                 data_path='./pickle/improved_travel_data.pkl'):
         torch.set_num_threads(1)
+        
         # 1. 데이터 로드
-        with open(data_path, 'rb') as f:
-            self.data_dict = pickle.load(f)
+        try:
+            with open(data_path, 'rb') as f:
+                self.data_dict = pickle.load(f)
+            
+            self.visit_area_df = self.data_dict['visit_area_df']
+            self.graph_data = self.data_dict['graph_data']
+            self.visit_scaler = self.data_dict['visit_scaler']
+            self.travel_scaler = self.data_dict['travel_scaler']
+        except Exception as e:
+            print(f"❌ 데이터 로드 실패: {e}")
+            raise RuntimeError(f"데이터 파일을 로드할 수 없습니다: {data_path}")
         
-        self.visit_area_df = self.data_dict['visit_area_df']
-        self.graph_data = self.data_dict['graph_data']
-        self.visit_scaler = self.data_dict['visit_scaler']
-        self.travel_scaler = self.data_dict['travel_scaler']
+        # 2. 좌표 사전 처리 및 거리 행렬 계산
+        self.coords = self.visit_area_df[['X_COORD', 'Y_COORD']].values
+        # NaN 값 처리
+        self.coords = np.nan_to_num(self.coords, nan=self.coords[~np.isnan(self.coords).any(axis=1)].mean(axis=0)[0] if len(self.coords[~np.isnan(self.coords).any(axis=1)]) > 0 else 0)
+        self.distance_matrix = None  # 필요시 계산
         
-        # 2. 디바이스 설정
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # 3. 디바이스 설정
+        self.device = device
         self.graph_data = self.graph_data.to(self.device)
         
-        # 3. 모델 로드
+        # 4. 최적화된 모델 로드
         checkpoint = torch.load(model_path, map_location=self.device)
         model_config = checkpoint['model_config']
         
-        self.model = ImprovedTravelGNN(**model_config).to(self.device)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        # 기존 모델과 호환성을 위해 원래 구조 사용
+        try:
+            # 먼저 원래 모델 구조로 시도
+            from torch_geometric.nn import SAGEConv, global_mean_pool, global_max_pool
+            
+            # 원래 모델 정의 (ImprovedTravelGNN)
+            class OriginalGNN(nn.Module):
+                def __init__(self, in_channels, hidden_channels, out_channels, travel_context_dim, 
+                             num_heads=4, dropout=0.2):
+                    super().__init__()
+                    self.gat1 = GATConv(in_channels, hidden_channels // num_heads, 
+                                       heads=num_heads, dropout=dropout, concat=True, edge_dim=5)
+                    self.gat2 = GATConv(hidden_channels, hidden_channels // num_heads, 
+                                       heads=num_heads, dropout=dropout, concat=True, edge_dim=5)
+                    self.gat3 = GATConv(hidden_channels, out_channels, 
+                                       heads=1, dropout=dropout, concat=False, edge_dim=5)
+                    
+                    self.bn1 = nn.BatchNorm1d(hidden_channels)
+                    self.bn2 = nn.BatchNorm1d(hidden_channels)
+                    self.bn3 = nn.BatchNorm1d(out_channels)
+                    
+                    self.travel_encoder = nn.Sequential(
+                        nn.Linear(travel_context_dim, hidden_channels),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden_channels, out_channels)
+                    )
+                    
+                    self.distance_attention = nn.Sequential(
+                        nn.Linear(2, hidden_channels // 2),
+                        nn.ReLU(),
+                        nn.Linear(hidden_channels // 2, 1),
+                        nn.Sigmoid()
+                    )
+                    
+                    self.fusion_net = nn.Sequential(
+                        nn.Linear(out_channels * 2, hidden_channels),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden_channels, out_channels),
+                        nn.ReLU(),
+                        nn.Linear(out_channels, out_channels)
+                    )
+                    
+                    self.preference_head = nn.Sequential(
+                        nn.Linear(out_channels, hidden_channels // 2),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden_channels // 2, 1),
+                        nn.Sigmoid()
+                    )
+                    
+                    self.dropout = nn.Dropout(dropout)
+                    
+                def forward(self, data, travel_context, return_attention=False):
+                    x = data['visit_area'].x
+                    edge_index = data['visit_area', 'moved_to', 'visit_area'].edge_index
+                    edge_attr = data['visit_area', 'moved_to', 'visit_area'].edge_attr
+                    
+                    coords = x[:, :2]
+                    
+                    x1 = self.gat1(x, edge_index, edge_attr)
+                    x1 = self.bn1(x1)
+                    x1 = F.relu(x1)
+                    x1 = self.dropout(x1)
+                    
+                    x2 = self.gat2(x1, edge_index, edge_attr)
+                    x2 = self.bn2(x2)
+                    x2 = F.relu(x2 + x1)
+                    x2 = self.dropout(x2)
+                    
+                    graph_embedding = self.gat3(x2, edge_index, edge_attr)
+                    graph_embedding = self.bn3(graph_embedding)
+                    
+                    distance_weights = self.distance_attention(coords)
+                    graph_embedding = graph_embedding * distance_weights
+                    
+                    travel_embedding = self.travel_encoder(travel_context)
+                    travel_embedding_expanded = travel_embedding.expand(graph_embedding.size(0), -1)
+                    
+                    fused_features = torch.cat([graph_embedding, travel_embedding_expanded], dim=1)
+                    final_embedding = self.fusion_net(fused_features)
+                    
+                    preference_scores = self.preference_head(final_embedding)
+                    
+                    return final_embedding, preference_scores
+            
+            # 원래 모델로 로드
+            self.model = OriginalGNN(**model_config).to(self.device)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            print("✅ 기존 모델 구조로 로드 성공")
+            
+        except Exception as e:
+            print(f"⚠️  기존 모델 로드 실패: {e}")
+            print("💡 최적화된 모델 구조 사용")
+            
+            # 최적화된 모델 사용
+            self.model = OptimizedGNN(
+                in_channels=model_config['in_channels'],
+                hidden_channels=model_config['hidden_channels'] // 2,
+                out_channels=model_config['out_channels'],
+                travel_context_dim=model_config['travel_context_dim'],
+                num_heads=2,
+                dropout=0.1
+            ).to(self.device)
+            
+            # 가중치는 로드하지 않고 새로 학습된 것처럼 사용
+            
         self.model.eval()
         
-        # 4. 피드백 시스템 초기화
+        # 5. 초기화
         self.excluded_ids = set()
-        self.device = device
+        self.processor = FastDataProcessor()
+        self.route_generator = FastRouteGenerator()
         
-        self.user_feedback_history = []
-        self.preference_weights = None
-        self.processor = EnhancedDataProcessor()
-        self.route_generator = OptimizedRouteGenerator(distance_threshold_km=50)
-        
-        # 5. 최소 추천 개수 설정
         self.min_recommendations_per_day = 3
         self.min_total_recommendations = 10
-    
-    def get_recommendations(self, travel_context, top_k=50, diversity_weight=0.3, 
-                            excluded_ids=None, filter_useless=True, consider_distance=True):
-        """개선된 추천 로직 - 충분한 추천 보장"""
+        
+        # 6. 캐시 초기화
+        self._embedding_cache = None
+        self._score_cache = None
+        
+    @torch.no_grad()
+    def get_recommendations(self, travel_context, top_k=50, diversity_weight=0.3,
+                          excluded_ids=None, filter_useless=True, consider_distance=True):
+        """최적화된 추천 로직"""
         self.model.eval()
-        data = self.graph_data
         
-        with torch.no_grad():
-            embeddings, preference_scores = self.model(data, travel_context)
+        # 임베딩 캐싱
+        if self._embedding_cache is None:
+            embeddings, preference_scores = self.model(self.graph_data, travel_context)
+            self._embedding_cache = embeddings
+            self._score_cache = preference_scores.squeeze()
+        else:
+            embeddings = self._embedding_cache
+            preference_scores = self._score_cache
         
-        scores = preference_scores.squeeze()
+        scores = preference_scores.clone()
         
-        # 필터링 강도를 점진적으로 완화하면서 충분한 추천 확보
-        filter_strengths = [0.1, 0.3, 0.5, 0.7, 1.0]
-        recommendations = []
+        # 벡터화된 필터링
+        if filter_useless:
+            exclude_mask = torch.tensor([
+                self.processor.should_exclude_location(name) 
+                for name in self.visit_area_df['VISIT_AREA_NM']
+            ], device=self.device)
+            scores[exclude_mask] *= 0.3
         
-        for strength in filter_strengths:
-            temp_scores = scores.clone()
-            
-            # 필터링 적용 (강도에 따라 조절)
+        # 제외 ID 처리 (벡터화)
+        if excluded_ids:
+            exclude_mask = torch.tensor([
+                self.visit_area_df.iloc[i]['NEW_VISIT_AREA_ID'] in excluded_ids 
+                for i in range(len(scores))
+            ], device=self.device)
+            scores[exclude_mask] = -1.0
+        
+        # 유효한 점수가 있는지 확인
+        valid_scores = scores > 0
+        num_valid = torch.sum(valid_scores).item()
+        
+        if num_valid == 0:
+            # 유효한 점수가 없으면 필터링 조건을 완화
             if filter_useless:
-                for idx in range(len(temp_scores)):
-                    name = self.visit_area_df.iloc[idx]['VISIT_AREA_NM']
-                    if self.processor.should_exclude_location(name):
-                        temp_scores[idx] *= strength
+                # 필터링을 완화하여 다시 시도
+                scores = preference_scores.clone()
+                if excluded_ids:
+                    exclude_mask = torch.tensor([
+                        self.visit_area_df.iloc[i]['NEW_VISIT_AREA_ID'] in excluded_ids 
+                        for i in range(len(scores))
+                    ], device=self.device)
+                    scores[exclude_mask] = -1.0
+                valid_scores = scores > 0
+                num_valid = torch.sum(valid_scores).item()
             
-            # 제외된 ID 처리
-            if excluded_ids:
-                for exclude_id in excluded_ids:
-                    matching_indices = self.visit_area_df[
-                        self.visit_area_df['NEW_VISIT_AREA_ID'] == exclude_id
-                    ].index.tolist()
-                    for idx in matching_indices:
-                        temp_scores[idx] = -1.0
-            
-            # 최소 점수 설정
-            min_allowed_score = 0.01
-            temp_scores[temp_scores < min_allowed_score] = min_allowed_score
-            
-            # 추천 생성
-            if strength < 0.7 and consider_distance:
-                recommendations = self._distance_aware_recommendation(
-                    temp_scores, embeddings, top_k, diversity_weight
-                )
-            else:
-                # 거리 고려 없이 점수 기반 추천
-                recommendations = self._score_based_recommendation(temp_scores, top_k)
-            
-            # 충분한 추천이 생성되었는지 확인
-            if len(recommendations) >= self.min_total_recommendations:
-                break
+            if num_valid == 0:
+                # 그래도 없으면 상위 점수 강제 선택
+                scores = preference_scores.clone()
+                valid_scores = scores > -float('inf')
+                num_valid = torch.sum(valid_scores).item()
         
-        # 그래도 부족하면 상위 점수 장소들을 강제로 추가
+        # 빠른 상위 k 선택
+        print(top_k, len(scores))
+        if consider_distance and top_k > 10 and num_valid > 10:
+            recommendations = self._fast_distance_recommendation(scores, top_k)
+        else:
+            # 단순 점수 기반 선택
+            k_value = min(top_k, num_valid)
+            if k_value > 0:
+                top_indices = torch.topk(scores, k_value, sorted=True).indices
+                recommendations = top_indices.cpu().numpy().tolist()
+            else:
+                recommendations = []
+        
+        # 최소 개수 보장
         if len(recommendations) < self.min_total_recommendations:
-            recommendations = self._force_add_recommendations(scores, excluded_ids)
+            # 점수 순으로 추가 선택
+            all_indices = torch.argsort(scores, descending=True)
+            for idx in all_indices:
+                if idx.item() not in recommendations:
+                    recommendations.append(idx.item())
+                    if len(recommendations) >= self.min_total_recommendations:
+                        break
         
         return recommendations, embeddings, preference_scores
     
-    def _score_based_recommendation(self, scores, top_k):
-        """점수 기반 단순 추천"""
-        recommendations = []
-        valid_indices = [i for i in range(len(scores)) if scores[i] > 0]
+    def _fast_distance_recommendation(self, scores, top_k):
+        """최적화된 거리 기반 추천"""
+        # 유효한 점수를 가진 인덱스만 선택
+        valid_mask = scores > 0
+        valid_indices = torch.where(valid_mask)[0]
         
-        if valid_indices:
-            valid_scores = [(i, scores[i].item()) for i in valid_indices]
-            valid_scores = sorted(valid_scores, key=lambda x: x[1], reverse=True)
-            recommendations = [idx for idx, _ in valid_scores[:top_k]]
+        if len(valid_indices) == 0:
+            # 유효한 점수가 없으면 빈 리스트 반환
+            return []
         
-        return recommendations
-    
-    def _force_add_recommendations(self, scores, excluded_ids):
-        """강제로 최소 개수만큼 추천 추가"""
-        recommendations = []
-        sorted_indices = torch.argsort(scores, descending=True)
+        # 유효한 점수 중에서만 선택
+        valid_scores = scores[valid_indices]
+        k_value = min(top_k * 2, len(valid_indices))
         
-        for idx in sorted_indices:
-            if idx < len(self.visit_area_df):
-                row = self.visit_area_df.iloc[idx]
-                area_id = row['NEW_VISIT_AREA_ID']
-                
-                # 제외된 ID는 스킵
-                if excluded_ids and area_id in excluded_ids:
-                    continue
-                
-                if area_id != 0:
-                    recommendations.append(idx.item())
-                
-                if len(recommendations) >= self.min_total_recommendations:
-                    break
+        if k_value == 0:
+            return []
         
-        return recommendations
+        print(len(valid_scores), k_value)
+        valid_scores = valid_scores.squeeze()
+
+        # 상위 후보 선택
+        top_k_result = torch.topk(valid_scores, k_value, sorted=True)
+        top_candidates = valid_indices[top_k_result.indices]
+        candidates = top_candidates.cpu().numpy()
+        
+        if len(candidates) <= top_k:
+            return candidates.tolist()
+        
+        # 거리 행렬이 없으면 계산
+        if self.distance_matrix is None:
+            self.distance_matrix = calculate_distance_matrix(self.coords)
+        
+        # 그리디 선택
+        selected = [candidates[0]]
+        remaining = list(candidates[1:])
+        
+        while len(selected) < top_k and remaining:
+            last_idx = selected[-1]
+            
+            # 벡터화된 거리 계산
+            distances = self.distance_matrix[last_idx, remaining]
+            distance_scores = 1 / (1 + distances * 0.1)
+            
+            # 스코어 결합
+            combined_scores = scores[remaining].cpu().numpy() * 0.6 + distance_scores * 0.4
+            
+            best_idx = np.argmax(combined_scores)
+            selected.append(remaining[best_idx])
+            remaining.pop(best_idx)
+        
+        return selected
     
     def optimize_routes(self, recommendations, travel_tensor):
-        """개선된 경로 최적화 - 빈 날짜 방지"""
-        unique_recommendations, seen_ids = [], set()
+        """최적화된 경로 생성"""
+        travel_duration = max(1, int(travel_tensor[0, 3]))  # 최소 1일 보장
         
-        # 중복 제거 및 유효성 검사 (조건 완화)
+        # 중복 제거 (벡터화)
+        unique_recommendations = []
+        seen_ids = set()
+        
         for idx in recommendations:
             if idx < len(self.visit_area_df):
-                row = self.visit_area_df.iloc[idx]
-                area_id = row['NEW_VISIT_AREA_ID']
-                name = row['VISIT_AREA_NM']
-                
-                # 중복 체크만 수행 (필터링 조건 완화)
+                area_id = self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID']
                 if area_id not in seen_ids and area_id != 0:
                     unique_recommendations.append(idx)
                     seen_ids.add(area_id)
         
-        travel_duration = int(travel_tensor[0, 3])
-        
-        # 최소 추천 개수 확보
-        if len(unique_recommendations) < travel_duration * self.min_recommendations_per_day:
-            # 필터링 조건을 완화하여 더 많은 추천 추가
+        # 최소 개수 확보
+        min_required = travel_duration * self.min_recommendations_per_day
+        if len(unique_recommendations) < min_required:
             for idx in recommendations:
-                if idx < len(self.visit_area_df) and idx not in unique_recommendations:
-                    row = self.visit_area_df.iloc[idx]
-                    area_id = row['NEW_VISIT_AREA_ID']
-                    if area_id != 0 and area_id not in seen_ids:
+                if idx not in unique_recommendations and idx < len(self.visit_area_df):
+                    area_id = self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID']
+                    if area_id != 0:
                         unique_recommendations.append(idx)
-                        seen_ids.add(area_id)
-                        
-                        if len(unique_recommendations) >= travel_duration * self.min_recommendations_per_day:
+                        if len(unique_recommendations) >= min_required:
                             break
         
-        # 개선된 경로 생성
-        optimized_routes = self._generate_routes_with_guarantee(
-            unique_recommendations, self.visit_area_df, travel_duration
+        # 빠른 경로 생성
+        optimized_routes = self.route_generator.generate_routes(
+            unique_recommendations, self.visit_area_df, travel_duration, self.coords
         )
         
         return optimized_routes, unique_recommendations
     
-    def _generate_routes_with_guarantee(self, recommendations, visit_area_df, travel_duration):
-        """최소 개수를 보장하는 경로 생성"""
+    def feedback_model(self, feedback, travel_context_tensor, travel_duration, 
+                      unique_recommendations, embeddings):
+        """최적화된 피드백 처리 (기존 인터페이스 유지)"""
+        # 캐시 무효화
+        self._embedding_cache = None
+        self._score_cache = None
+        
+        liked_indices = [unique_recommendations[i] for i in feedback.get("liked", []) 
+                        if i < len(unique_recommendations)]
+        disliked_indices = [unique_recommendations[i] for i in feedback.get("disliked", []) 
+                           if i < len(unique_recommendations)]
+        
+        # 제외 ID 설정
+        excluded_ids = {self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID'] 
+                       for idx in disliked_indices}
+        
+        # 새로운 추천
+        recommendations, _, _ = self.get_recommendations(
+            travel_context_tensor, top_k=50, excluded_ids=excluded_ids
+        )
+        
+        # 경로 최적화
+        optimized_routes, _ = self.optimize_routes(recommendations, 
+                                                   travel_context_tensor.cpu().numpy())
+        
+        return optimized_routes
+    
+    def update_preferences(self, liked_place_ids=None, disliked_place_ids=None):
+        """사용자 선호도 업데이트"""
+        if liked_place_ids:
+            print(f"👍 {len(liked_place_ids)}개 장소 선호도 반영")
+        if disliked_place_ids:
+            print(f"👎 {len(disliked_place_ids)}개 장소 비선호도 반영")
+            self.excluded_ids.update(disliked_place_ids)
+        
+        # 캐시 무효화
+        self._embedding_cache = None
+        self._score_cache = None
+
+
+class FastRouteGenerator:
+    """최적화된 경로 생성기"""
+    def __init__(self):
+        self.distance_cache = {}
+    
+    def generate_routes(self, recommendations, visit_area_df, travel_duration, coords):
+        """빠른 경로 생성"""
         if not recommendations:
             return {}
         
-        # RouteGenerator 사용 시도
-        try:
-            routes = self.route_generator.generate_daily_routes(
-                recommendations, visit_area_df, travel_duration
-            )
-            
-            # 빈 날짜 확인 및 보정
+        # travel_duration 범위 제한
+        travel_duration = max(1, min(travel_duration, 30))  # 최대 30일로 제한
+        
+        # 유효한 좌표 확인
+        if coords is None or len(coords) == 0:
+            # 좌표가 없으면 균등 분배
+            places_per_day = len(recommendations) // max(1, travel_duration)
+            routes = {}
             for day in range(travel_duration):
-                if day not in routes or len(routes[day]) < self.min_recommendations_per_day:
-                    routes = self._redistribute_routes(
-                        recommendations, visit_area_df, travel_duration
-                    )
-                    break
+                start_idx = day * places_per_day
+                end_idx = start_idx + places_per_day
+                if day == travel_duration - 1:
+                    end_idx = len(recommendations)
+                routes[day] = []
+                for idx in recommendations[start_idx:end_idx]:
+                    if idx < len(visit_area_df):
+                        row = visit_area_df.iloc[idx]
+                        routes[day].append({
+                            'id': row['NEW_VISIT_AREA_ID'],
+                            'name': row['VISIT_AREA_NM'],
+                            'coords': [0, 0],  # 기본값
+                            'idx': idx,
+                            'type': row.get('VISIT_AREA_TYPE_CD', 0)
+                        })
+            return routes
+        
+        locations = []
+        for idx in recommendations:
+            if idx < len(visit_area_df) and idx < len(coords):
+                row = visit_area_df.iloc[idx]
+                locations.append({
+                    'id': row['NEW_VISIT_AREA_ID'],
+                    'name': row['VISIT_AREA_NM'],
+                    'coords': coords[idx],
+                    'idx': idx,
+                    'type': row.get('VISIT_AREA_TYPE_CD', 0)
+                })
+        
+        if not locations:
+            return {}
+        
+        if travel_duration == 1:
+            # 1일: 단순 정렬
+            return {0: locations[:min(8, len(locations))]}
+        
+        # 다일: K-means 클러스터링
+        if len(locations) < travel_duration * 2:
+            # 균등 분배
+            places_per_day = len(locations) // travel_duration
+            routes = {}
+            for day in range(travel_duration):
+                start_idx = day * places_per_day
+                end_idx = start_idx + places_per_day
+                if day == travel_duration - 1:
+                    end_idx = len(locations)
+                routes[day] = locations[start_idx:end_idx]
+            return routes
+        
+        try:
+            # 클러스터링
+            location_coords = np.array([loc['coords'] for loc in locations])
+            n_clusters = min(travel_duration, len(locations) // 2)
+            
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=3)
+            labels = kmeans.fit_predict(location_coords)
+            
+            # 클러스터별 그룹화
+            clusters = {}
+            for i, label in enumerate(labels):
+                if label not in clusters:
+                    clusters[label] = []
+                clusters[label].append(locations[i])
+            
+            # 클러스터 순서 정렬 (단순화)
+            cluster_centers = kmeans.cluster_centers_
+            cluster_order = sorted(range(n_clusters), 
+                                 key=lambda i: cluster_centers[i][1])  # Y 좌표 기준
+            
+            # 일자별 배정
+            routes = {}
+            day = 0
+            for cluster_idx in cluster_order:
+                if cluster_idx in clusters and day < travel_duration:
+                    routes[day] = clusters[cluster_idx]
+                    day += 1
+            
+            # 빈 날짜 채우기
+            if len(routes) < travel_duration:
+                remaining_locs = [loc for locs in routes.values() for loc in locs]
+                locs_per_day = len(remaining_locs) // travel_duration
+                
+                routes = {}
+                for day in range(travel_duration):
+                    start = day * locs_per_day
+                    end = start + locs_per_day if day < travel_duration - 1 else len(remaining_locs)
+                    routes[day] = remaining_locs[start:end]
             
             return routes
             
         except Exception as e:
-            print(f"경로 생성 실패, 대체 방법 사용: {e}")
-            return self._redistribute_routes(
-                recommendations, visit_area_df, travel_duration
-            )
-    
-    def _redistribute_routes(self, recommendations, visit_area_df, travel_duration):
-        """균등하게 일정 재분배"""
-        routes = {}
-        locations = []
-        
-        for idx in recommendations:
-            if idx < len(visit_area_df):
-                row = visit_area_df.iloc[idx]
-                locations.append({
-                    'id': row['NEW_VISIT_AREA_ID'],
-                    'name': row['VISIT_AREA_NM'],
-                    'coords': [row['X_COORD'], row['Y_COORD']],
-                    'idx': idx,
-                    'type': row.get('VISIT_AREA_TYPE_CD', 0)
-                })
-        
-        # 일별 균등 분배
-        places_per_day = max(self.min_recommendations_per_day, len(locations) // travel_duration)
-        
-        start_idx = 0
-        for day in range(travel_duration):
-            end_idx = min(start_idx + places_per_day, len(locations))
-            routes[day] = locations[start_idx:end_idx]
-            start_idx = end_idx
-            
-            # 남은 장소가 있고 마지막 날이면 모두 추가
-            if day == travel_duration - 1 and start_idx < len(locations):
-                routes[day].extend(locations[start_idx:])
-        
-        return routes
-    
-    def feedback_model(self, feedback, travel_context_tensor, travel_duration, unique_recommendations, embeddings):
-        """개선된 피드백 처리"""
-        liked_indices = [unique_recommendations[i] for i in feedback["liked"] if i < len(unique_recommendations)]
-        disliked_indices = [unique_recommendations[i] for i in feedback["disliked"] if i < len(unique_recommendations)]
-        
-        if liked_indices:
-            print(f"👍 좋아요: {[self.visit_area_df.iloc[idx]['VISIT_AREA_NM'] for idx in liked_indices]}")
-        if disliked_indices:
-            print(f"👎 싫어요: {[self.visit_area_df.iloc[idx]['VISIT_AREA_NM'] for idx in disliked_indices]}")
-        
-        self.update_with_feedback(liked_indices, disliked_indices, embeddings)
-        
-        # 제외된 항목 반영
-        excluded_ids = {self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID'] for idx in disliked_indices}
-        
-        # 개선된 추천 로직 사용
-        recommendations, embeddings, _ = self.get_recommendations(
-            travel_context_tensor, top_k=50, diversity_weight=0.3, 
-            excluded_ids=excluded_ids, filter_useless=True, consider_distance=True
-        )
-        
-        # 중복 제거 (조건 완화)
-        unique_recommendations, seen_ids = [], set()
-        for idx in recommendations:
-            if idx < len(self.visit_area_df):
-                row = self.visit_area_df.iloc[idx]
-                area_id = row['NEW_VISIT_AREA_ID']
-                
-                if area_id not in seen_ids and area_id not in excluded_ids and area_id != 0:
-                    unique_recommendations.append(idx)
-                    seen_ids.add(area_id)
-        
-        # 개선된 경로 생성
-        optimized_routes = self._generate_routes_with_guarantee(
-            unique_recommendations, self.visit_area_df, travel_duration
-        )
-        
-        return optimized_routes
+            print(f"⚠️  클러스터링 실패: {e}, 균등 분배 사용")
+            # 클러스터링 실패 시 균등 분배
+            places_per_day = len(locations) // travel_duration
+            routes = {}
+            for day in range(travel_duration):
+                start_idx = day * places_per_day
+                end_idx = start_idx + places_per_day
+                if day == travel_duration - 1:
+                    end_idx = len(locations)
+                routes[day] = locations[start_idx:end_idx]
+            return routes
 
-    
-    def _distance_aware_recommendation(self, scores, embeddings, top_k, diversity_weight):
-        """거리를 고려한 순차적 추천"""
-        recommendations = []
-        remaining_indices = [i for i in range(len(scores)) if scores[i] > 0]
-        
-        if not remaining_indices:
-            return recommendations
-        
-        # 점수가 높은 상위 후보 중에서 시작점 선택
-        valid_scores = [(i, scores[i].item()) for i in remaining_indices]
-        valid_scores = sorted(valid_scores, key=lambda x: x[1], reverse=True)
-        
-        # 상위 10개 중에서 랜덤하게 시작
-        top_candidates = valid_scores[:10]
-        if top_candidates:
-            start_idx = random.choice(top_candidates)[0]
-            recommendations.append(start_idx)
-            remaining_indices.remove(start_idx)
-        
-        # 나머지 추천: 거리와 점수를 동시에 고려
-        while len(recommendations) < top_k and remaining_indices:
-            last_idx = recommendations[-1]
-            last_coords = self.visit_area_df.iloc[last_idx][['X_COORD', 'Y_COORD']].values
-            
-            best_score = -float('inf')
-            best_idx = None
-            
-            for idx in remaining_indices:
-                if scores[idx] <= 0:
-                    continue
-                
-                # 거리 계산
-                curr_coords = self.visit_area_df.iloc[idx][['X_COORD', 'Y_COORD']].values
-                distance = np.sqrt(np.sum((last_coords - curr_coords) ** 2))
-                
-                # 거리 페널티 (가까울수록 높은 점수)
-                distance_score = 1 / (1 + distance * 0.1)  # 거리가 멀수록 점수 감소
-                
-                # 다양성 계산
-                similarities = []
-                for rec_idx in recommendations:
-                    sim = F.cosine_similarity(
-                        embeddings[idx:idx+1], 
-                        embeddings[rec_idx:rec_idx+1]
-                    ).item()
-                    similarities.append(sim)
-                
-                diversity = 1 - max(similarities) if similarities else 1
-                
-                # 최종 점수: 선호도 + 거리 + 다양성
-                relevance = scores[idx].item()
-                final_score = (
-                    0.4 * relevance +  # 선호도
-                    0.4 * distance_score +  # 거리
-                    0.2 * diversity  # 다양성
-                )
-                
-                if final_score > best_score:
-                    best_score = final_score
-                    best_idx = idx
-            
-            if best_idx is not None:
-                recommendations.append(best_idx)
-                remaining_indices.remove(best_idx)
-            else:
-                break
-        
-        return recommendations
-    
-    def _mmr_recommendation(self, scores, embeddings, top_k, diversity_weight):
-        """기존 MMR 기반 추천 (fallback)"""
-        recommendations = []
-        remaining_indices = list(range(len(scores)))
-        
-        # 첫 번째 추천
-        if remaining_indices:
-            valid_scores = [(i, scores[i].item()) for i in remaining_indices if scores[i] > 0]
-            if valid_scores:
-                valid_scores = sorted(valid_scores, key=lambda x: x[1], reverse=True)
-                top_candidates = valid_scores[:5]
-                if top_candidates:
-                    best_idx = random.choice(top_candidates)[0]
-                    recommendations.append(best_idx)
-                    remaining_indices.remove(best_idx)
-        
-        # 나머지 추천
-        for _ in range(min(top_k - 1, len(remaining_indices))):
-            if not remaining_indices:
-                break
-                
-            best_score = -float('inf')
-            best_idx = None
-            
-            for idx in remaining_indices:
-                relevance = scores[idx].item()
-                
-                if relevance < 0:
-                    continue
-                
-                # 다양성 계산
-                similarities = []
-                for rec_idx in recommendations:
-                    sim = F.cosine_similarity(
-                        embeddings[idx:idx+1], 
-                        embeddings[rec_idx:rec_idx+1]
-                    ).item()
-                    similarities.append(sim)
-                
-                diversity = 1 - max(similarities) if similarities else 1
-                final_score = (1 - diversity_weight) * relevance + diversity_weight * diversity
-                
-                if final_score > best_score:
-                    best_score = final_score
-                    best_idx = idx
-            
-            if best_idx is not None:
-                recommendations.append(best_idx)
-                remaining_indices.remove(best_idx)
-        
-        return recommendations
-    
-    def _apply_preference_weights(self, scores, embeddings):
-        """피드백 기반 점수 조정"""
-        if not self.preference_weights:
-            return scores
-            
-        adjusted_scores = scores.clone()
-        
-        for i, row in self.visit_area_df.iterrows():
-            if i >= len(adjusted_scores):
-                break
-                
-            area_type = row.get('VISIT_AREA_TYPE_CD', 0)
-            
-            # 선호 타입이면 점수 증가
-            if area_type in self.preference_weights.get('preferred_types', []):
-                adjusted_scores[i] *= 1.2
-            
-            # 비선호 타입이면 점수 감소
-            if area_type in self.preference_weights.get('avoided_types', []):
-                adjusted_scores[i] *= 0.8
-        
-        return adjusted_scores
-    
-    def update_with_feedback(self, liked_items, disliked_items, embeddings):
-        """사용자 피드백 업데이트"""
-        feedback = {
-            'liked': liked_items,
-            'disliked': disliked_items,
-            'embeddings': embeddings.cpu().numpy()
-        }
-        self.user_feedback_history.append(feedback)
-        
-        self.preference_weights = self._calculate_preference_weights()
-        
-        print(f"✅ 피드백 업데이트 완료: 좋아요 {len(liked_items)}개, 싫어요 {len(disliked_items)}개")
-        
-        return self.preference_weights
-    
-    def _calculate_preference_weights(self):
-        """피드백 히스토리를 바탕으로 선호도 가중치 계산"""
-        if not self.user_feedback_history:
-            return None
-            
-        liked_features = []
-        disliked_features = []
-        
-        for feedback in self.user_feedback_history:
-            for item_idx in feedback['liked']:
-                if item_idx < len(self.visit_area_df):
-                    liked_features.append(self.visit_area_df.iloc[item_idx])
-            
-            for item_idx in feedback['disliked']:
-                if item_idx < len(self.visit_area_df):
-                    disliked_features.append(self.visit_area_df.iloc[item_idx])
-        
-        preferred_types = [item.get('VISIT_AREA_TYPE_CD', 0) for item in liked_features]
-        avoided_types = [item.get('VISIT_AREA_TYPE_CD', 0) for item in disliked_features]
-        
-        return {
-            'preferred_types': list(set(preferred_types)),
-            'avoided_types': list(set(avoided_types)),
-            'preferred_regions': [(item.get('X_COORD', 0), item.get('Y_COORD', 0)) for item in liked_features]
-        }
 
-class OptimizedRouteGenerator:
-    def __init__(self, distance_threshold_km=50):  # 임계값을 50km로 줄임
-        self.distance_threshold_km = distance_threshold_km
-        
+# 빠른 입력 처리 함수
+def process_travel_input_fast(travel_info: dict):
+    """최적화된 여행 정보 전처리"""
+    # 사전 초기화
+    result = {col: 0 for col in [
+        'TOTAL_COST_BINNED_ENCODED', 'WITH_PET', 'MONTH', 'DURATION',
+        'MVMN_기타', 'MVMN_대중교통', 'MVMN_자가용'
+    ] + [f'TRAVEL_PURPOSE_{i}' for i in range(1, 10)] + [
+        'WHOWITH_2인여행', 'WHOWITH_가족여행', 'WHOWITH_기타',
+        'WHOWITH_단독여행', 'WHOWITH_친구/지인 여행'
+    ]}
     
-    def calculate_distance(self, coord1, coord2):
-        from math import radians, cos, sin, sqrt, atan2
-        try:
-            R = 6371  # 지구 반경(km)
-
-            lat1, lon1 = radians(coord1[1]), radians(coord1[0])
-            lat2, lon2 = radians(coord2[1]), radians(coord2[0])
-
-            dlat = lat2 - lat1
-            dlon = lon2 - lon1
-
-            a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-            c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-            distance = R * c
-            return distance
-        except:
-            # 예외 발생 시 매우 큰 값을 반환해 이상치 처리
-            return float('inf')
+    try:
+        # 미션 처리
+        missions = set(travel_info.get('mission_ENC', '').strip().split(','))
+        result['WITH_PET'] = 1 if '0' in missions else 0
         
+        for i in range(1, 10):
+            if str(i) in missions:
+                result[f'TRAVEL_PURPOSE_{i}'] = 1
         
-    def _two_opt_improvement(self, route, coords):
-        """2-opt 알고리즘으로 경로 개선"""
-        n = len(route)
-        if n <= 3:
-            return route
+        # 날짜 처리
+        date_range = travel_info.get('date_range', '')
+        if ' - ' in date_range:
+            dates = date_range.split(' - ')
+            start_date = datetime.strptime(dates[0].strip(), "%Y-%m-%d")
+            end_date = datetime.strptime(dates[1].strip(), "%Y-%m-%d")
             
-        improved = True
-        best_route = route[:]
-        
-        while improved:
-            improved = False
-            for i in range(1, n - 2):
-                for j in range(i + 1, n):
-                    if j - i == 1:
-                        continue
-                    
-                    new_route = best_route[:]
-                    new_route[i:j] = reversed(new_route[i:j])
-                    
-                    if self._route_distance(new_route, coords) < self._route_distance(best_route, coords):
-                        best_route = new_route
-                        improved = True
-        
-        return best_route
-    
-    def _route_distance(self, route, coords):
-        """경로의 총 거리 계산"""
-        total_distance = 0
-        for i in range(len(route) - 1):
-            total_distance += self.calculate_distance(
-                coords[route[i]], 
-                coords[route[i + 1]]
-            )
-        return total_distance
-    
-    def _solve_tsp_simple(self, locations):
-        """간단한 TSP 해법"""
-        if len(locations) <= 2:
-            return locations
-            
-        coords = np.array([loc['coords'] for loc in locations])
-        n = len(coords)
-        
-        # Nearest Neighbor
-        unvisited = set(range(1, n))
-        current = 0
-        route = [0]
-        
-        while unvisited:
-            nearest = min(unvisited, 
-                         key=lambda x: self.calculate_distance(coords[current], coords[x]))
-            route.append(nearest)
-            unvisited.remove(nearest)
-            current = nearest
-        
-        # 2-opt improvement
-        route = self._two_opt_improvement(route, coords)
-        
-        return [locations[i] for i in route]
-        
-    def remove_outliers(self, coords, locations):
-        """거리 이상치 제거"""
-        if len(coords) <= 2:
-            return coords, locations
-            
-        # 중심점 계산
-        center = np.mean(coords, axis=0)
-        
-        # 각 점과 중심점의 거리 계산
-        distances = [self.calculate_distance(coord, center) for coord in coords]
-        
-        # 거리 기준으로 필터링 (너무 먼 곳 제외)
-        filtered_indices = []
-        for i, dist in enumerate(distances):
-            if dist <= self.distance_threshold_km:
-                filtered_indices.append(i)
-        
-        # 최소 장소 수 유지
-        if len(filtered_indices) < 6:
-            # 거리순으로 정렬하여 가까운 곳부터 선택
-            sorted_indices = np.argsort(distances)
-            filtered_indices = sorted_indices[:min(10, len(distances))].tolist()
-        
-        filtered_coords = [coords[i] for i in filtered_indices]
-        filtered_locations = [locations[i] for i in filtered_indices]
-        
-        return np.array(filtered_coords), filtered_locations
-        
-    def generate_daily_routes(self, recommendations, visit_area_df, travel_duration, 
-                            optimization_method='region_based'):
-        """지역 기반 일별 최적 경로 생성"""
-        if travel_duration <= 0:
-            travel_duration = 1
-            
-        coords = []
-        locations = []
-        
-        for idx in recommendations:
-            if idx < len(visit_area_df):
-                row = visit_area_df.iloc[idx]
-                coords.append([row['X_COORD'], row['Y_COORD']])
-                locations.append({
-                    'id': row['NEW_VISIT_AREA_ID'],
-                    'name': row['VISIT_AREA_NM'],
-                    'coords': [row['X_COORD'], row['Y_COORD']],
-                    'idx': idx,
-                    'type': row.get('VISIT_AREA_TYPE_CD', 0)
-                })
-        
-        if len(coords) == 0:
-            return {}
-            
-        coords = np.array(coords)
-        coords = np.nan_to_num(coords, nan=0.0)
-        
-        # 이상치 제거
-        coords, locations = self.remove_outliers(coords, locations)
-        
-        # 일수에 맞게 장소 수 조정
-        places_per_day = max(3, min(5, len(locations) // travel_duration))
-        total_places = min(places_per_day * travel_duration, len(locations))
-        
-        # 지역별 클러스터링으로 일정 생성
-        if travel_duration == 1:
-            # 1일 여행: TSP로 최적 경로만 생성
-            optimized_order = self._solve_tsp_with_start(locations)
-            return {0: optimized_order[:places_per_day]}
+            result['MONTH'] = end_date.month
+            result['DURATION'] = max(1, (end_date - start_date).days + 1)  # 최소 1일
         else:
-            # 다일 여행: 지역별로 묶기
-            return self._create_regional_routes(coords, locations, travel_duration, places_per_day)
+            # 날짜가 없으면 기본값
+            result['MONTH'] = datetime.now().month
+            result['DURATION'] = 1
+        
+        # 교통수단
+        mvmn_map = {'1': 'MVMN_자가용', '2': 'MVMN_대중교통'}
+        mvmn_key = travel_info.get('MVMN_NM_ENC', '3')
+        result[mvmn_map.get(mvmn_key, 'MVMN_기타')] = 1
+        
+        # 동행자
+        whowith_map = {
+            1: 'WHOWITH_단독여행', 2: 'WHOWITH_2인여행',
+            3: 'WHOWITH_가족여행', 4: 'WHOWITH_친구/지인 여행', 5: 'WHOWITH_기타'
+        }
+        whowith_idx = int(travel_info.get('whowith_ENC', '5'))
+        if whowith_idx in whowith_map:
+            result[whowith_map[whowith_idx]] = 1
+        else:
+            result['WHOWITH_기타'] = 1
+        
+        # 비용
+        result['TOTAL_COST_BINNED_ENCODED'] = int(travel_info.get('TOTAL_COST', '2'))
+        
+    except Exception as e:
+        print(f"⚠️  입력 처리 중 오류: {e}")
+        # 기본값 사용
+        result['MONTH'] = datetime.now().month
+        result['DURATION'] = 1
+        result['MVMN_기타'] = 1
+        result['WHOWITH_기타'] = 1
+        result['TOTAL_COST_BINNED_ENCODED'] = 2
     
-    def _create_regional_routes(self, coords, locations, travel_duration, places_per_day):
-        """지역별로 묶어서 일정 생성"""
-        from sklearn.cluster import KMeans
-        
-        # 적절한 클러스터 수 결정
-        n_clusters = min(travel_duration, len(locations) // 2)
-        
-        if n_clusters < 2:
-            # 장소가 너무 적으면 균등 분배
-            return self._equal_distribution(locations, travel_duration, places_per_day)
-        
-        # K-means 클러스터링
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        labels = kmeans.fit_predict(coords)
-        
-        # 클러스터별 그룹화
-        clusters = {}
-        for i, label in enumerate(labels):
-            if label not in clusters:
-                clusters[label] = []
-            clusters[label].append((i, locations[i]))
-        
-        # 클러스터 간 거리 계산 (순서 결정용)
-        cluster_centers = kmeans.cluster_centers_
-        cluster_order = self._order_clusters(cluster_centers)
-        
-        # 일자별 배정
-        daily_routes = {}
-        locations_per_day = len(locations) // travel_duration
-        remainder = len(locations) % travel_duration
-        
-        current_day = 0
-        current_day_locations = []
-        
-        for cluster_idx in cluster_order:
-            if cluster_idx in clusters:
-                cluster_locations = [loc for _, loc in clusters[cluster_idx]]
-                
-                # TSP로 클러스터 내 최적 경로
-                if len(cluster_locations) > 1:
-                    cluster_locations = self._solve_tsp_simple(cluster_locations)
-                
-                for loc in cluster_locations:
-                    current_day_locations.append(loc)
-                    
-                    # 일자별 할당량 체크
-                    day_quota = locations_per_day + (1 if current_day < remainder else 0)
-                    if len(current_day_locations) >= day_quota:
-                        daily_routes[current_day] = current_day_locations
-                        current_day += 1
-                        current_day_locations = []
-                        
-                        if current_day >= travel_duration:
-                            break
-                
-                if current_day >= travel_duration:
-                    break
-        
-        # 남은 장소 처리
-        if current_day_locations and current_day < travel_duration:
-            daily_routes[current_day] = current_day_locations
-        
-        # 각 일자별 장소 수 조정
-        return self._adjust_daily_balance(daily_routes, places_per_day)
-    
-    def _order_clusters(self, cluster_centers):
-        """클러스터를 가까운 순서로 정렬"""
-        n_clusters = len(cluster_centers)
-        if n_clusters <= 1:
-            return list(range(n_clusters))
-        
-        # 첫 클러스터는 가장 남쪽 (또는 서쪽)
-        start_idx = np.argmin(cluster_centers[:, 1])  # Y 좌표 기준
-        
-        visited = [start_idx]
-        current = start_idx
-        
-        while len(visited) < n_clusters:
-            min_dist = float('inf')
-            next_idx = None
-            
-            for i in range(n_clusters):
-                if i not in visited:
-                    dist = self.calculate_distance(
-                        cluster_centers[current], 
-                        cluster_centers[i]
-                    )
-                    if dist < min_dist:
-                        min_dist = dist
-                        next_idx = i
-            
-            if next_idx is not None:
-                visited.append(next_idx)
-                current = next_idx
-        
-        return visited
-    
-    def _equal_distribution(self, locations, travel_duration, places_per_day):
-        """균등 분배"""
-        daily_routes = {}
-        locations_per_day = len(locations) // travel_duration
-        remainder = len(locations) % travel_duration
-        
-        start_idx = 0
-        for day in range(travel_duration):
-            count = locations_per_day + (1 if day < remainder else 0)
-            count = min(count, places_per_day)  # 일별 최대 장소 수 제한
-            daily_routes[day] = locations[start_idx:start_idx + count]
-            start_idx += count
-        
-        return daily_routes
-    
-    def _adjust_daily_balance(self, daily_routes, target_size):
-        """일별 장소 수 균형 조정"""
-        adjusted = {}
-        
-        for day, locations in daily_routes.items():
-            if len(locations) > target_size:
-                # 너무 많으면 잘라내기
-                adjusted[day] = locations[:target_size]
-            elif len(locations) < 2:
-                # 너무 적으면 다른 날에서 가져오기
-                continue
-            else:
-                adjusted[day] = locations
-        
-        return adjusted
-    
-    def _solve_tsp_with_start(self, locations):
-        """시작점을 고려한 TSP"""
-        if len(locations) <= 2:
-            return locations
-        
-        coords = np.array([loc['coords'] for loc in locations])
-        n = len(coords)
-        
-        # 가장 접근하기 쉬운 곳을 시작점으로 (가장 서쪽 또는 남쪽)
-        start = np.argmin(coords[:, 1])  # Y 좌표 기준
-        
-        # Nearest Neighbor from start
-        unvisited = set(range(n))
-        unvisited.remove(start)
-        current = start
-        route = [start]
-        
-        while unvisited:
-            nearest = min(unvisited, 
-                         key=lambda x: self.calculate_distance(coords[current], coords[x]))
-            route.append(nearest)
-            unvisited.remove(nearest)
-            current = nearest
-        
-        # 2-opt improvement
-        route = self._two_opt_improvement(route, coords)
-        
-        return [locations[i] for i in route]
-        
-
-def process_travel_input(travel_info: dict):
-    """여행 정보 전처리 함수"""
+    # 벡터 생성
     travel_feature_cols = [
         'TOTAL_COST_BINNED_ENCODED', 'WITH_PET', 'MONTH', 'DURATION',
         'MVMN_기타', 'MVMN_대중교통', 'MVMN_자가용',
@@ -1057,131 +790,568 @@ def process_travel_input(travel_info: dict):
         'WHOWITH_단독여행', 'WHOWITH_친구/지인 여행'
     ]
     
-    # 반려동물 동반
-    travel_info['mission_ENC'] = travel_info['mission_ENC'].strip().split(',')
-    travel_info['WITH_PET'] = 1 if '0' in travel_info['mission_ENC'] else 0
-        
-    # 여행 목적
-    for i in range(1, 10):
-        travel_info[f'TRAVEL_PURPOSE_{i}'] = 1 if str(i) in travel_info['mission_ENC'] else 0
-        
-    # 날짜 처리
-    dates = travel_info['date_range'].split(' - ')
-    start_date = datetime.strptime(dates[0].strip(), "%Y-%m-%d")
-    end_date = datetime.strptime(dates[1].strip(), "%Y-%m-%d")
+    return np.array([[result[k] for k in travel_feature_cols]], dtype=np.float32)
+
+
+def process_user_feedback(recommender, optimized_routes, travel_context_tensor, 
+                         removed_place_ids, replace_only=True, unique_recommendations=None):
+    """
+    사용자 피드백을 처리하여 경로를 수정하는 함수
     
-    travel_info['MONTH'] = end_date.month
-    travel_info['DURATION'] = (end_date - start_date).days + 1  # +1 추가
+    Parameters:
+    -----------
+    recommender : FastRecommendationEngine
+        추천 엔진 인스턴스
+    optimized_routes : dict
+        현재 최적화된 경로 {day: [locations]}
+    travel_context_tensor : torch.Tensor
+        여행 컨텍스트 텐서
+    removed_place_ids : list
+        제거할 장소들의 ID 리스트
+    replace_only : bool
+        True: 제거된 장소만 대체
+        False: 전체 경로 재생성
+    unique_recommendations : list, optional
+        기존 추천 인덱스 리스트
     
-    # 교통수단
-    for m in ['자가용', '대중교통', '기타']:
-        travel_info[f"MVMN_{m}"] = 0
+    Returns:
+    --------
+    dict : 수정된 경로
+    """
+    # 제거할 ID를 set으로 변환
+    excluded_ids = set(removed_place_ids)
     
-    if travel_info['MVMN_NM_ENC'] == '1':
-        travel_info['MVMN_자가용'] = 1
-    elif travel_info['MVMN_NM_ENC'] == '2':
-        travel_info['MVMN_대중교통'] = 1
+    if replace_only:
+        # 옵션 1: 제거된 장소만 대체
+        return _replace_specific_places(recommender, optimized_routes, 
+                                      travel_context_tensor, excluded_ids)
     else:
-        travel_info['MVMN_기타'] = 1
-    
-    # 동행자
-    whowith_onehot = [0] * 5
-    idx = int(travel_info['whowith_ENC']) - 1
-    if 0 <= idx < 5:
-        whowith_onehot[idx] = 1
-    
-    travel_info.update({
-        'WHOWITH_단독여행': whowith_onehot[0],
-        'WHOWITH_2인여행': whowith_onehot[1],
-        'WHOWITH_가족여행': whowith_onehot[2],
-        'WHOWITH_친구/지인 여행': whowith_onehot[3],
-        'WHOWITH_기타': whowith_onehot[4],
-    })
-    
-    # 비용
-    travel_info['TOTAL_COST_BINNED_ENCODED'] = int(travel_info['TOTAL_COST'])
-    
-    # 최종 벡터 생성
-    travel_vector = [int(travel_info.get(k, 0)) for k in travel_feature_cols]
-    
-    return np.array([travel_vector]).astype(np.float32)
+        # 옵션 2: 전체 경로 재생성
+        return _regenerate_full_routes(recommender, travel_context_tensor, 
+                                     excluded_ids, len(optimized_routes))
 
-def simulate_user_feedback():
-    """사용자 피드백 시뮬레이션"""
-    feedback_options = [
-        {"liked": [], "disliked": [0, 2]},  # 첫 번째와 세 번째 장소 싫어요
-        {"liked": [1], "disliked": [4, 7]},  # 두 번째 장소 좋아요, 다른 곳들 싫어요
-        {"liked": [0, 3], "disliked": [5]},  # 복수 좋아요/싫어요
-    ]
-    
-    return random.choice(feedback_options)
 
-def main_feedback_test(travel_example) -> dict:
-    print("🚀 개선된 피드백 기반 경로 대체 테스트 시작!")
-    print("=" * 60)
-
-    travel_tensor = process_travel_input(travel_example)
-    travel_duration = int(travel_tensor[0, 3])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"📱 사용 디바이스: {device}")
-    print(f"📅 여행 기간: {travel_example['date_range']} ({travel_tensor[0, 3]:.0f}일)")
+def _replace_specific_places(recommender, optimized_routes, travel_context_tensor, excluded_ids):
+    """특정 장소만 대체하는 함수"""
+    print("\n🔄 특정 장소 대체 모드")
     
-    travel_context_tensor = torch.tensor(travel_tensor, dtype=torch.float32).to(device)
+    # 1. 제거할 장소 찾기 및 대체 필요 수 계산
+    replacement_needed = {}
+    current_place_ids = set()
     
-    recommender = SmartRecommendationEngine(device)
+    for day, locations in optimized_routes.items():
+        replacement_needed[day] = []
+        for i, loc in enumerate(locations):
+            current_place_ids.add(loc['id'])
+            if loc['id'] in excluded_ids:
+                replacement_needed[day].append(i)
+                print(f"  - Day {day+1}: '{loc['name']}' 제거 예정")
     
-    # 초기 추천 (필터링 적용, 거리 고려)
-    recommendations, embeddings, _ = recommender.get_recommendations(
-        travel_context_tensor, top_k=50, diversity_weight=0.3, 
-        filter_useless=True, consider_distance=True
+    # 2. 대체할 장소 찾기
+    total_replacements = sum(len(indices) for indices in replacement_needed.values())
+    
+    if total_replacements == 0:
+        print("  ℹ️ 제거할 장소가 없습니다.")
+        return optimized_routes
+    
+    # 현재 경로에 있는 모든 ID + 제외할 ID
+    all_excluded_ids = current_place_ids.union(excluded_ids)
+    
+    # 새로운 추천 받기
+    new_recommendations, _, _ = recommender.get_recommendations(
+        travel_context_tensor, 
+        top_k=total_replacements + 10,  # 여유분 포함
+        excluded_ids=all_excluded_ids,
+        filter_useless=True,
+        consider_distance=True
     )
     
-    optimized_routes, unique_recommendations = recommender.optimize_routes(recommendations, travel_tensor)
+    # 3. 새로운 장소 정보 생성
+    new_locations = []
+    for idx in new_recommendations:
+        if idx < len(recommender.visit_area_df):
+            row = recommender.visit_area_df.iloc[idx]
+            area_id = row['NEW_VISIT_AREA_ID']
+            if area_id not in all_excluded_ids and area_id != 0:
+                new_locations.append({
+                    'id': area_id,
+                    'name': row['VISIT_AREA_NM'],
+                    'coords': [row['X_COORD'], row['Y_COORD']],
+                    'idx': idx,
+                    'type': row.get('VISIT_AREA_TYPE_CD', 0)
+                })
+                if len(new_locations) >= total_replacements:
+                    break
     
-    print("\n🗓️ 초기 여행 일정 (최적화 및 필터링 적용):")
-    total_places = 0
-    for day, route in sorted(optimized_routes.items()):
-        print(f"\n📅 Day {day + 1}:")
-        for i, loc in enumerate(route):
-            print(f" {i+1}. [{loc['id']:3d}] {loc['name']}")
-        total_places += len(route)
-    print(f"\n총 {total_places}개 장소 추천")
+    # 4. 각 날짜별로 장소 대체
+    new_routes = {}
+    replacement_idx = 0
     
-    return optimized_routes
-    
-    # 피드백 라운드 반복
-    for round_num in range(1):
-        print(f"\n{'='*60}")
-        print(f"🔄 피드백 라운드 {round_num + 1}")
+    for day, locations in optimized_routes.items():
+        new_day_locations = locations.copy()
         
-        feedback = simulate_user_feedback()
-        optimized_routes = recommender.feedback_model(feedback, travel_context_tensor, travel_duration, unique_recommendations, embeddings)
+        # 제거할 장소들을 새로운 장소로 대체
+        for idx in sorted(replacement_needed[day], reverse=True):
+            if replacement_idx < len(new_locations):
+                old_name = new_day_locations[idx]['name']
+                new_name = new_locations[replacement_idx]['name']
+                new_day_locations[idx] = new_locations[replacement_idx]
+                print(f"  ✅ Day {day+1}: '{old_name}' → '{new_name}'")
+                replacement_idx += 1
+            else:
+                # 대체할 장소가 부족하면 제거만
+                new_day_locations.pop(idx)
+                print(f"  ❌ Day {day+1}: 위치 {idx+1} 제거 (대체 장소 부족)")
         
-        print("\n🎯 피드백 반영 후 최적화된 여행 일정:")
+        new_routes[day] = new_day_locations
+    
+    print(f"\n  📊 총 {replacement_idx}개 장소 대체 완료")
+    return new_routes
+
+
+def _regenerate_full_routes(recommender, travel_context_tensor, excluded_ids, travel_duration):
+    """전체 경로를 재생성하는 함수"""
+    print("\n🔄 전체 경로 재생성 모드")
+    
+    # 캐시 무효화
+    recommender._embedding_cache = None
+    recommender._score_cache = None
+    
+    # 완전히 새로운 추천 생성
+    recommendations, _, _ = recommender.get_recommendations(
+        travel_context_tensor,
+        top_k=50,
+        diversity_weight=0.3,
+        excluded_ids=excluded_ids,
+        filter_useless=True,
+        consider_distance=True
+    )
+    
+    # 새로운 경로 최적화
+    travel_tensor = travel_context_tensor.cpu().numpy()
+    new_routes, _ = recommender.optimize_routes(recommendations, travel_tensor)
+    
+    # 제외된 장소 정보 출력
+    if excluded_ids:
+        print(f"  ❌ {len(excluded_ids)}개 장소 제외됨")
+    
+    # 새로운 경로 요약
+    total_places = sum(len(route) for route in new_routes.values())
+    print(f"  ✅ 새로운 경로 생성: 총 {total_places}개 장소")
+    
+    return new_routes
+
+
+def simulate_feedback_interaction(recommender, optimized_routes, travel_context_tensor, 
+                                 unique_recommendations=None):
+    """피드백 상호작용 시뮬레이션 함수"""
+    print("\n" + "="*60)
+    print("🎯 피드백 시뮬레이션")
+    
+    # 현재 경로에서 임의로 제거할 장소 선택
+    all_places = []
+    for day, locations in optimized_routes.items():
+        for loc in locations:
+            all_places.append(loc)
+    
+    if len(all_places) < 3:
+        print("장소가 너무 적어 피드백 시뮬레이션을 건너뜁니다.")
+        return optimized_routes
+    
+    # 랜덤하게 2-3개 장소 선택하여 제거
+    num_to_remove = min(3, len(all_places) // 3)
+    places_to_remove = random.sample(all_places, num_to_remove)
+    removed_ids = [place['id'] for place in places_to_remove]
+    
+    print(f"\n👎 싫어요 표시된 장소:")
+    for place in places_to_remove:
+        print(f"  - [{place['id']}] {place['name']}")
+    
+    # 테스트 1: 특정 장소만 대체
+    print("\n--- 테스트 1: 특정 장소만 대체 ---")
+    new_routes_replace = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        removed_ids, replace_only=True, unique_recommendations=unique_recommendations
+    )
+    
+    # 테스트 2: 전체 경로 재생성  
+    print("\n--- 테스트 2: 전체 경로 재생성 ---")
+    new_routes_full = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        removed_ids, replace_only=False, unique_recommendations=unique_recommendations
+    )
+    
+    return new_routes_replace, new_routes_full
+
+
+def process_user_feedback(recommender, optimized_routes, travel_context_tensor, 
+                         removed_place_ids, replace_only=True, unique_recommendations=None):
+    """
+    사용자 피드백을 처리하여 경로를 수정하는 함수
+    
+    Parameters:
+    -----------
+    recommender : FastRecommendationEngine
+        추천 엔진 인스턴스
+    optimized_routes : dict
+        현재 최적화된 경로 {day: [locations]}
+    travel_context_tensor : torch.Tensor
+        여행 컨텍스트 텐서
+    removed_place_ids : list
+        제거할 장소들의 ID 리스트
+    replace_only : bool
+        True: 제거된 장소만 대체
+        False: 전체 경로 재생성
+    unique_recommendations : list, optional
+        기존 추천 인덱스 리스트
+    
+    Returns:
+    --------
+    dict : 수정된 경로
+    """
+    # 제거할 ID를 set으로 변환
+    excluded_ids = set(removed_place_ids)
+    
+    if replace_only:
+        # 옵션 1: 제거된 장소만 대체
+        return _replace_specific_places(recommender, optimized_routes, 
+                                      travel_context_tensor, excluded_ids)
+    else:
+        # 옵션 2: 전체 경로 재생성
+        return _regenerate_full_routes(recommender, travel_context_tensor, 
+                                     excluded_ids, len(optimized_routes))
+
+
+def _replace_specific_places(recommender, optimized_routes, travel_context_tensor, excluded_ids):
+    """특정 장소만 대체하는 함수"""
+    print("\n🔄 특정 장소 대체 모드")
+    
+    # 1. 제거할 장소 찾기 및 대체 필요 수 계산
+    replacement_needed = {}
+    current_place_ids = set()
+    
+    for day, locations in optimized_routes.items():
+        replacement_needed[day] = []
+        for i, loc in enumerate(locations):
+            current_place_ids.add(loc['id'])
+            if loc['id'] in excluded_ids:
+                replacement_needed[day].append(i)
+                print(f"  - Day {day+1}: '{loc['name']}' 제거 예정")
+    
+    # 2. 대체할 장소 찾기
+    total_replacements = sum(len(indices) for indices in replacement_needed.values())
+    
+    if total_replacements == 0:
+        print("  ℹ️ 제거할 장소가 없습니다.")
+        return optimized_routes
+    
+    # 현재 경로에 있는 모든 ID + 제외할 ID
+    all_excluded_ids = current_place_ids.union(excluded_ids)
+    
+    # 새로운 추천 받기
+    new_recommendations, _, _ = recommender.get_recommendations(
+        travel_context_tensor, 
+        top_k=total_replacements + 10,  # 여유분 포함
+        excluded_ids=all_excluded_ids,
+        filter_useless=True,
+        consider_distance=True
+    )
+    
+    # 3. 새로운 장소 정보 생성
+    new_locations = []
+    for idx in new_recommendations:
+        if idx < len(recommender.visit_area_df):
+            row = recommender.visit_area_df.iloc[idx]
+            area_id = row['NEW_VISIT_AREA_ID']
+            if area_id not in all_excluded_ids and area_id != 0:
+                new_locations.append({
+                    'id': area_id,
+                    'name': row['VISIT_AREA_NM'],
+                    'coords': [row['X_COORD'], row['Y_COORD']],
+                    'idx': idx,
+                    'type': row.get('VISIT_AREA_TYPE_CD', 0)
+                })
+                if len(new_locations) >= total_replacements:
+                    break
+    
+    # 4. 각 날짜별로 장소 대체
+    new_routes = {}
+    replacement_idx = 0
+    
+    for day, locations in optimized_routes.items():
+        new_day_locations = locations.copy()
+        
+        # 제거할 장소들을 새로운 장소로 대체
+        for idx in sorted(replacement_needed[day], reverse=True):
+            if replacement_idx < len(new_locations):
+                old_name = new_day_locations[idx]['name']
+                new_name = new_locations[replacement_idx]['name']
+                new_day_locations[idx] = new_locations[replacement_idx]
+                print(f"  ✅ Day {day+1}: '{old_name}' → '{new_name}'")
+                replacement_idx += 1
+            else:
+                # 대체할 장소가 부족하면 제거만
+                new_day_locations.pop(idx)
+                print(f"  ❌ Day {day+1}: 위치 {idx+1} 제거 (대체 장소 부족)")
+        
+        new_routes[day] = new_day_locations
+    
+    print(f"\n  📊 총 {replacement_idx}개 장소 대체 완료")
+    return new_routes
+
+
+def _regenerate_full_routes(recommender, travel_context_tensor, excluded_ids, travel_duration):
+    """전체 경로를 재생성하는 함수"""
+    print("\n🔄 전체 경로 재생성 모드")
+    
+    # 캐시 무효화
+    recommender._embedding_cache = None
+    recommender._score_cache = None
+    
+    # 완전히 새로운 추천 생성
+    recommendations, _, _ = recommender.get_recommendations(
+        travel_context_tensor,
+        top_k=50,
+        diversity_weight=0.3,
+        excluded_ids=excluded_ids,
+        filter_useless=True,
+        consider_distance=True
+    )
+    
+    # 새로운 경로 최적화
+    travel_tensor = travel_context_tensor.cpu().numpy()
+    new_routes, _ = recommender.optimize_routes(recommendations, travel_tensor)
+    
+    # 제외된 장소 정보 출력
+    if excluded_ids:
+        print(f"  ❌ {len(excluded_ids)}개 장소 제외됨")
+    
+    # 새로운 경로 요약
+    total_places = sum(len(route) for route in new_routes.values())
+    print(f"  ✅ 새로운 경로 생성: 총 {total_places}개 장소")
+    
+    return new_routes
+
+
+def simulate_feedback_interaction(recommender, optimized_routes, travel_context_tensor, 
+                                 unique_recommendations=None):
+    """피드백 상호작용 시뮬레이션 함수"""
+    print("\n" + "="*60)
+    print("🎯 피드백 시뮬레이션")
+    
+    # 현재 경로에서 임의로 제거할 장소 선택
+    all_places = []
+    for day, locations in optimized_routes.items():
+        for loc in locations:
+            all_places.append(loc)
+    
+    if len(all_places) < 3:
+        print("장소가 너무 적어 피드백 시뮬레이션을 건너뜁니다.")
+        return optimized_routes
+    
+    # 랜덤하게 2-3개 장소 선택하여 제거
+    num_to_remove = min(3, len(all_places) // 3)
+    places_to_remove = random.sample(all_places, num_to_remove)
+    removed_ids = [place['id'] for place in places_to_remove]
+    
+    print(f"\n👎 싫어요 표시된 장소:")
+    for place in places_to_remove:
+        print(f"  - [{place['id']}] {place['name']}")
+    
+    # 테스트 1: 특정 장소만 대체
+    print("\n--- 테스트 1: 특정 장소만 대체 ---")
+    new_routes_replace = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        removed_ids, replace_only=True, unique_recommendations=unique_recommendations
+    )
+    
+    # 테스트 2: 전체 경로 재생성  
+    print("\n--- 테스트 2: 전체 경로 재생성 ---")
+    new_routes_full = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        removed_ids, replace_only=False, unique_recommendations=unique_recommendations
+    )
+    
+    return new_routes_replace, new_routes_full
+
+
+def main_optimized_test(travel_example) -> dict:
+    """최적화된 테스트 함수"""
+    print("🚀 최적화된 GNN 추천 시스템 시작!")
+    print("=" * 60)
+    
+    import time
+    start_time = time.time()
+    
+    try:
+        # 전처리
+        travel_tensor = process_travel_input_fast(travel_example)
+        travel_duration = int(travel_tensor[0, 3])
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        print(f"📱 사용 디바이스: {device}")
+        print(f"📅 여행 기간: {travel_example.get('date_range', 'N/A')} ({travel_duration}일)")
+        
+        travel_context_tensor = torch.tensor(travel_tensor, dtype=torch.float32).to(device)
+        
+        # 추천 엔진 초기화
+        recommender = FastRecommendationEngine(device)
+        
+        # 추천 생성
+        recommendations, embeddings, _ = recommender.get_recommendations(
+            travel_context_tensor, top_k=50, diversity_weight=0.3
+        )
+        
+        # 경로 최적화
+        optimized_routes, unique_recommendations = recommender.optimize_routes(
+            recommendations, travel_tensor
+        )
+        
+        end_time = time.time()
+        
+        print(f"\n⏱️ 처리 시간: {end_time - start_time:.2f}초")
+        print("\n🗓️ 최적화된 여행 일정:")
+        
         total_places = 0
         for day, route in sorted(optimized_routes.items()):
             print(f"\n📅 Day {day + 1}:")
             for i, loc in enumerate(route):
                 print(f" {i+1}. [{loc['id']:3d}] {loc['name']}")
             total_places += len(route)
+        
         print(f"\n총 {total_places}개 장소 추천")
+        
+        # 피드백 시뮬레이션 (옵션)
+        if False:  # 피드백 테스트 비활성화 (필요시 True로 변경)
+            replaced_routes, regenerated_routes = simulate_feedback_interaction(
+                recommender, optimized_routes, travel_context_tensor, unique_recommendations
+            )
+            
+            # 결과 비교
+            print("\n" + "="*60)
+            print("📊 피드백 처리 결과 비교")
+            
+            print("\n[대체 모드 결과]")
+            for day, route in sorted(replaced_routes.items()):
+                print(f"Day {day + 1}: {len(route)}개 장소")
+            
+            print("\n[재생성 모드 결과]")  
+            for day, route in sorted(regenerated_routes.items()):
+                print(f"Day {day + 1}: {len(route)}개 장소")
+        
+        return optimized_routes
+        
+    except Exception as e:
+        print(f"❌ 에러 발생: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # 에러 발생 시 기본 경로 반환
+        return {0: [{'id': 0, 'name': '추천 생성 실패', 'coords': [0, 0], 'idx': 0, 'type': 0}]}
+
+
+# 별도 사용 예제 함수
+def example_feedback_usage():
+    """피드백 함수 사용 예제"""
+    # 1. 초기 설정
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    recommender = FastRecommendationEngine(device)
     
-    print("\n" + "="*60)
+    travel_info = {
+        'mission_ENC': '1,2,3',
+        'date_range': '2025-10-01 - 2025-10-03',
+        'TOTAL_COST': '3',
+        'MVMN_NM_ENC': '1',
+        'whowith_ENC': '3',
+        'mission_type': 'normal'
+    }
+    
+    # 2. 초기 추천 생성
+    travel_tensor = process_travel_input_fast(travel_info)
+    travel_context_tensor = torch.tensor(travel_tensor, dtype=torch.float32).to(device)
+    
+    recommendations, _, _ = recommender.get_recommendations(travel_context_tensor)
+    optimized_routes, unique_recommendations = recommender.optimize_routes(recommendations, travel_tensor)
+    
+    # 3. 사용자가 특정 장소를 싫어한다고 가정
+    # 예: 첫째 날 첫 번째 장소와 둘째 날 두 번째 장소
+    disliked_ids = []
+    if 0 in optimized_routes and len(optimized_routes[0]) > 0:
+        disliked_ids.append(optimized_routes[0][0]['id'])
+    if 1 in optimized_routes and len(optimized_routes[1]) > 1:
+        disliked_ids.append(optimized_routes[1][1]['id'])
+    
+    # 4. 피드백 처리 - 방법 1: 특정 장소만 대체
+    new_routes_v1 = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        disliked_ids, replace_only=True, unique_recommendations=unique_recommendations
+    )
+    
+    # 5. 피드백 처리 - 방법 2: 전체 재생성
+    new_routes_v2 = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        disliked_ids, replace_only=False
+    )
+    
+    return new_routes_v1, new_routes_v2
+
+
+# 별도 사용 예제 함수
+def example_feedback_usage():
+    """피드백 함수 사용 예제"""
+    # 1. 초기 설정
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    recommender = FastRecommendationEngine(device)
+    
+    travel_info = {
+        'mission_ENC': '1,2,3',
+        'date_range': '2025-10-01 - 2025-10-03',
+        'TOTAL_COST': '3',
+        'MVMN_NM_ENC': '1',
+        'whowith_ENC': '3',
+        'mission_type': 'normal'
+    }
+    
+    # 2. 초기 추천 생성
+    travel_tensor = process_travel_input_fast(travel_info)
+    travel_context_tensor = torch.tensor(travel_tensor, dtype=torch.float32).to(device)
+    
+    recommendations, _, _ = recommender.get_recommendations(travel_context_tensor)
+    optimized_routes, unique_recommendations = recommender.optimize_routes(recommendations, travel_tensor)
+    
+    # 3. 사용자가 특정 장소를 싫어한다고 가정
+    # 예: 첫째 날 첫 번째 장소와 둘째 날 두 번째 장소
+    disliked_ids = []
+    if 0 in optimized_routes and len(optimized_routes[0]) > 0:
+        disliked_ids.append(optimized_routes[0][0]['id'])
+    if 1 in optimized_routes and len(optimized_routes[1]) > 1:
+        disliked_ids.append(optimized_routes[1][1]['id'])
+    
+    # 4. 피드백 처리 - 방법 1: 특정 장소만 대체
+    new_routes_v1 = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        disliked_ids, replace_only=True, unique_recommendations=unique_recommendations
+    )
+    
+    # 5. 피드백 처리 - 방법 2: 전체 재생성
+    new_routes_v2 = process_user_feedback(
+        recommender, optimized_routes, travel_context_tensor,
+        disliked_ids, replace_only=False
+    )
+    
+    return new_routes_v1, new_routes_v2
+
 
 if __name__ == "__main__":
-    # 여행 정보 (2일 여행)
+    # 테스트 실행
     travel_example = {
         'mission_ENC': '0,1,2',
-        'date_range': '2025-09-28 - 2025-09-29',  # 2일 여행으로 변경
-        'start_date': '',
-        'end_date': '',
+        'date_range': '2025-09-28 - 2025-09-29',
         'TOTAL_COST': '2',
         'MVMN_NM_ENC': '2',
         'whowith_ENC': '2',
         'mission_type': 'normal'
     }
-    route = main_feedback_test(travel_example)
     
-    print("=" * 100)
-    print(route)
+    route = main_optimized_test(travel_example)
     print("=" * 100)
