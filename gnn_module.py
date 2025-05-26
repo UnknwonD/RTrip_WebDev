@@ -175,7 +175,7 @@ class FastDataProcessor:
         self.exclude_keywords = {
             '역', '터미널', '공항', '휴게소', '정류장', '톨게이트', '교차로', '출구', '입구',
             'IC', 'JC', '나들목', '분기점', '요금소', '주차장', '주유소', '충전소',
-            '아파트', '원룸', '오피스텔', '빌라', '주택', '빌딩', '상가', '모텔', '집'
+            '아파트', '원룸', '오피스텔', '빌라', '주택', '빌딩', '상가', '모텔', '집', '교직원', '하나로마트', '마트'
         }
         self._cache = {}  # 캐싱 추가
         
@@ -188,7 +188,7 @@ class FastDataProcessor:
         
         for keyword in self.exclude_keywords:
             if keyword.lower() in name_str:
-                tourist_keywords = {'관광', '테마', '파크', '랜드', '월드', '리조트', '호텔',
+                tourist_keywords = {'관광', '테마', '파크', '랜드', '월드', '호텔',
                                   '맛집', '식당', '카페', '박물관', '전시', '갤러리', '문화'}
                 if any(tk in name_str for tk in tourist_keywords):
                     continue
@@ -746,8 +746,8 @@ def process_travel_input_fast(travel_info: dict):
         
         # 날짜 처리
         date_range = travel_info.get('date_range', '')
-        if ' - ' in date_range:
-            dates = date_range.split(' - ')
+        if ' ~ ' in date_range:
+            dates = date_range.split(' ~ ')
             start_date = datetime.strptime(dates[0].strip(), "%Y-%m-%d")
             end_date = datetime.strptime(dates[1].strip(), "%Y-%m-%d")
             
@@ -1181,6 +1181,32 @@ def simulate_feedback_interaction(recommender, optimized_routes, travel_context_
     
     return new_routes_replace, new_routes_full
 
+def filter_rooms_once_per_day(optimized_routes):
+    """
+    하루에 숙소 하나만 남기고 나머지는 제거한 딕셔너리 반환
+    """
+    room_keywords = ('호텔', '모텔', '캠핑', '펜션', '카라반')
+    new_routes = {}
+
+    for day, route in optimized_routes.items():
+        seen_room = False
+        filtered_route = []
+
+        for loc in route:
+            name_lower = loc['name'].lower()
+            if any(rk in name_lower for rk in room_keywords):
+                if not seen_room:
+                    seen_room = True
+                    filtered_route.append(loc)  # 첫 번째 숙소만 추가
+                # 이후 숙소는 제외
+            else:
+                filtered_route.append(loc)  # 숙소 아닌 경우는 그대로 추가
+
+        new_routes[day] = filtered_route
+    
+    return new_routes
+
+
 
 def main_optimized_test(travel_example) -> dict:
     """최적화된 테스트 함수"""
@@ -1215,6 +1241,7 @@ def main_optimized_test(travel_example) -> dict:
         )
         
         end_time = time.time()
+        optimized_routes = filter_rooms_once_per_day(optimized_routes)
         
         print(f"\n⏱️ 처리 시간: {end_time - start_time:.2f}초")
         print("\n🗓️ 최적화된 여행 일정:")

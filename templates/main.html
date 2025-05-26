@@ -1,7 +1,6 @@
 {% extends 'main_head_content.html' %}
 
 {% block content %}
-
 <div class="main-wrapper">
     <div class="main-card" style="max-width: 1200px;">
         <h2 class="form-title">🌏 R-Trip 여행 추천 입력</h2>
@@ -66,8 +65,9 @@
           
                         <div class="text-center">
                             <div class="btn-group">
-                                <button type="button" class="btn btn-default" data-toggle="modal" data-target="#loginModal">
-                                로그인
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                    <i class="fas fa-sign-in-alt me-1"></i>
+                                    로그인
                                 </button>
                                 <a href="{{ url_for('main_register') }}" class="btn btn-primary btn-lg">
                                     회원가입

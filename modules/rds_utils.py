@@ -195,7 +195,7 @@ def get_meta_photo_info(new_visit_area_id):
 def pares_dates(travel_date):
     from datetime import datetime, timedelta
     # 시작일과 종료일 파싱
-    start_str, end_str = travel_date.split(' - ')
+    start_str, end_str = travel_date.split(' ~ ')
     start_date = datetime.strptime(start_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_str, '%Y-%m-%d')
 
@@ -211,7 +211,7 @@ def pares_dates(travel_date):
 
 
 def travel_plans_with_debug(area_ids, travel_date:str):
-    # travel_date = '2025-06-18 - 2025-06-21' 이런식으로 들어옴
+    # travel_date = '2025-06-18 ~ 2025-06-21' 이런식으로 들어옴
     
     print(f"[DEBUG] 🔁 travel_plans_with_debug() 호출됨. area_ids: {area_ids}")
     

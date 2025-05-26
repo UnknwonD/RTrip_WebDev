@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>나만의 여행 R-Trip</title>
+    <title>나만을 위한 여행, R-Trip</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     
     <!-- Bootstrap 5.3.3 CSS -->
@@ -23,9 +23,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
     
-    <!-- Litepicker CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css">
-    
+    <!-- FlatPicker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+
     <!-- Chart.js 4.4.0 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     
@@ -197,76 +199,64 @@
 
     <div id="top"></div>
 
-    {% block content %}
-    <!-- 기본 콘텐츠 영역 -->
-    <div class="container my-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <!-- Sample Slider -->
-                <div id="slider" class="slider-container mb-4">
-                    <div id="slider-wrapper" class="slider-wrapper">
-                        <div class="slide">슬라이드 1</div>
-                        <div class="slide">슬라이드 2</div>
-                        <div class="slide">슬라이드 3</div>
-                        <div class="slide">슬라이드 4</div>
-                        <div class="slide">슬라이드 5</div>
-                        <div class="slide">슬라이드 6</div>
-                        <div class="slide">슬라이드 7</div>
-                        <div class="slide">슬라이드 8</div>
-                        <div class="slide">슬라이드 9</div>
-                        <div class="slide">슬라이드 10</div>
-                    </div>
-                </div>
-                <div id="slider-info" class="slider-info">설명 1번</div>
-                <div id="slider-dots" class="slider-dots"></div>
-            </div>
-        </div>
-    </div>
-    {% endblock %}
-
     <!-- Login Modal -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <form method="POST" action="{{ url_for('login') }}">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="loginModalLabel">로그인</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    
-                    <div class="modal-body">
-                        {% if error %}
-                            <div class="alert alert-danger d-flex align-items-center" role="alert">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                {{ error }}
-                            </div>
-                        {% endif %}
-                        
-                        <div class="mb-3">
-                            <label for="USER_ID" class="form-label">아이디</label>
-                            <input type="text" class="form-control" id="USER_ID" name="USER_ID" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="PASSWORD" class="form-label">비밀번호</label>
-                            <input type="password" class="form-control" id="PASSWORD" name="PASSWORD" required>
-                        </div>
-                    </div>
-                    
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt me-1"></i>
-                            로그인
-                        </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-1"></i>
-                            닫기
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <div class="modal" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-modal="true" role="dialog">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+              <form method="POST" action="{{ url_for('login') }}">
+                  <div class="modal-header">
+                      <h5 class="modal-title" id="loginModalLabel">
+                          <i class="fas fa-user-circle me-2"></i>
+                          로그인
+                      </h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="모달 닫기"></button>
+                  </div>
+                  
+                  <div class="modal-body">
+                      {% if error %}
+                          <div class="alert alert-danger d-flex align-items-center" role="alert" aria-live="polite">
+                              <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
+                              {{ error }}
+                          </div>
+                      {% endif %}
+                      
+                      <div class="mb-3">
+                          <label for="USER_ID" class="form-label">
+                              <i class="fas fa-user me-1" aria-hidden="true"></i>
+                              아이디
+                          </label>
+                          <input type="text" class="form-control" id="USER_ID" name="USER_ID" required 
+                                 aria-describedby="userIdHelp" autocomplete="username">
+                          <div id="userIdHelp" class="form-text">계정의 아이디를 입력해주세요.</div>
+                      </div>
+                      
+                      <div class="mb-3">
+                          <label for="PASSWORD" class="form-label">
+                              <i class="fas fa-lock me-1" aria-hidden="true"></i>
+                              비밀번호
+                          </label>
+                          <input type="password" class="form-control" id="PASSWORD" name="PASSWORD" required 
+                                 aria-describedby="passwordHelp" autocomplete="current-password">
+                          <div id="passwordHelp" class="form-text">계정의 비밀번호를 입력해주세요.</div>
+                      </div>
+                  </div>
+                  
+                  <div class="modal-footer">
+                      <button type="submit" class="btn btn-primary">
+                          <i class="fas fa-sign-in-alt me-1" aria-hidden="true"></i>
+                          로그인
+                      </button>
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                          <i class="fas fa-times me-1" aria-hidden="true"></i>
+                          닫기
+                      </button>
+                  </div>
+              </form>
+          </div>
+      </div>
+  </div>
+  {% block content %}
+    {% endblock %}
 
     <!-- jQuery 3.7.1 -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -280,13 +270,382 @@
     <!-- WOW.js 1.1.3 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/wow/1.1.3/wow.min.js"></script>
     
-    <!-- Litepicker -->
-    <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
-    
     <!-- Custom Flask JS Files -->
     <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main_script.js') }}" defer></script>
+    <script>
+      class AccessibleModal {
+          constructor(modalId) {
+              this.modalId = modalId;
+              this.modal = document.getElementById(modalId);
+              this.previouslyFocusedElement = null;
+              this.isOpen = false;
+              
+              if (!this.modal) {
+                  console.error(`모달 ${modalId}를 찾을 수 없습니다.`);
+                  return;
+              }
+              
+              this.init();
+          }
+          
+          init() {
+              console.log('접근성 모달 초기화 중...');
+              
+              // 초기 상태 설정
+              this.modal.setAttribute('aria-hidden', 'true');
+              this.modal.setAttribute('inert', ''); // 모던 브라우저용
+              
+              // 이벤트 리스너 등록
+              this.bindEvents();
+              
+              console.log('✅ 접근성 모달 초기화 완료');
+          }
+          
+          bindEvents() {
+              // Bootstrap 모달 이벤트
+              this.modal.addEventListener('show.bs.modal', (e) => this.handleShow(e));
+              this.modal.addEventListener('shown.bs.modal', (e) => this.handleShown(e));
+              this.modal.addEventListener('hide.bs.modal', (e) => this.handleHide(e));
+              this.modal.addEventListener('hidden.bs.modal', (e) => this.handleHidden(e));
+              
+              // 키보드 이벤트 (포커스 트랩)
+              this.modal.addEventListener('keydown', (e) => this.handleKeydown(e));
+          }
+          
+          handleShow(e) {
+              console.log('모달 열리기 시작...');
+              
+              // 현재 포커스된 요소 저장
+              this.previouslyFocusedElement = document.activeElement;
+              
+              // 접근성 속성 설정
+              this.modal.removeAttribute('aria-hidden');
+              this.modal.removeAttribute('inert');
+              this.modal.setAttribute('aria-modal', 'true');
+              
+              // 다른 모든 요소들을 inert로 만들기 (모달 외부)
+              this.setPageInert(true);
+              
+              this.isOpen = true;
+          }
+          
+          handleShown(e) {
+              console.log('✅ 모달이 완전히 열렸습니다');
+              
+              // 첫 번째 포커스 가능한 요소에 포커스
+              this.focusFirstElement();
+          }
+          
+          handleHide(e) {
+              console.log('모달 닫히기 시작...');
+              this.isOpen = false;
+          }
+          
+          handleHidden(e) {
+              console.log('모달이 완전히 닫혔습니다');
+              
+              // 접근성 속성 복원
+              this.modal.setAttribute('aria-hidden', 'true');
+              this.modal.setAttribute('inert', '');
+              this.modal.removeAttribute('aria-modal');
+              
+              // 페이지의 inert 상태 해제
+              this.setPageInert(false);
+              
+              // 이전에 포커스된 요소로 포커스 복원
+              if (this.previouslyFocusedElement) {
+                  this.previouslyFocusedElement.focus();
+                  this.previouslyFocusedElement = null;
+              }
+          }
+          
+          handleKeydown(e) {
+              if (!this.isOpen) return;
+              
+              // ESC 키로 모달 닫기
+              if (e.key === 'Escape') {
+                  this.close();
+                  return;
+              }
+              
+              // Tab 키 포커스 트랩
+              if (e.key === 'Tab') {
+                  this.trapFocus(e);
+              }
+          }
+          
+          focusFirstElement() {
+              const focusableElements = this.getFocusableElements();
+              if (focusableElements.length > 0) {
+                  focusableElements[0].focus();
+              }
+          }
+          
+          getFocusableElements() {
+              const focusableSelectors = [
+                  'button:not([disabled])',
+                  'input:not([disabled]):not([type="hidden"])',
+                  'select:not([disabled])',
+                  'textarea:not([disabled])',
+                  'a[href]',
+                  '[tabindex]:not([tabindex="-1"])'
+              ].join(', ');
+              
+              return Array.from(this.modal.querySelectorAll(focusableSelectors))
+                  .filter(el => {
+                      return el.offsetWidth > 0 && el.offsetHeight > 0 && 
+                             !el.hasAttribute('inert') && 
+                             getComputedStyle(el).visibility !== 'hidden';
+                  });
+          }
+          
+          trapFocus(e) {
+              const focusableElements = this.getFocusableElements();
+              const firstElement = focusableElements[0];
+              const lastElement = focusableElements[focusableElements.length - 1];
+              
+              if (e.shiftKey) {
+                  // Shift + Tab
+                  if (document.activeElement === firstElement) {
+                      e.preventDefault();
+                      lastElement.focus();
+                  }
+              } else {
+                  // Tab
+                  if (document.activeElement === lastElement) {
+                      e.preventDefault();
+                      firstElement.focus();
+                  }
+              }
+          }
+          
+          setPageInert(inert) {
+    const bodyChildren = Array.from(document.body.children);
 
+    bodyChildren.forEach(child => {
+        // 모달과 backdrop은 inert 적용 제외!
+        if (
+            child !== this.modal &&
+            !child.contains(this.modal) &&
+            !child.classList.contains('modal-backdrop') // 예외 처리!
+        ) {
+            if (inert) {
+                if ('inert' in HTMLElement.prototype) {
+                    child.inert = true;
+                } else {
+                    child.setAttribute('aria-hidden', 'true');
+                    child.style.pointerEvents = 'none';
+                }
+            } else {
+                if ('inert' in HTMLElement.prototype) {
+                    child.inert = false;
+                } else {
+                    child.removeAttribute('aria-hidden');
+                    child.style.pointerEvents = '';
+                }
+            }
+        }
+    });
+}
+
+          
+          // 공개 메서드들
+          open() {
+              console.log('프로그래밍 방식으로 모달 열기...');
+              
+              if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                  const bsModal = bootstrap.Modal.getOrCreateInstance(this.modal);
+                  bsModal.show();
+              } else {
+                  // 수동으로 모달 열기
+                  this.handleShow();
+                  this.modal.style.display = 'block';
+                  this.modal.classList.add('show');
+                  setTimeout(() => this.handleShown(), 150);
+              }
+          }
+          
+          close() {
+              console.log('프로그래밍 방식으로 모달 닫기...');
+              
+              if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                  const bsModal = bootstrap.Modal.getInstance(this.modal);
+                  if (bsModal) {
+                      bsModal.hide();
+                  }
+              } else {
+                  // 수동으로 모달 닫기
+                  this.handleHide();
+                  this.modal.classList.remove('show');
+                  setTimeout(() => {
+                      this.modal.style.display = 'none';
+                      this.handleHidden();
+                  }, 150);
+              }
+          }
+      }
+      
+      // 3. 로그인 모달 인스턴스 생성 및 초기화
+      let loginModal;
+      
+      document.addEventListener('DOMContentLoaded', function() {
+          // 접근성 모달 인스턴스 생성
+          loginModal = new AccessibleModal('loginModal');
+          
+          // 로그인 버튼 이벤트 (기존 Bootstrap + 접근성 강화)
+          const loginButtons = document.querySelectorAll('[data-bs-target="#loginModal"]');
+          loginButtons.forEach(button => {
+              button.addEventListener('click', function(e) {
+                  console.log('로그인 버튼 클릭됨!');
+                  
+                  // Bootstrap이 실패할 경우를 대비한 백업
+                  setTimeout(() => {
+                      if (!loginModal.isOpen) {
+                          console.log('Bootstrap 모달 실패, 수동으로 열기...');
+                          loginModal.open();
+                      }
+                  }, 100);
+              });
+          });
+          
+          console.log('✅ 접근성 모달 시스템 초기화 완료');
+      });
+      
+      // 4. 에러 발생 시 자동 모달 열기 (Flask 연동)
+      {% if error %}
+      document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(function() {
+              console.log('에러 발생으로 인한 자동 모달 열기: {{ error }}');
+              
+              if (loginModal) {
+                  loginModal.open();
+              }
+          }, 1000);
+      });
+      {% endif %}
+      
+      // 5. 전역 함수로 노출 (콘솔에서 테스트 가능)
+      window.loginModal = loginModal;
+      </script>
+      
+      <!-- 3. Inert 폴리필 (구형 브라우저 지원) -->
+      <script>
+      // Inert 속성이 지원되지 않는 브라우저를 위한 간단한 폴리필
+      if (!('inert' in HTMLElement.prototype)) {
+          console.log('Inert 속성이 지원되지 않음. 폴리필 적용...');
+          
+          Object.defineProperty(HTMLElement.prototype, 'inert', {
+              get: function() {
+                  return this.hasAttribute('inert');
+              },
+              set: function(value) {
+                  if (value) {
+                      this.setAttribute('inert', '');
+                      this.setAttribute('aria-hidden', 'true');
+                      this.style.pointerEvents = 'none';
+                      
+                      // 모든 포커스 가능한 요소들을 비활성화
+                      const focusableElements = this.querySelectorAll(
+                          'button, input, select, textarea, a[href], [tabindex]'
+                      );
+                      focusableElements.forEach(el => {
+                          el.setAttribute('tabindex', '-1');
+                          el.setAttribute('data-inert-disabled', 'true');
+                      });
+                  } else {
+                      this.removeAttribute('inert');
+                      this.removeAttribute('aria-hidden');
+                      this.style.pointerEvents = '';
+                      
+                      // 포커스 가능한 요소들 복원
+                      const disabledElements = this.querySelectorAll('[data-inert-disabled]');
+                      disabledElements.forEach(el => {
+                          el.removeAttribute('tabindex');
+                          el.removeAttribute('data-inert-disabled');
+                      });
+                  }
+              }
+          });
+      }
+      </script>
+      
+      <!-- 4. CSS 개선 (접근성 강화) -->
+      <style>
+      /* 접근성을 위한 추가 스타일 */
+      
+      /* 포커스 표시 개선 */
+      .modal input:focus,
+      .modal button:focus,
+      .modal .btn-close:focus {
+          outline: 3px solid #0066cc;
+          outline-offset: 2px;
+          box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.3);
+      }
+      
+      /* 고대비 모드 지원 */
+      @media (prefers-contrast: high) {
+          .modal-content {
+              border: 2px solid #000;
+          }
+          
+          .modal-header {
+              border-bottom: 2px solid #000;
+          }
+      }
+      
+      /* 모션 감소 설정 지원 */
+      @media (prefers-reduced-motion: reduce) {
+          .modal.fade {
+              transition: none;
+          }
+          
+          .modal-dialog {
+              transform: none;
+          }
+      }
+      
+      /* 스크린 리더 전용 텍스트 */
+      .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+      }
+      
+      /* inert 요소 스타일 */
+      [inert] {
+          pointer-events: none;
+          cursor: default;
+          user-select: none;
+      }
+      
+      
+      body:not(.modal-open) > * {
+          filter: none;
+          transition: filter 0.3s ease;
+      }
+      </style>
+      
+      <!-- 5. 콘솔 도구 및 테스트 -->
+      <script>
+      console.log('=== 웹 접근성 모달 시스템 로드됨 ===');
+      console.log('사용 가능한 명령어:');
+      console.log('- loginModal.open(): 모달 열기');
+      console.log('- loginModal.close(): 모달 닫기');
+      console.log('특징:');
+      console.log('✅ ARIA 속성 자동 관리');
+      console.log('✅ 포커스 트랩 (Tab 키 순환)');
+      console.log('✅ ESC 키로 닫기');
+      console.log('✅ 이전 포커스 위치 복원');
+      console.log('✅ Inert 속성으로 배경 비활성화');
+      console.log('====================================');
+      </script>
     <!-- Modern JavaScript -->
     <script>
         class ModernSlider {
@@ -490,8 +849,8 @@
             handleLoginModal() {
                 // Show login modal if there's an error
                 {% if error %}
-                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-                loginModal.show();
+                  const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                  loginModal.show();
                 {% endif %}
                 
                 // Enhanced form validation
