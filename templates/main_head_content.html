@@ -1,201 +1,565 @@
 <!DOCTYPE html>
-<html>
-   <!-- Flask-compatible HTML head (일부) -->
-    <head>
-        <title>Backyard App Landing Page</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>나만의 여행 R-Trip</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <!-- Bootstrap 5.3.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome 6.5.0 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+    
+    <!-- Animate.css 4.1.1 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    
+    <!-- Owl Carousel 2.3.4 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
+    
+    <!-- Litepicker CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css">
+    
+    <!-- Chart.js 4.4.0 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <!-- Custom Flask CSS Files -->
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
+    <link href="{{ url_for('static', filename='fonts/icon-7-stroke/css/pe-icon-7-stroke.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/css-app.css') }}" rel="stylesheet" media="screen">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main_style.css') }}">
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+        }
 
+        body {
+            font-family: 'Lato', sans-serif;
+            line-height: 1.6;
+        }
 
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-        <!-- CSS Files -->
-        <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
-        <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
-        <link href="{{ url_for('static', filename='fonts/icon-7-stroke/css/pe-icon-7-stroke.css') }}" rel="stylesheet">
-        <link href="{{ url_for('static', filename='css/animate.css') }}" rel="stylesheet" media="screen">
-        <link href="{{ url_for('static', filename='css/owl.theme.css') }}" rel="stylesheet">
-        <link href="{{ url_for('static', filename='css/owl.carousel.css') }}" rel="stylesheet">
+        .preloader.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+        }
 
-        <!-- Colors -->
-        <link href="{{ url_for('static', filename='css/css-app.css') }}" rel="stylesheet" media="screen">
+        /* Modern Slider Styles */
+        .slider-container {
+            overflow: hidden;
+            margin: auto;
+            position: relative;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
 
-        <!-- Google Fonts -->
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:100,300,400,700,900,100italic,300italic,400italic,700italic,900italic" />
+        .slider-wrapper {
+            display: flex;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-        <!-- main_head_content.html -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/main_style.css') }}">
-        <script src="{{ url_for('static', filename='js/main_script.js') }}" defer></script>
+        .slide {
+            min-width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
 
-        <!-- main_register.html -->
-        <!-- main_recommended.html -->
-        {% block head_extra %}{% endblock %}
-        <style>
-            #slider {
-                overflow: hidden;
-                margin: auto;
-                position: relative;
-              }
-              #slider-container {
-                display: flex;
-                width: 5000px;
-                transition: transform 0.8s ease-in-out;
-              }
-              #info {
-                text-align: center;
-              }
-              #dots {
-                text-align: center;
-              }
-              .dot {
-                font-size: 20px;
-                color: #aaa;
-                cursor: pointer;
-                margin: 0 3px;
-              }
-              .active-dot {
-                color: #333;
-              }
-              
-        </style>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css" />
-        <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
-        <script src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        
+        .slider-info {
+            text-align: center;
+            margin: 2rem 0;
+            font-size: 1.2rem;
+            font-weight: 300;
+        }
 
+        .slider-dots {
+            text-align: center;
+            margin: 1rem 0;
+        }
 
-    </head>
+        .dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            margin: 0 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
 
+        .dot.active {
+            background: var(--primary-color);
+            transform: scale(1.2);
+        }
 
-    <body data-spy="scroll" data-target="#navbar-scroll">
+        .dot:hover {
+            background: var(--primary-color);
+            opacity: 0.8;
+        }
 
-        <!-- NAVIGATION -->
-        
-        <!-- /.preloader -->
-        <div id="preloader"></div>
-        <div id="top"></div>
+        /* Modal Improvements */
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
 
-       
-        {% block content%}
-        {% endblock %}
+        .modal-header {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
 
-        <!-- /.javascript files -->
-        <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/jquery.sticky.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/ekko-lightbox-min.js') }}"></script>
-        <script type="text/javascript">
-            $( document ).delegate( '*[data-toggle="lightbox"]', 'click', function ( event ) {
-                event.preventDefault();
-                $( this ).ekkoLightbox();
-            } );
-        </script>
-        <script>
-            new WOW().init();
-        </script>
-        {% if error %}
-        <script>
-                $(document).ready(function() {
-                    $('#loginModal').modal('show');
-                });
-        </script>
-        {% endif %}
+        .modal-body {
+            padding: 2rem;
+        }
 
-        <script>
-            const descriptions = [
-              "설명 1번", "설명 2번", "설명 3번", "설명 4번", "설명 5번",
-              "설명 6번", "설명 7번", "설명 8번", "설명 9번", "설명 10번"
-            ];
-        
-            let current = 0;
-            const total = descriptions.length;
-            const slider = document.getElementById("slider-container");
-            const info = document.getElementById("info");
-            const dotsContainer = document.getElementById("dots");
-            const slides = document.querySelectorAll(".slide");
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
 
-            // dot 생성
-            for (let i = 0; i < total; i++) {
-            const dot = document.createElement("span");
-            dot.classList.add("dot");
-            dot.innerHTML = "●";
-            dot.addEventListener("click", () => goToSlide(i));
-            dotsContainer.appendChild(dot);
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 2rem 1rem;
             }
-
-            const dots = document.querySelectorAll(".dot");
-
-            function updateDots() {
-            dots.forEach((dot, idx) => {
-                dot.classList.toggle("active-dot", idx === current);
-                dot.innerHTML = idx === current ? "●" : "○";
-            });
+            
+            .slider-info {
+                font-size: 1rem;
             }
+        }
+    </style>
+    
+    {% block head_extra %}{% endblock %}
+</head>
 
-            function updateSlide() {
-            const width = slides[current].clientWidth;
-            slider.style.transform = `translateX(-${width * current}px)`;
-            info.innerText = descriptions[current];
-            updateDots();
-            }
+<body data-bs-spy="scroll" data-bs-target="#navbar-scroll" data-bs-offset="70">
+    <!-- Preloader -->
+    <div id="preloader" class="preloader">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">로딩 중...</span>
+        </div>
+    </div>
 
-            function slideNext() {
-            current = (current + 1) % total;
-            updateSlide();
-            }
+    <div id="top"></div>
 
-            function goToSlide(index) {
-            current = index;
-            updateSlide();
-            }
-
-            window.addEventListener("load", () => {
-            updateSlide();
-            setInterval(slideNext, 5000);
-            });
-
-            window.addEventListener("resize", () => {
-            updateSlide();
-            });
-          </script>
-
-        <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
-            <div class="modal-dialog" role="document">
-              <div class="modal-content">
-          
-                <form method="POST" action="{{ url_for('login') }}">
-                  <div class="modal-header">
-                    <h4 class="modal-title" id="loginModalLabel">로그인</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                      <span>&times;</span>
-                    </button>
-                  </div>
-          
-                  <div class="modal-body">
-                    {% if error %}
-                      <div class="alert alert-danger">{{ error }}</div>
-                    {% endif %}
-                    <div class="form-group">
-                      <label for="USER_ID">아이디</label>
-                      <input type="text" class="form-control" name="USER_ID" required>
+    {% block content %}
+    <!-- 기본 콘텐츠 영역 -->
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Sample Slider -->
+                <div id="slider" class="slider-container mb-4">
+                    <div id="slider-wrapper" class="slider-wrapper">
+                        <div class="slide">슬라이드 1</div>
+                        <div class="slide">슬라이드 2</div>
+                        <div class="slide">슬라이드 3</div>
+                        <div class="slide">슬라이드 4</div>
+                        <div class="slide">슬라이드 5</div>
+                        <div class="slide">슬라이드 6</div>
+                        <div class="slide">슬라이드 7</div>
+                        <div class="slide">슬라이드 8</div>
+                        <div class="slide">슬라이드 9</div>
+                        <div class="slide">슬라이드 10</div>
                     </div>
-                    <div class="form-group">
-                      <label for="PASSWORD">비밀번호</label>
-                      <input type="password" class="form-control" name="PASSWORD" required>
-                    </div>
-                  </div>
-          
-                  <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">로그인</button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
-                  </div>
-                </form>
-          
-              </div>
+                </div>
+                <div id="slider-info" class="slider-info">설명 1번</div>
+                <div id="slider-dots" class="slider-dots"></div>
             </div>
-          </div>
-    </body>
+        </div>
+    </div>
+    {% endblock %}
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="loginModalLabel">로그인</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        {% if error %}
+                            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                {{ error }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="USER_ID" class="form-label">아이디</label>
+                            <input type="text" class="form-control" id="USER_ID" name="USER_ID" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="PASSWORD" class="form-label">비밀번호</label>
+                            <input type="password" class="form-control" id="PASSWORD" name="PASSWORD" required>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt me-1"></i>
+                            로그인
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>
+                            닫기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery 3.7.1 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- Bootstrap 5.3.3 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Owl Carousel 2.3.4 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+    
+    <!-- WOW.js 1.1.3 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wow/1.1.3/wow.min.js"></script>
+    
+    <!-- Litepicker -->
+    <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+    
+    <!-- Custom Flask JS Files -->
+    <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main_script.js') }}" defer></script>
+
+    <!-- Modern JavaScript -->
+    <script>
+        class ModernSlider {
+            constructor(config) {
+                this.config = {
+                    sliderId: 'slider',
+                    wrapperSelector: '#slider-wrapper',
+                    infoSelector: '#slider-info',
+                    dotsSelector: '#slider-dots',
+                    slideSelector: '.slide',
+                    autoPlayInterval: 5000,
+                    ...config
+                };
+                
+                this.descriptions = [
+                    "설명 1번", "설명 2번", "설명 3번", "설명 4번", "설명 5번",
+                    "설명 6번", "설명 7번", "설명 8번", "설명 9번", "설명 10번"
+                ];
+                
+                this.currentSlide = 0;
+                this.autoPlayTimer = null;
+                this.isAnimating = false;
+                
+                this.init();
+            }
+            
+            init() {
+                this.cacheElements();
+                this.createDots();
+                this.bindEvents();
+                this.updateSlider();
+                this.startAutoPlay();
+            }
+            
+            cacheElements() {
+                this.slider = document.getElementById(this.config.sliderId);
+                this.wrapper = document.querySelector(this.config.wrapperSelector);
+                this.info = document.querySelector(this.config.infoSelector);
+                this.dotsContainer = document.querySelector(this.config.dotsSelector);
+                this.slides = document.querySelectorAll(this.config.slideSelector);
+                this.totalSlides = this.slides.length;
+            }
+            
+            createDots() {
+                if (!this.dotsContainer) return;
+                
+                this.dotsContainer.innerHTML = '';
+                
+                for (let i = 0; i < this.totalSlides; i++) {
+                    const dot = document.createElement('span');
+                    dot.className = 'dot';
+                    dot.setAttribute('data-slide', i);
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    this.dotsContainer.appendChild(dot);
+                }
+                
+                this.dots = this.dotsContainer.querySelectorAll('.dot');
+            }
+            
+            bindEvents() {
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') this.previousSlide();
+                    if (e.key === 'ArrowRight') this.nextSlide();
+                });
+                
+                // Touch/swipe support
+                let startX = 0;
+                let endX = 0;
+                
+                this.slider.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                });
+                
+                this.slider.addEventListener('touchend', (e) => {
+                    endX = e.changedTouches[0].clientX;
+                    const diff = startX - endX;
+                    
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) {
+                            this.nextSlide();
+                        } else {
+                            this.previousSlide();
+                        }
+                    }
+                });
+                
+                // Pause on hover
+                this.slider.addEventListener('mouseenter', () => this.pauseAutoPlay());
+                this.slider.addEventListener('mouseleave', () => this.startAutoPlay());
+                
+                // Window resize
+                window.addEventListener('resize', () => this.updateSlider());
+            }
+            
+            updateSlider() {
+                if (!this.wrapper || !this.slides.length) return;
+                
+                const slideWidth = this.slides[0].offsetWidth;
+                this.wrapper.style.transform = `translateX(-${slideWidth * this.currentSlide}px)`;
+                
+                if (this.info) {
+                    this.info.textContent = this.descriptions[this.currentSlide];
+                }
+                
+                this.updateDots();
+            }
+            
+            updateDots() {
+                if (!this.dots) return;
+                
+                this.dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+            
+            goToSlide(index) {
+                if (this.isAnimating || index === this.currentSlide) return;
+                
+                this.isAnimating = true;
+                this.currentSlide = index;
+                this.updateSlider();
+                
+                setTimeout(() => {
+                    this.isAnimating = false;
+                }, 600);
+            }
+            
+            nextSlide() {
+                const nextIndex = (this.currentSlide + 1) % this.totalSlides;
+                this.goToSlide(nextIndex);
+            }
+            
+            previousSlide() {
+                const prevIndex = (this.currentSlide - 1 + this.totalSlides) % this.totalSlides;
+                this.goToSlide(prevIndex);
+            }
+            
+            startAutoPlay() {
+                this.pauseAutoPlay();
+                this.autoPlayTimer = setInterval(() => {
+                    this.nextSlide();
+                }, this.config.autoPlayInterval);
+            }
+            
+            pauseAutoPlay() {
+                if (this.autoPlayTimer) {
+                    clearInterval(this.autoPlayTimer);
+                    this.autoPlayTimer = null;
+                }
+            }
+        }
+
+        // App initialization
+        class App {
+            constructor() {
+                this.init();
+            }
+            
+            init() {
+                this.handlePreloader();
+                this.initializeSlider();
+                this.initializePhrases();
+                this.handleLoginModal();
+                this.initializeAnimations();
+            }
+            
+            handlePreloader() {
+                const preloader = document.getElementById('preloader');
+                if (preloader) {
+                    window.addEventListener('load', () => {
+                        setTimeout(() => {
+                            preloader.classList.add('hidden');
+                            setTimeout(() => {
+                                preloader.style.display = 'none';
+                            }, 300);
+                        }, 500);
+                    });
+                }
+            }
+            
+            initializeSlider() {
+                if (document.querySelector('#slider')) {
+                    this.slider = new ModernSlider();
+                }
+            }
+            
+            initializePhrases() {
+                // WOW.js initialization with modern options
+                if (typeof WOW !== 'undefined') {
+                    new WOW({
+                        boxClass: 'wow',
+                        animateClass: 'animate__animated',
+                        offset: 0,
+                        mobile: true,
+                        live: true
+                    }).init();
+                }
+            }
+            
+            handleLoginModal() {
+                // Show login modal if there's an error
+                {% if error %}
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+                {% endif %}
+                
+                // Enhanced form validation
+                const loginForm = document.querySelector('#loginModal form');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', (e) => {
+                        const userId = document.getElementById('USER_ID').value.trim();
+                        const password = document.getElementById('PASSWORD').value.trim();
+                        
+                        if (!userId || !password) {
+                            e.preventDefault();
+                            this.showAlert('아이디와 비밀번호를 모두 입력해주세요.', 'warning');
+                        }
+                    });
+                }
+            }
+            
+            initializeAnimations() {
+                // Smooth scroll for anchor links
+                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                    anchor.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const target = document.querySelector(this.getAttribute('href'));
+                        if (target) {
+                            target.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        }
+                    });
+                });
+            }
+            
+            showAlert(message, type = 'info') {
+                // Create and show bootstrap alert
+                const alertHtml = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                
+                const alertContainer = document.createElement('div');
+                alertContainer.innerHTML = alertHtml;
+                document.body.appendChild(alertContainer);
+                
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    const alert = alertContainer.querySelector('.alert');
+                    if (alert) {
+                        bootstrap.Alert.getOrCreateInstance(alert).close();
+                    }
+                }, 5000);
+            }
+        }
+
+        // Initialize app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new App();
+        });
+
+        // Legacy lightbox support (updated for Bootstrap 5)
+        $(document).on('click', '[data-bs-toggle="lightbox"]', function(event) {
+            event.preventDefault();
+            // Modern lightbox implementation would go here
+            console.log('Lightbox clicked:', this.href);
+        });
+    </script>
+</body>
 </html>
