@@ -19,7 +19,9 @@ def main():
     travel_styles = session.get("travel_styles")
     images = find_nearest_users(travel_styles, k=5) if travel_styles else []
 
-    return render_template("main.html", images=images)
+    show_step = request.args.get("show_step", default=None)
+
+    return render_template("main.html", images=images, travel_styles=travel_styles,show_step=show_step)
 
 # 회원가입 페이지
 @app.route("/main_register", methods=["GET", "POST"])
@@ -100,7 +102,17 @@ def login():
         user_json, s3_key = find_user_by_credentials(input_id, input_pw)
     
         if not user_json:
-            return render_template("main.html", error="아이디 또는 비밀번호가 잘못되었습니다.", show_step = 11)
+            travel_styles = session.get("travel_styles", [])
+            print(f"travel_style{travel_styles}")
+            images = find_nearest_users(travel_styles, k=5) if travel_styles else []
+
+            return render_template(
+                "main.html",
+                images=images,
+                travel_styles=session.get("travel_styles"),
+                error="아이디 또는 비밀번호가 잘못되었습니다.",
+                show_step=11
+            )
 
         session["username"] = input_id
         travel_styles = session.get("travel_styles")
@@ -139,13 +151,16 @@ def preview_images():
 def analyze_styles():
     data = request.get_json()
     scores = data.get("scores", [])
+
     session["travel_styles"] = scores
 
     images = find_nearest_users(scores) 
-
+    session["recommended_images"] = images
+    
     return jsonify({
         "images": images
     })
+
 
 # 수정 해야함 -> 기존 정보 수정이 아닌 여행 동선 저장장
 # @app.route("/mypage", methods=["GET", "POST"])

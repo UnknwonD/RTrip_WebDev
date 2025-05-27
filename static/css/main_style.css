@@ -247,7 +247,7 @@ input[type=range].hidden-slider {
     display: flex;
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
-    width: max-content;
+    width: 300px;
     justify-content: center;
     gap: 20px;
 }

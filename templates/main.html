@@ -83,3 +83,42 @@
 
 {% endblock %}
 
+
+<!-- 모달 자동 열기: flash 메시지 기반 -->
+{% with messages = get_flashed_messages(category_filter=["login_error"]) %}
+  {% if messages %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+        loginModal.show();
+      });
+    </script>
+  {% endif %}
+{% endwith %}
+
+{% block scripts %}
+<script>
+  // 서버에서 전달한 step (기본값은 1)
+  const serverStep = {{ show_step | default(1) }};
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (typeof showStep === "function") {
+      showStep(serverStep);
+    }
+  });
+</script>
+{% endblock %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    {% if travel_styles %}
+        window.scores = {{ travel_styles | tojson }};
+        window.recommendedImages = {{ images | tojson }};
+        showStep(11);
+        analyzeStyles();
+        renderImages();
+    {% else %}
+        showStep({{ show_step or 1 }});
+    {% endif %}
+});
+</script>

@@ -920,5 +920,16 @@
             console.log('Lightbox clicked:', this.href);
         });
     </script>
+
+    {% if error and request.endpoint == 'main' %}
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const loginModalEl = document.getElementById('loginModal');
+        const loginModal = new bootstrap.Modal(loginModalEl);
+        loginModal.show();
+    });
+    </script>
+    {% endif %}
+    {% block scripts %}{% endblock %}
 </body>
 </html>

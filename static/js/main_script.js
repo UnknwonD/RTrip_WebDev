@@ -135,6 +135,9 @@
         wrapper.scrollLeft = scrollLeft - walk;
         });
         showStep(currentStep);
+        if (typeof showStep === "number") {
+            showStep(showStep);
+        }
     });
 
     // 가중치 매핑 테이블 
@@ -308,3 +311,13 @@ function stopAutoSlide() {
         autoSlideInterval = null;
     }
 }
+
+
+// 페이지를 떠날 때나 다른 단계로 이동할 때 interval 정리
+function stopAutoSlide() {
+    if (autoSlideInterval) {
+        clearInterval(autoSlideInterval);
+        autoSlideInterval = null;
+    }
+}
+
