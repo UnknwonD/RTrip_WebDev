@@ -24,3 +24,4 @@ from modules.s3_utils import *
 from modules.rds_utils import *
 from modules.form_utils import extract_travel_styles, get_presigned_image_urls
 from gnn_module import *
+from extract_latlng import *
