@@ -148,7 +148,9 @@ def get_meta_photo_info(new_visit_area_id):
                 NEW_VISIT_AREA_ID,
                 VISIT_AREA_NM,
                 X_COORD,
-                Y_COORD
+                Y_COORD,
+                ROAD_NM_CD,
+                LOTNO_CD
             FROM place_info_new
             WHERE NEW_VISIT_AREA_ID IN :ids
         )
@@ -158,7 +160,9 @@ def get_meta_photo_info(new_visit_area_id):
                 NEW_VISIT_AREA_ID,
                 NULL AS VISIT_AREA_NM,
                 NULL AS X_COORD,
-                NULL AS Y_COORD
+                NULL AS Y_COORD,
+                NULL AS ROAD_NM_CD,
+                NULL AS LOTNO_CD
             FROM meta_photo_new
             WHERE NEW_VISIT_AREA_ID IN :ids
             AND NEW_VISIT_AREA_ID NOT IN (
@@ -179,11 +183,14 @@ def get_meta_photo_info(new_visit_area_id):
             print(f"[DEBUG] ✅ 결과: {data}")
 
             for row in rows:
+                addr = row.ROAD_NM_CD if row.ROAD_NM_CD is not None else row.LOTNO_CD
+                
                 data[row.NEW_VISIT_AREA_ID] = {
                     "area_id": row.NEW_VISIT_AREA_ID,
                     "area": row.VISIT_AREA_NM or "[이름없음]",
                     "x": row.X_COORD,
-                    "y": row.Y_COORD
+                    "y": row.Y_COORD,
+                    "addr": addr
                 }
         
         return data
@@ -236,8 +243,10 @@ def travel_plans_with_debug(area_ids, travel_date:str):
             if photo:
                 route_infos.append({
                     "name": photo["area"],
+                    'area_id' : photo['area_id'],
                     "x": photo["x"],
-                    "y": photo["y"]
+                    "y": photo["y"],
+                    "addr": photo["addr"]
                 })
                 print(f"[DEBUG] ✅ 장소 정보 추가: {photo['area']}")
             else:
@@ -324,6 +333,7 @@ def travel_plans(area_ids):
                         "name": photo["area"],
                         "x": photo["x"],
                         "y": photo["y"],
+                        'addr': photo['addr'],
                         "url": photo["url"]
                     })
                     print(f"[DEBUG] ✅ 장소 정보 추가: {photo['area']}")

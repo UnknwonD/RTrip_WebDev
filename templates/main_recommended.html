@@ -137,11 +137,11 @@
         <div class="card-preview">
           <p>{{ plan.description[:100] }}{% if plan.description|length > 100 %}...{% endif %}</p>
           <div class="spots-preview">
-            {% for spot in plan.route[:9] %}
+            {% for spot in plan.route[:5] %}
             <span class="spot-tag">{{ spot.area or spot.name }}</span>
             {% endfor %}
             {% if plan.route|length > 9 %}
-            <span class="spot-tag more">+{{ plan.route|length - 9 }}개 더</span>
+            <span class="spot-tag more">+{{ plan.route|length - 5 }}개 더</span>
             {% endif %}
           </div>
         </div>
@@ -154,10 +154,10 @@
       <div class="modal" id="travelModal{{ plan_index }}" tabindex="-1" role="dialog" data-backdrop="false" data-keyboard="true">
         <div class="modal-dialog modal-lg" role="document">
           <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header d-flex justify-content-between align-items-center">
               <h4 class="modal-title">{{ plan.title }}</h4>
               <button type="button" class="close" data-bs-dismiss="modal">
-                <span>&times;</span>
+                <span style="color:white;">&times;</span>
               </button>
             </div>
             <div class="modal-body">
@@ -181,7 +181,7 @@
                         <div class="route-page {% if page_num == 1 %}active{% endif %}" data-page="{{ page_num }}">
                           <ul class="travel-route-list">
                             {% for spot in plan.route[((page_num-1)*routes_per_page):(page_num*routes_per_page)] %}
-                              <li class="route-item">
+                              <li class="route-item" data-spot-id="{{ spot.area_id or spot.name }}" data-lat="{{ spot.y }}" data-lng="{{ spot.x }}">
                                 <div class="route-info">
                                   <span class="route-number">{{ loop.index + ((page_num-1)*routes_per_page) }}</span>
                                   <div class="route-details">
@@ -190,12 +190,10 @@
                                 </div>
                                 <div class="route-actions">
                                   <button class="btn btn-sm btn-outline-danger dislike-btn" 
-                                          data-plan="{{ plan_index }}" data-spot="{{ loop.index0 + ((page_num-1)*routes_per_page) }}">
+                                          data-plan="{{ plan_index }}"
+                                          data-spot="{{ spot.name }}" 
+                                          data-spot-id="{{ spot.area_id or spot.name }}">
                                     👎 싫어요
-                                  </button>
-                                  <button class="btn btn-sm btn-outline-success like-btn" 
-                                          data-plan="{{ plan_index }}" data-spot="{{ loop.index0 + ((page_num-1)*routes_per_page) }}">
-                                    👍 좋아요
                                   </button>
                                 </div>
                               </li>
@@ -226,13 +224,30 @@
                         </button>
                       </div>
                       {% endif %}
+                      <div class="recommendation-section">
+                        <div class="selected-count">
+                          선택된 싫어요: <span id="dislikeCount{{ plan_index }}">0</span>개
+                        </div>
+                        <div class="recommendation-buttons d-flex gap-2">
+                          <button class="btn btn-danger remove-spots-btn" data-plan="{{ plan_index }}">
+                            🗑️ 싫어요 장소 제거하기
+                          </button>
+                          <button class="btn btn-warning recommend-btn" data-plan="{{ plan_index }}" data-replace="false">
+                            🔄 싫어요 장소만 대체하기
+                          </button>
+                          <button class="btn btn-primary recommend-btn" data-plan="{{ plan_index }}" data-replace="true">
+                            ✨ 여행 다시 생성하기
+                          </button>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+              <button type="button" class="btn btn-primary" data-bs-dismiss="modal">닫기</button>
               <button type="button" class="btn btn-primary">이 여행 선택하기</button>
             </div>
           </div>
@@ -245,26 +260,64 @@
 
 <!-- section 4: CTA -->
 <section id="section-cta" class="section bg-dark text-white text-center">
-<div class="container">
-<h2>나만의 여행을 지금 시작하세요!</h2>
-<a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
-</div>
+  <div class="container">
+    <h2>나만의 여행을 지금 시작하세요!</h2>
+    <a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
+  </div>
 </section>
 
 <!-- 하단 고정 내비게이션 -->
 <nav class="navbar navbar-default navbar-fixed-bottom">
-<div class="container text-center">
-<ul class="list-inline" style="margin: 10px 0;">
-<li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
-<li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
-{% if session.get("username") %}
-<li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
-{% endif %}
-</ul>
-</div>
+  <div class="container text-center">
+    <ul class="list-inline" style="margin: 10px 0;">
+      <li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
+      <li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
+      {% if session.get("username") %}
+      <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
+      {% endif %}
+    </ul>
+  </div>
 </nav>
 
 <style>
+  /* 싫어요 버튼 활성화 상태 */
+.dislike-btn.active {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+/* 싫어요 선택된 항목 배경 */
+.route-item.disliked {
+  background-color: #f8d7da;
+  border-color: #dc3545;
+}
+
+/* 재추천 섹션 스타일링 */
+.recommendation-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* 제거 버튼 스타일 */
+.remove-spots-btn {
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.recommendation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recommendation-buttons .btn {
+  width: 100%;
+}
+
   .flatpickr-calendar {
   border-radius: 12px !important;
   box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important;
@@ -1108,6 +1161,460 @@ label {
 </style>
 
 <script>
+// 전역 변수
+const dislikedSpots = new Map(); // planId -> Set of spotIds
+
+function toggleDislike(button) {
+  const planId = button.dataset.plan;
+  const spotId = button.dataset.spotId;
+  const routeItem = button.closest('.route-item');
+
+  console.log(`👉 Plan ${planId}, Spot ${spotId} : 토글 시작!`);
+
+  if (!dislikedSpots.has(planId)) {
+    dislikedSpots.set(planId, new Set());
+  }
+
+  const dislikedSet = dislikedSpots.get(planId);
+
+  console.log("Before:", Array.from(dislikedSet));
+
+  if (dislikedSet.has(spotId)) {
+    dislikedSet.delete(spotId);
+    button.classList.remove('active');
+    routeItem.classList.remove('disliked');
+  } else {
+    dislikedSet.add(spotId);
+    button.classList.add('active');
+    routeItem.classList.add('disliked');
+  }
+
+  console.log("After:", Array.from(dislikedSet));
+
+  updateDislikeCount(planId);
+}
+
+  // 카운트 업데이트
+  function updateDislikeCount(planId) {
+    const count = dislikedSpots.get(planId)?.size || 0;
+    document.getElementById(`dislikeCount${planId}`).innerText = count;
+  }
+
+  // 추천 버튼 활성화 (항상 활성화 상태 유지)
+  function toggleRecommendButtons(planId) {
+    const buttons = document.querySelectorAll(`.recommend-btn[data-plan="${planId}"]`);
+    buttons.forEach(btn => {
+      btn.disabled = false; // 항상 활성화
+    });
+  }
+
+// 재추천 API 호출 함수
+async function handleRecommendation(button) {
+  const planId = button.dataset.plan;
+  const replace = button.dataset.replace === 'true';
+  const dislikedIds = Array.from(dislikedSpots.get(planId) || []);
+  
+  if (dislikedIds.length === 0) {
+    alert('먼저 싫어하는 장소를 선택해주세요.');
+    return;
+  }
+  
+  // 로딩 상태 시작
+  setLoadingState(planId, true);
+  
+  console.log("데이터로 들어온 값은 바로바로~ : ", dislikedIds)
+  try {
+    const response = await fetch('/api/recommend', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        disliked_ids: dislikedIds,
+        replace: replace
+      })
+    });
+
+    console.log("데이터로 들어온 값은 바로바로~ : ", dislikedIds)
+    
+    if (!response.ok) {
+      throw new Error('서버 오류가 발생했습니다.');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // 성공시 UI 업데이트
+      updateRouteDisplay(planId, result.newRoutes, replace);
+      
+      // 지도 업데이트
+      updateMapDisplay(planId);
+      
+      // 싫어요 상태 초기화
+      resetDislikeState(planId);
+      
+      // 성공 메시지
+      showMessage('추천이 업데이트되었습니다!', 'success');
+    } else {
+      throw new Error(result.message || '추천 생성에 실패했습니다.');
+    }
+    
+  } catch (error) {
+    console.error('Recommendation error:', error);
+    showMessage('추천을 받아오는 중 오류가 발생했습니다.', 'error');
+  } finally {
+    // 로딩 상태 종료
+    setLoadingState(planId, false);
+  }
+}
+
+// 싫어요 장소 제거 함수
+async function handleRemoveSpots(button) {
+  const planId = button.dataset.plan;
+  const dislikedIds = Array.from(dislikedSpots.get(planId) || []);
+  
+  if (dislikedIds.length === 0) {
+    alert('먼저 제거할 장소를 선택해주세요.');
+    return;
+  }
+  
+  if (!confirm(`선택한 ${dislikedIds.length}개의 장소를 제거하시겠습니까?`)) {
+    return;
+  }
+  
+  // 로딩 상태 시작
+  setRemoveLoadingState(planId, true);
+  
+  try {
+    // 선택된 장소들을 DOM에서 제거
+    removeSelectedSpots(planId, dislikedIds);
+    
+    // 지도 업데이트
+    updateMapDisplay(planId);
+    
+    // 싫어요 상태 초기화
+    resetDislikeState(planId);
+    
+    // 성공 메시지
+    showMessage(`${dislikedIds.length}개의 장소가 제거되었습니다!`, 'success');
+    
+  } catch (error) {
+    console.error('Remove spots error:', error);
+    showMessage('장소 제거 중 오류가 발생했습니다.', 'error');
+  } finally {
+    // 로딩 상태 종료
+    setRemoveLoadingState(planId, false);
+  }
+}
+
+// 선택된 장소들을 DOM에서 제거
+function removeSelectedSpots(planId, dislikedIds) {
+  const container = document.getElementById(`routeContainer${planId}`);
+  const routeItems = container.querySelectorAll('.route-item');
+  
+  // 뒤에서부터 제거 (인덱스 변경 방지)
+  for (let i = routeItems.length - 1; i >= 0; i--) {
+    const item = routeItems[i];
+    const spotId = item.dataset.spotId;
+    
+    if (dislikedIds.includes(spotId)) {
+      item.remove();
+    }
+  }
+  
+  // 남은 아이템들의 번호 다시 매기기
+  renumberRouteItems(planId);
+}
+
+// 경로 아이템 번호 다시 매기기
+function renumberRouteItems(planId) {
+  const container = document.getElementById(`routeContainer${planId}`);
+  const routeItems = container.querySelectorAll('.route-item');
+  
+  routeItems.forEach((item, index) => {
+    const routeNumber = item.querySelector('.route-number');
+    if (routeNumber) {
+      routeNumber.textContent = index + 1;
+    }
+  });
+}
+
+function updateDislikedRoutes(routeItems, newRoutes, planId) {
+  const dislikedSet = dislikedSpots.get(planId);
+
+  for (const item of routeItems) {
+    const dislikeBtn = item.querySelector('.dislike-btn');
+    const spotId = dislikeBtn.dataset.spotId;
+
+    // 싫어요한 장소만 교체
+    if (dislikedSet.has(spotId)) {
+      for (const day in newRoutes) {
+        if (newRoutes[day].length > 0) {
+          const newSpot = newRoutes[day].shift();
+          const spotName = newSpot.area || newSpot.name || '이름없음';
+
+          // 이름 업데이트
+          item.querySelector('.route-details strong').innerText = spotName;
+
+          // 버튼 업데이트
+          dislikeBtn.dataset.spotId = newSpot.id;
+          dislikeBtn.dataset.spot = spotName;
+          
+          // 좌표 정보 업데이트
+          item.dataset.spotId = newSpot.id;
+          item.dataset.lat = newSpot.y;
+          item.dataset.lng = newSpot.x;
+
+          // 싫어요 상태 해제
+          item.classList.remove('disliked');
+          dislikeBtn.classList.remove('active');
+          break;
+        }
+      }
+    }
+  }
+}
+
+function updateAllRoutes(routeItems, newRoutes) {
+  // newRoutes: { 0: [...], 1: [...], ... } 형태
+  let index = 0;
+  for (const day in newRoutes) {
+    const spots = newRoutes[day];
+    for (const spot of spots) {
+      if (index < routeItems.length) {
+        const item = routeItems[index];
+        const spotName = spot.area || spot.name || '이름없음';
+        
+        // 이름 업데이트
+        item.querySelector('.route-details strong').innerText = spotName;
+
+        // 버튼의 spot-id, data-spot 업데이트
+        const dislikeBtn = item.querySelector('.dislike-btn');
+        dislikeBtn.dataset.spotId = spot.id;
+        dislikeBtn.dataset.spot = spotName;
+        
+        // 좌표 정보 업데이트
+        item.dataset.spotId = spot.id;
+        item.dataset.lat = spot.y;
+        item.dataset.lng = spot.x;
+
+        // 싫어요 초기화
+        item.classList.remove('disliked');
+        dislikeBtn.classList.remove('active');
+      }
+      index++;
+    }
+  }
+}
+
+function updateRouteDisplay(planId, newRoutes, isFullReplace) {
+  // 새로운 경로 데이터로 DOM 업데이트
+  const container = document.getElementById(`routeContainer${planId}`);
+  const routeItems = container.querySelectorAll('.route-item');
+  
+  // 전체 교체 vs 부분 교체에 따른 업데이트 로직
+  if (isFullReplace) {
+    // 전체 경로 업데이트
+    updateAllRoutes(routeItems, newRoutes);
+  } else {
+    // 싫어요한 장소만 업데이트
+    updateDislikedRoutes(routeItems, newRoutes, planId);
+  }
+}
+
+// 지도 업데이트 함수
+function updateMapDisplay(planId) {
+  const container = document.getElementById(`routeContainer${planId}`);
+  const routeItems = container.querySelectorAll('.route-item');
+  
+  // 현재 경로 아이템들에서 좌표 정보 추출
+  const positions = [];
+  routeItems.forEach((item, index) => {
+    const lat = parseFloat(item.dataset.lat);
+    const lng = parseFloat(item.dataset.lng);
+    const spotName = item.querySelector('.route-details strong').textContent;
+    
+    if (!isNaN(lat) && !isNaN(lng)) {
+      positions.push({
+        title: spotName,
+        latlng: new kakao.maps.LatLng(lat, lng),
+        order: index + 1
+      });
+    }
+  });
+  
+  // 지도 다시 초기화
+  if (positions.length > 0) {
+    initializeMapWithPositions(planId, positions);
+  }
+}
+
+// 위치 정보로 지도 초기화하는 함수
+function initializeMapWithPositions(planIdx, positions) {
+  const mapId = `map-plan-${planIdx}`;
+  const mapContainer = document.getElementById(mapId);
+
+  if (!mapContainer || positions.length === 0) {
+    console.warn(`지도 컨테이너 또는 위치 정보를 찾을 수 없습니다: ${mapId}`);
+    return;
+  }
+
+  // 이미 초기화된 지도가 있으면 제거
+  if (window.mapObjects[planIdx]) {
+    window.mapObjects[planIdx] = null;
+  }
+
+  try {
+    // 지도 옵션
+    const mapOption = {
+      center: positions[0].latlng,
+      level: 8
+    };
+
+    // 지도 생성
+    const map = new kakao.maps.Map(mapContainer, mapOption);
+
+    // 마커와 인포윈도우 생성
+    positions.forEach((position, i) => {
+      // 커스텀 마커 HTML
+      const markerContent = `<div class="custom-marker">${position.order}</div>`;
+
+      // 커스텀 오버레이 (마커 대신 사용)
+      const customOverlay = new kakao.maps.CustomOverlay({
+        position: position.latlng,
+        content: markerContent,
+        yAnchor: 0.5
+      });
+
+      customOverlay.setMap(map);
+
+      // 인포윈도우
+      const infowindow = new kakao.maps.InfoWindow({
+        content: `<div style="padding:8px;font-size:13px;font-weight:500;">${position.order}. ${position.title}</div>`
+      });
+
+      // 클릭 이벤트
+      kakao.maps.event.addListener(customOverlay, 'click', function() {
+        infowindow.open(map, position.latlng);
+      });
+    });
+
+    // 경로 선 그리기
+    if (positions.length > 1) {
+      const linePath = positions.map(pos => pos.latlng);
+      const polyline = new kakao.maps.Polyline({
+        path: linePath,
+        strokeWeight: 3,
+        strokeColor: '#655cff',
+        strokeOpacity: 0.8,
+        strokeStyle: 'solid'
+      });
+      polyline.setMap(map);
+    }
+
+    // 지도 범위 조정
+    const bounds = new kakao.maps.LatLngBounds();
+    positions.forEach(pos => bounds.extend(pos.latlng));
+    map.setBounds(bounds);
+
+    // 지도 객체 저장
+    window.mapObjects[planIdx] = map;
+    
+  } catch (error) {
+    console.error('지도 업데이트 중 오류:', error);
+  }
+}
+
+function setLoadingState(planId, isLoading) {
+  const buttons = document.querySelectorAll(`[data-plan="${planId}"].recommend-btn`);
+  
+  buttons.forEach(btn => {
+    btn.disabled = isLoading;
+    if (isLoading) {
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>생성 중...';
+    } else {
+      // 원래 텍스트로 복원
+      if (btn.dataset.replace === 'true') {
+        btn.innerHTML = '✨ 여행 다시 생성하기';
+      } else {
+        btn.innerHTML = '🔄 싫어요 장소만 대체하기';
+      }
+    }
+  });
+}
+
+function setRemoveLoadingState(planId, isLoading) {
+  const button = document.querySelector(`[data-plan="${planId}"].remove-spots-btn`);
+  
+  if (button) {
+    button.disabled = isLoading;
+    if (isLoading) {
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>제거 중...';
+    } else {
+      button.innerHTML = '🗑️ 싫어요 장소 제거하기';
+    }
+  }
+}
+
+function resetDislikeState(planId) {
+  // 싫어요 상태 초기화
+  dislikedSpots.set(planId, new Set());
+  
+  // UI 상태 초기화
+  const container = document.getElementById(`routeContainer${planId}`);
+  const routeItems = container.querySelectorAll('.route-item');
+  
+  routeItems.forEach(item => {
+    const dislikeBtn = item.querySelector('.dislike-btn');
+    dislikeBtn.classList.remove('active');
+    item.classList.remove('disliked');
+  });
+  
+  updateDislikeCount(planId);
+  // 버튼은 항상 활성화 상태 유지하므로 toggleRecommendButtons 호출 제거
+}
+
+function showMessage(message, type) {
+  const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+  const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+  
+  const div = document.createElement('div');
+  div.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+  div.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  div.innerHTML = `
+    <i class="fas ${icon} me-2"></i>${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  document.body.appendChild(div);
+  
+  setTimeout(() => {
+    if (div.parentNode) div.parentNode.removeChild(div);
+  }, 5000);
+}
+
+// 싫어요 버튼 클릭 이벤트
+document.addEventListener('click', function(e) {
+  // 클릭 이벤트 전파 방지
+  if (e.target.classList.contains('dislike-btn')) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleDislike(e.target);
+  }
+  
+  if (e.target.classList.contains('recommend-btn')) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleRecommendation(e.target);
+  }
+  
+  if (e.target.classList.contains('remove-spots-btn')) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleRemoveSpots(e.target);
+  }
+});
+
 document.querySelectorAll('.mission-button').forEach(btn => {
 btn.addEventListener('click', function () {
 this.classList.toggle('selected');
@@ -1200,23 +1707,6 @@ if (normalMissionFields) {
 normalMissionFields.style.display = 'block';
 }
 
-// 좋아요/싫어요 버튼 이벤트
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('dislike-btn')) {
-    const planIdx = e.target.dataset.plan;
-    const spotIdx = e.target.dataset.spot;
-    console.log(`Plan ${planIdx}, Spot ${spotIdx}: 싫어요`);
-    // 여기에 싫어요 처리 로직 추가
-  }
-  
-  if (e.target.classList.contains('like-btn')) {
-    const planIdx = e.target.dataset.plan;
-    const spotIdx = e.target.dataset.spot;
-    console.log(`Plan ${planIdx}, Spot ${spotIdx}: 좋아요`);
-    // 여기에 좋아요 처리 로직 추가
-  }
-});
-
 function updateTotalCost() {
 const lodgingElement = document.getElementById("LODGOUT_COST");
 const activityElement = document.getElementById("ACTIVITY_COST");
@@ -1283,6 +1773,7 @@ function initializeMap(planIdx) {
     plan.route.forEach((spot, i) => {
       const lat = parseFloat(spot.y);
       const lng = parseFloat(spot.x);
+
       if (!isNaN(lat) && !isNaN(lng)) {
         positions.push({
           title: spot.area || spot.name,
