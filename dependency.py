@@ -13,14 +13,14 @@ import pickle
 import botocore
 import pandas as pd
 import numpy as np
-
+from datetime import datetime
 # config에서 engine도 import
 from config import s3, BUCKET_NAME, engine
 
 from modules.auth import authenticate, find_user_by_credentials, handle_login_success
 from modules.ec2_utils import send_to_ec2
 from modules.user import is_duplicate, register_user, update_user_info, get_user_info, extract_user_data, calculate_age_group, save_user_to_s3
-from modules.s3_utils import get_json_from_s3, list_s3_objects, put_json_to_s3, get_s3_signed_urls
+from modules.s3_utils import *
 from modules.rds_utils import *
 from modules.form_utils import extract_travel_styles, get_presigned_image_urls
 from gnn_module import *

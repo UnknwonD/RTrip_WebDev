@@ -109,16 +109,3 @@
 </script>
 {% endblock %}
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    {% if travel_styles %}
-        window.scores = {{ travel_styles | tojson }};
-        window.recommendedImages = {{ images | tojson }};
-        showStep(11);
-        analyzeStyles();
-        renderImages();
-    {% else %}
-        showStep({{ show_step or 1 }});
-    {% endif %}
-});
-</script>

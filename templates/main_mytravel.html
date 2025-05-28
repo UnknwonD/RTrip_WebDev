@@ -1,0 +1,750 @@
+{% extends "main_head_content.html" %}
+
+{% block content %}
+<!-- 메인 섹션 -->
+<section class="main-travel-section">
+  <div class="container">
+    <!-- 헤더 -->
+    <div class="travel-header">
+      <h1 class="travel-title">✈️ 나의 여행 일정</h1>
+      <p class="travel-subtitle">저장된 소중한 여행 추억들을 확인해보세요</p>
+    </div>
+
+    <!-- 여행 카드 그리드 -->
+    {% if travel_list %}
+      <div class="my-travel-cards-grid">
+        {% for plan in travel_list %}
+        <div class="my-travel-card" data-plan-key="{{ plan.key }}">
+          <div class="card-inner">
+            <!-- 카드 헤더 -->
+            <div class="my-card-header">
+              <div class="plan-info">
+                <div class="title-section">
+                  <h4 class="plan-title" id="title-{{ plan.key }}">{{ plan.title }}</h4>
+                  <button class="edit-title-btn" onclick="editTitle('{{ plan.key }}')">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+                <p class="save-date">💾 {{ plan.saved_at }}</p>
+              </div>
+              <div class="plan-actions">
+                <button class="action-btn view-btn" onclick="viewPlan('{{ plan.key }}')">
+                  <i class="fas fa-eye"></i>
+                  보기
+                </button>
+                <button class="action-btn delete-btn" onclick="deletePlan('{{ plan.key }}')">
+                  <i class="fas fa-trash"></i>
+                  삭제
+                </button>
+              </div>
+            </div>
+
+            <!-- 카드 푸터 -->
+            <div class="my-card-footer">
+              <button class="view-detail-btn" onclick="viewPlan('{{ plan.key }}')">
+                <i class="fas fa-route me-2"></i>
+                여행 일정 보기
+                <i class="fas fa-arrow-right ms-2"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- 빈 상태 -->
+      <div class="empty-state">
+        <div class="empty-icon">🏝️</div>
+        <h3>아직 저장된 여행이 없어요</h3>
+        <p>새로운 여행을 계획하고 저장해보세요!</p>
+        <a href="/" class="start-travel-btn">
+          <i class="fas fa-plus"></i>
+          여행 계획 시작하기
+        </a>
+      </div>
+    {% endif %}
+
+    <!-- 하단 네비게이션 -->
+    <div class="bottom-navigation">
+      <a href="/" class="nav-btn">
+        <i class="fas fa-home"></i>
+        메인으로
+      </a>
+      <a href="{{ url_for('main_recommended') }}" class="nav-btn primary">
+        <i class="fas fa-star"></i>
+        새 여행 계획
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- 제목 편집 모달 -->
+<div class="modal" id="editTitleModal" tabindex="-1" role="dialog" data-bs-backdrop="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-edit me-2"></i>
+          여행 제목 편집
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newTitleInput" class="form-label">새로운 제목을 입력하세요</label>
+          <input type="text" class="form-control" id="newTitleInput" placeholder="예: 부산 바다 여행" maxlength="50">
+          <div class="form-text">최대 50자까지 입력할 수 있습니다.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" onclick="saveTitle()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* 전체 배경 및 섹션 */
+.main-travel-section {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  padding: 60px 0;
+}
+
+.main-travel-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(102, 126, 234, 0.3) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 헤더 스타일 */
+.travel-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.travel-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 16px;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.travel-subtitle {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+/* 여행 카드 그리드 */
+.my-travel-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 32px;
+  margin-bottom: 80px;
+}
+
+/* 여행 카드 스타일 */
+.my-travel-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 
+    0 20px 40px rgba(0,0,0,0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  border: 2px solid transparent;
+}
+
+.my-travel-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 26px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.my-travel-card:hover::before {
+  opacity: 1;
+}
+
+.my-travel-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 
+    0 25px 50px rgba(0,0,0,0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.card-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* 카드 헤더 */
+.my-card-header {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.plan-info {
+  flex: 1;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.plan-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #2c3e50;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  flex: 1;
+  word-break: break-word;
+}
+
+.edit-title-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.edit-title-btn:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.save-date {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.view-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+}
+
+.view-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.delete-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+}
+
+/* 여행 미리보기 */
+.travel-preview {
+  padding: 24px 32px;
+}
+
+.preview-content {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.day-info {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.day-badge, .spot-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.preview-description {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* 카드 푸터 */
+.my-card-footer {
+  padding: 20px 32px 28px;
+  text-align: center;
+}
+
+.view-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 15px;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  text-decoration: none;
+}
+
+.view-detail-btn:hover {
+  background: linear-gradient(135deg, #5a6fd8, #6b4190);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+}
+
+/* 빈 상태 스타일 */
+.empty-state {
+  text-align: center;
+  padding: 80px 40px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 28px;
+  box-shadow: 
+    0 25px 50px rgba(0,0,0,0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.empty-icon {
+  font-size: 72px;
+  margin-bottom: 24px;
+  display: block;
+}
+
+.empty-state h3 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.empty-state p {
+  font-size: 16px;
+  color: #64748b;
+  margin-bottom: 32px;
+  font-weight: 500;
+}
+
+.start-travel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 16px 32px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 16px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.start-travel-btn:hover {
+  text-decoration: none;
+  color: white;
+  background: linear-gradient(135deg, #5a6fd8, #6b4190);
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+}
+
+/* 하단 네비게이션 */
+.bottom-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 16px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.nav-btn:not(.primary) {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn:not(.primary):hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn.primary {
+  background: rgba(255, 255, 255, 0.95);
+  color: #667eea;
+  border: 2px solid white;
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn.primary:hover {
+  background: white;
+  color: #667eea;
+  text-decoration: none;
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(255, 255, 255, 0.4);
+}
+
+/* 모달 스타일 */
+.modal-content {
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 24px;
+}
+
+.modal-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.form-control {
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  outline: none;
+}
+
+.form-text {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.modal-footer {
+  border: none;
+  padding: 16px 24px 24px;
+}
+
+.modal-footer .btn {
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-weight: 600;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .travel-title {
+    font-size: 36px;
+  }
+  
+  .travel-subtitle {
+    font-size: 16px;
+  }
+  
+  .my-travel-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 0 10px;
+  }
+  
+  .my-card-header {
+    padding: 20px 24px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .plan-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .travel-preview {
+    padding: 20px 24px;
+  }
+  
+  .my-card-footer {
+    padding: 16px 24px 20px;
+  }
+  
+  .day-info {
+    justify-content: center;
+  }
+  
+  .bottom-navigation {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .nav-btn {
+    width: 200px;
+    justify-content: center;
+  }
+}
+</style>
+
+<script>
+let currentEditingKey = null;
+
+function editTitle(key) {
+  currentEditingKey = key;
+  const titleElement = document.getElementById(`title-${key}`);
+  const currentTitle = titleElement.textContent;
+  
+  document.getElementById('newTitleInput').value = currentTitle;
+  
+  // Bootstrap 모달 열기
+  const modal = new bootstrap.Modal(document.getElementById('editTitleModal'));
+  modal.show();
+  
+  // 입력 필드에 포커스
+  setTimeout(() => {
+    document.getElementById('newTitleInput').focus();
+  }, 500);
+}
+
+function saveTitle() {
+  if (!currentEditingKey) return;
+  
+  const newTitle = document.getElementById('newTitleInput').value.trim();
+  
+  if (!newTitle) {
+    alert('제목을 입력해주세요.');
+    return;
+  }
+  
+  if (newTitle.length > 50) {
+    alert('제목은 50자 이하로 입력해주세요.');
+    return;
+  }
+  
+  // 서버에 제목 업데이트 요청
+  fetch('/update_travel_title', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      key: currentEditingKey,
+      title: newTitle
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // 페이지의 제목 업데이트
+      document.getElementById(`title-${currentEditingKey}`).textContent = newTitle;
+      
+      // 모달 닫기
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editTitleModal'));
+      modal.hide();
+      
+      // 성공 메시지
+      showSuccessMessage('제목이 성공적으로 변경되었습니다!');
+    } else {
+      alert('제목 변경에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('제목 변경 중 오류가 발생했습니다.');
+  });
+}
+
+function showSuccessMessage(message) {
+  // 간단한 성공 메시지 표시
+  const successDiv = document.createElement('div');
+  successDiv.className = 'alert alert-success';
+  successDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px 24px;
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    font-weight: 600;
+  `;
+  successDiv.innerHTML = `
+    <i class="fas fa-check-circle me-2"></i>
+    ${message}
+  `;
+  
+  document.body.appendChild(successDiv);
+  
+  setTimeout(() => {
+    successDiv.remove();
+  }, 3000);
+}
+
+// Enter 키로 제목 저장
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('newTitleInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      saveTitle();
+    }
+  });
+});
+
+function viewPlan(key) {
+  window.location.href = `/view_travel_plan/${key}`;
+}
+
+function deletePlan(key) {
+  if (!confirm("정말 삭제하시겠습니까?")) return;
+  
+  fetch("/delete_travel_plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status) {
+        // 성공 메시지와 함께 부드러운 제거 애니메이션
+        const card = document.querySelector(`[data-plan-key="${key}"]`);
+        if (card) {
+          card.style.transform = 'scale(0.8)';
+          card.style.opacity = '0';
+          setTimeout(() => {
+            location.reload();
+          }, 300);
+        } else {
+          location.reload();
+        }
+      } else {
+        alert("삭제 실패: " + data.error);
+      }
+    })
+    .catch(err => {
+      console.error("삭제 오류:", err);
+      alert("삭제 중 오류가 발생했습니다.");
+    });
+}
+</script>
+
+{% endblock %}

@@ -101,6 +101,8 @@ def find_nearest_users(input_vec, k=5):
         print("[ERROR] find_nearest_users 실패:", e)
         return []
 
+# GNN 
+
 def get_user_recommended_images_and_areas(username):
     from modules.s3_utils import get_user_info
     try:
@@ -128,7 +130,6 @@ def get_meta_photo_info(new_visit_area_id):
         print(f"[DEBUG] ⚠️ 빈 NEW_VISIT_AREA_ID 입력")
         return None
     
-    # 🚀 numpy.int64 등도 int로 변환
     if isinstance(new_visit_area_id, (np.integer,)):
         new_visit_area_id = int(new_visit_area_id)
     
@@ -362,3 +363,22 @@ def travel_plans(area_ids):
     
     print(f"[DEBUG] 🎯 총 {len(plans)}개의 여행 계획 생성 완료")
     return plans
+
+
+
+# 추천 받은 여행 Route Save to S3
+def save_fixed_day_route(username, day, route):
+    key = f"user_travel_plans/{username}.json"
+    try:
+        obj = s3.get_object(Bucket=BUCKET_NAME, Key=key)
+        existing = json.loads(obj['Body'].read().decode('utf-8'))
+    except s3.exceptions.NoSuchKey:
+        existing = {}
+
+    existing[str(day)] = route  # day는 문자열로 key 사용
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key=key,
+        Body=json.dumps(existing, ensure_ascii=False),
+        ContentType='application/json'
+    )
