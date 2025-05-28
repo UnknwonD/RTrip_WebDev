@@ -164,7 +164,7 @@ def main_recommended():
 
           travel_plan_list = fill_missing_coords_with_kakao(travel_plan_list)
 
-         except Exception as e:
+        except Exception as e:
              print(f"[DEBUG] ❌ GNN 추론 실패, 기본 계획 사용: {e}")
              travel_plan_list = default_travel_plans()
 
