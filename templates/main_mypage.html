@@ -201,11 +201,164 @@
         font-weight: 600;
     }
 </style>
+<script>
+function submitForm() {
+    document.querySelectorAll('.form-step').forEach((el) => {
+        el.classList.remove('d-none');  // 모든 스텝 일시적으로 표시
+    });
+
+    document.querySelector("form").submit();
+}
+
+let currentStep = 1;
+
+function showStep(step) {
+    document.querySelectorAll('.form-step').forEach((el) => {
+        el.classList.add('d-none');
+        el.classList.remove('active');
+    });
+    const target = document.getElementById(`step-${step}`);
+    if (target) {
+        target.classList.remove('d-none');
+        target.classList.add('active');
+        currentStep = step;
+    }
+}
+
+function nextStep(step) {
+    showStep(step + 1);
+}
+
+function prevStep(step) {
+    showStep(step - 1);
+}
+
+function selectMypageStyle(step, choice) {
+    const input = document.getElementById(`TRAVEL_STYL_${step}`);
+    if (input) {
+        input.value = choice;
+    }
+    if (step === 12) {
+        showStep(13);
+        analyzeStyles();
+    } else {
+        nextStep(step);
+    }
+}
+const scores = Array(8).fill(4);  // 초기값 4로 설정 (중간값)
+const weightMap = {
+        1: {
+            1: [-1, 0, -1, 1, -1, 0, 1, 1],  // 해먹
+            2: [1, 0, 1, 0, 1, 0, 0, 1]      // 롯데월드
+        },
+        2: {
+            1: [1, 1, 0, -1, -1, 0, -1, 0],  // 호텔
+            2: [-1, 1, 0, 1, 1, 0, 0, 0]     // 캠핑
+        },
+        3: {
+            1: [1, 1, 1, 0, -1, 0, 1, -1],   // 백화점
+            2: [0, -1, -1, 0, 1, 0, 0, 1]    // 쁘띠프랑스
+        },
+        4: {
+            1: [-1, -1, 0, 1, 1, -1, -1, -1],// 계곡
+            2: [1, 1, 1, 0, -1, 1, 1, 1]     // 반포대교
+        },
+        5: {
+            1: [0, 0, -1, 0, 0, 1, 0, -1],   // 불국사
+            2: [0, -1, 0, 1, -1, 0, 1, 0]    // 게스트하우스
+        },
+        6: {
+            1: [-1, -1, -1, 0, 0, 1, -1, 1], // 전주 한옥마을
+            2: [1, 1, 1, -1, 0, 1, 1, 1]     // 서울 야경
+        },
+        7: {
+            1: [0, 0, -1, 0, 0, -1, 1, 1],   // 천안 미나릿길
+            2: [-1, 0, -1, 0, 0, -1, -1, 1]  // 덕진공원
+        },
+        8: {
+            1: [0, 0, 0, 1, 0, 0, 1, -1],    // 로데오거리
+            2: [1, 0, 1, -1, 0, 0, 0, -1]    // 인계동
+        },
+        9: {
+            1: [0, -1, 0, -1, -1, 1, -1, 0], // 여수
+            2: [-1, 0, 0, 0, 1, -1, 1, -1]   // 마이산
+        },
+        10: {
+            1: [1, 1, 0, 0, 1, -1, -1, -1],  // 안동하회마을
+            2: [-1, -1, 1, -1, 0, 0, -1, -1] // 그랜드 조선 부산
+        }
+    };
+function selectMypageStyle(step, choice) {
+const input = document.getElementById(`TRAVEL_STYL_${step}`);
+if (input) {
+    input.value = choice;
+}
+
+const weight = weightMap[step] ? weightMap[step][choice] : null;
+if (weight) {
+    for (let i = 0; i < 8; i++) {
+        scores[i] += weight[i];
+    }
+}
+
+if (step === 12) {
+    // 점수 정규화 (1~7 사이로)
+    for (let i = 0; i < 8; i++) {
+        scores[i] = Math.max(1, Math.min(7, scores[i]));
+    }
+    showStep(13);
+    analyzeStyles(scores);  // 점수를 전달하도록 변경
+} else {
+    nextStep(step);
+}
+}
+function analyzeStyles(finalScores) {
+    const labels = [
+        ["자연형", "도시형", "자연 vs 도시", "blue"],
+        ["숙박러", "당일러", "숙박 vs 당일", "orange"],
+        ["새로운 지역파", "익숙한 지역파", "지역 성향", "green"],
+        ["럭셔리파", "실속파", "숙소 성향", "pink"],
+        ["휴양러", "체험러", "여행 목적", "purple"],
+        ["숨은 장소 선호", "핫플 선호", "장소 취향", "red"],
+        ["계획형", "즉흥형", "여행 스타일", "indigo"],
+        ["사진 무관심", "사진 중요", "기억 방식", "teal"]
+    ];
+
+    let html = "";
+    for (let i = 0; i < 8; i++) {
+        const score = finalScores[i];
+        const percent = Math.round((score / 7) * 100);
+        const leftPercent = 100 - percent;
+        const [leftLabel, rightLabel, title, color] = labels[i];
+        const isRightDominant = percent > 50;
+
+        html += `
+            <div class="style-bar">
+                <div class="style-bar-title">${title}</div>
+                <div class="style-bar-labels">
+                    <span>${leftLabel} (${leftPercent}%)</span>
+                    <span>${rightLabel} (${percent}%)</span>
+                </div>
+                <div class="style-bar-progress">
+                    <div class="style-bar-fill ${isRightDominant ? 'right-fill' : 'left-fill'}" style="width: ${isRightDominant ? percent : leftPercent}%" data-color="${color}"></div>
+                </div>
+            </div>
+        `;
+    }
+    document.getElementById("style-analysis").innerHTML = html;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    showStep(currentStep);
+});
+</script>
+
 
 <div class="mypage-wrapper">
     <div class="mypage-card">
         <h2 class="mypage-title">🙋 마이페이지</h2>
-        <form method="POST" action="/mypage">
+        <form method="POST" action="{{ url_for('main_mypage') }}">
+
         <!-- Page 1 -->
           <div class="form-step" id="step-1">
             {% with messages = get_flashed_messages() %}
@@ -245,83 +398,14 @@
                     placeholder="010-1234-5678"
                     required>
             </div>
+
             <div class ="step-btn-group">
                 <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(1)">다음</button>
             </div>
         </div>
 
         <!-- Page 2 -->
-          <div class="form-step d-none" id="step-2">     
-            <div class="form-group">
-                <label>최종학력</label>      
-                <select name="EDU_NM" class="form-control">
-                    <option value="1" {% if user.EDU_NM == '1' %}selected{% endif %}>무학</option>
-                    <option value="2" {% if user.EDU_NM == '2' %}selected{% endif %}>초등학교</option>
-                    <option value="3" {% if user.EDU_NM == '3' %}selected{% endif %}>중학교</option>
-                    <option value="4" {% if user.EDU_NM == '4' %}selected{% endif %}>고등학교</option>
-                    <option value="5" {% if user.EDU_NM == '5' %}selected{% endif %}>대학(4년제 미만)</option>
-                    <option value="6" {% if user.EDU_NM == '6' %}selected{% endif %}>대학교(4년제 이상)</option>
-                    <option value="7" {% if user.EDU_NM == '7' %}selected{% endif %}>대학원 석사 과정</option>
-                    <option value="8" {% if user.EDU_NM == '8' %}selected{% endif %}>대학원 박사 과정</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>최종학력 이수 여부</label>
-                <select name="EDU_FNSH_SE" class="form-control">
-                    <option value="1" {% if user.EDU_FNSH_SE == '1' %}selected{% endif %}>무학</option>
-                    <option value="2" {% if user.EDU_FNSH_SE == '2' %}selected{% endif %}>재학</option>
-                    <option value="3" {% if user.EDU_FNSH_SE == '3' %}selected{% endif %}>휴학</option>
-                    <option value="4" {% if user.EDU_FNSH_SE == '4' %}selected{% endif %}>중퇴</option>
-                    <option value="5" {% if user.EDU_FNSH_SE == '5' %}selected{% endif %}>수료</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>혼인상태</label>
-                <select name="MARR_STTS" class="form-control">
-                    <option value="1" {% if user.MARR_STTS == '1' %}selected{% endif %}>미혼</option>
-                    <option value="2" {% if user.MARR_STTS == '2' %}selected{% endif %}>기혼</option>
-                    <option value="3" {% if user.MARR_STTS == '3' %}selected{% endif %}>사별</option>
-                    <option value="4" {% if user.MARR_STTS == '4' %}selected{% endif %}>이혼</option>
-                    <option value="5" {% if user.MARR_STTS == '5' %}selected{% endif %}>기타</option>  
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>가족 수(명)</label>
-                <input type="number" name="FAMILY_MEMB" class="form-control" value="{{ user.FAMILY_MEMB }}">
-            </div>
-
-            <div class="form-group">
-                <label>직업</label>
-                <select name="JOB_NM" class="form-control">
-                    <option value="1" {% if user.JOB_NM == '1' %}selected{% endif %}>관리자</option>
-                    <option value="2" {% if user.JOB_NM == '2' %}selected{% endif %}>전문가 및 관련 종사자</option>
-                    <option value="3" {% if user.JOB_NM == '3' %}selected{% endif %}>사무 종사자</option>
-                    <option value="4" {% if user.JOB_NM == '4' %}selected{% endif %}>서비스 종사자</option>
-                    <option value="5" {% if user.JOB_NM == '5' %}selected{% endif %}>판매 종사자</option>
-                    <option value="6" {% if user.JOB_NM == '6' %}selected{% endif %}>농립어원 숙련 종사자</option>
-                    <option value="7" {% if user.JOB_NM == '7' %}selected{% endif %}>기능원 및 관련 기능 종사자</option>
-                    <option value="8" {% if user.JOB_NM == '8' %}selected{% endif %}>장치·기계 조작 및 조립 종사자</option>
-                    <option value="9" {% if user.JOB_NM == '9' %}selected{% endif %}>단순노무종사자</option>
-                    <option value="10" {% if user.JOB_NM == '10' %}selected{% endif %}>군인</option>
-                    <option value="11" {% if user.JOB_NM == '11' %}selected{% endif %}>전업주부</option>
-                    <option value="12" {% if user.JOB_NM == '12' %}selected{% endif %}>학생</option>
-                    <option value="13" {% if user.JOB_NM == '13' %}selected{% endif %}>기타</option>
-                </select>            
-            </div>
-
-            <div class="form-group">
-                <label>본인 소득(만원)</label>
-                <input type="text" name="INCOME" class="form-control" value="{{ user.INCOME }}">
-            </div>
-
-            <div class="form-group">
-                <label>가구 소득(만원)</label>
-                <input type="text" name="HOUSE_INCOME" class="form-control" value="{{ user.HOUSE_INCOME }}">
-            </div>
-
+        <div class="form-step d-none" id="step-2">     
             <div class="form-group">
                 <label>한 달 내 여행하는 기간</label>
                 <select name="TRAVEL_TERM" class="form-control">
@@ -335,11 +419,6 @@
             <div class="form-group">
                 <label>한 달 내 여행 빈도</label>
                 <input type="text" name="TRAVEL_NUM" class="form-control" value="{{ user.TRAVEL_NUM }}">
-            </div>
-
-            <div class="form-group">
-                <label>여행 동반자 수</label>
-                <input type="number" name="TRAVEL_COMPANIONS_NUM" class="form-control" value="{{ user.TRAVEL_COMPANIONS_NUM }}">
             </div>
 
             <div class="form-group">
@@ -410,6 +489,7 @@
                     <option value="제주특별자치도" {% if user.TRAVEL_LIKE_SIDO_3 == "제주특별자치도" %}selected{% endif %}>제주특별자치도</option>
                 </select>
             </div>
+
             <div class="form-group">
                 <label>1순위 여행 동기</label>
                 <select name="TRAVEL_MOTIVE_1" class="form-control">
@@ -441,110 +521,54 @@
                     <option value="10" {% if user.TRAVEL_MOTIVE_2 == '10' %}selected{% endif %}>기타</option>
                 </select>
             </div>
+
             <div class="step-btn-group">
                 <button type="button" class="btn btn-primary btn-lg px-5" onclick="prevStep(2)">이전</button>
                 <button type="button" class="btn btn-primary btn-lg px-5" onclick="nextStep(2)">다음</button>
             </div>
+
         </div>
+        
             <!-- Page 3 ~ END  -->
-            <div class = "form-group">
-                {% set labels = [
-                        '자연 vs 도시',
-                        '숙박 vs 당일',
-                        '새로운 지역 vs 익숙한 지역',
-                        '편하지만 비싼 숙소 vs 불편하지만 저렴한 숙소',
-                        '휴양/휴식 vs 체험활동',
-                        '잘 알려지지 않은 방문지 vs 유명한 방문지',
-                        '계획에 따른 여행 vs 즉흥적 여행',
-                        '사진촬영 중요하지 않음 vs 사진촬영 중요'
-                    ] %}
-                {% for i in range(1, 9) %}
-                    <div class="form-step d-none" id="step-{{ i + 2 }}">
-                        <div class="form-group text-center">
-                            <h4>여행 스타일 {{ i }} / 8</h4>
-                            <p><strong>{{ labels[i-1] }}</strong></p>
-                            <div class = "style-image-pair">
-                            <img src="/static/images/register_{{ i }}.jpg" style="width: 45%; max-width: 300px;" alt="style image">
-                            <img src="/static/images/register_{{ i + 1 }}.jpg" style="width: 45%; max-width: 300px;" alt="style image">
-                            </div>
+        <div class = "form-group">
+            {% for i in range(3,13) %}
+            <div class="form-step d-none" id="step-{{ i }}">
+                <input type="hidden" name="TRAVEL_STYL_{{ i }}" id="TRAVEL_STYL_{{ i }}" value="{{ user['TRAVEL_STYL_' ~ i] or '' }}">
 
-                                <div class ="slider-label">
-                                (1: {{ labels[i-1].split(' vs ')[0] }} 선호 ←→ 7: {{ labels[i-1].split(' vs ')[1] }} 선호)
-
-                                <br/>
-                            <div class="slider-value" id="valueDisplay{{ i }}">
-                                {{ user['TRAVEL_STYL_' ~ i] or 4 }}
-                            </div>
-
-                            <input type="range"
-                                class="form-range"
-                                name="TRAVEL_STYL_{{ i }}"
-                                id="slider{{ i }}"
-                                min="1" max="7"
-                                value="{{ user['TRAVEL_STYL_' ~ i] or 4 }}"
-                                oninput="updateLabel({{ i }})">
-                            </div>
-
-                            <div class="step-btn-group">
-                            {% if i >= 1 %}
-                            <button type="button" class="btn btn-primary btn-lg px-5" onclick="prevStep({{ i+2 }})">이전</button>
-                            {% endif %}
-                            {% if i < 8 %}
-                            <button type="button" class="btn btn-primary" onclick="nextStep({{ i+2 }})">다음</button>
-                            {% else %}
-                            <button type="button" class="btn btn-success" onclick="submitForm()">✅ 수정 완료</button>
-                            <button type="button" class="btn btn-outline-dark" onclick="location.href='{{ url_for('main_home_1') }}'">🏠 메인으로</button>
-                            {% endif %}
+                <div class="form-group text-center">
+                    <h4 class="mb-3">여행 스타일 {{ i - 2 }} / 10</h4>
+                    <div class="style-image-row">
+                        {% if i != 13 %}
+                        <div class="card-wrapper" onclick="selectMypageStyle({{ i }}, 1)">
+                            <div class="card">
+                                <img src="/static/images/register/register_{{ i - 2 }}_1.jpg" alt="style {{ i - 2 }}-1">
                             </div>
                         </div>
+                        <div class="card-wrapper" onclick="selectMypageStyle({{ i }}, 2)">
+                            <div class="card">
+                                <img src="/static/images/register/register_{{ i - 2 }}_2.jpg" alt="style {{ i - 2 }}-2">
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endfor %}
+
+                    
+                </div>
+            </div>
+            {% endfor %}
+            <div class="form-step d-none" id="step-13">
+                <div class="form-group text-center">
+                    <h4 class="mb-3">🎯 나의 여행 성향 분석 결과</h4>
+
+                    <div id="style-analysis" class="text-center mt-3">
+                        <div class="style-bar-progress"></div>
+                    </div>
+                    <div class="step-btn-group mt-4">
+                        <button type="submit" class="btn btn-success">✅ 수정 완료</button>
                     </div>
                 </div>
             </div>
-
-            <script>
-                let currentStep = 1;
-
-                function showStep(step) {
-                    document.querySelectorAll('.form-step').forEach((el) => {
-                        el.classList.add('d-none');
-                        el.classList.remove('active');
-                    });
-
-                    const target = document.getElementById(`step-${step}`);
-                    if (target) {
-                        target.classList.remove('d-none');
-                        target.classList.add('active');
-                    }
-                }
-
-                function nextStep(step) {
-                    currentStep = step + 1;
-                    showStep(currentStep);
-                }
-
-                function prevStep(step) {
-                    currentStep = step - 1;
-                    showStep(currentStep);
-                }
-
-                document.addEventListener("DOMContentLoaded", () => {
-                    showStep(currentStep);
-                });
-
-                function submitForm() {
-                    document.querySelector("form").submit();
-                }
-                function updateLabel(index) {
-                    const slider = document.getElementById(`slider${index}`);
-                    const label = document.getElementById(`valueDisplay${index}`);
-                    if (slider && label) {
-                        label.textContent = slider.value;
-                    }
-                }
-                
-                </script>
+        </div>
         </form>
     </div>
 </div>

@@ -67,7 +67,6 @@
             justify-content: center;
             align-items: center;
         }
-
         .preloader.hidden {
             opacity: 0;
             visibility: hidden;
@@ -144,7 +143,10 @@
         .modal-body {
             padding: 2rem;
         }
-
+        .modal-footer i {
+            font-size: 1rem;  /* or inherit */
+            vertical-align: middle;
+        }
         .form-control {
             border-radius: 8px;
             border: 2px solid #e9ecef;
@@ -241,12 +243,13 @@
                       </div>
                   </div>
                   
+
                   <div class="modal-footer">
-                      <button type="submit" class="btn btn-primary">
+                      <button type="submit" class="btn btn-custom">
                           <i class="fas fa-sign-in-alt me-1" aria-hidden="true"></i>
                           로그인
                       </button>
-                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                      <button type="button" class="btn btn-custom" data-bs-dismiss="modal">
                           <i class="fas fa-times me-1" aria-hidden="true"></i>
                           닫기
                       </button>
@@ -630,6 +633,7 @@
           filter: none;
           transition: filter 0.3s ease;
       }
+
       </style>
       
       <!-- 5. 콘솔 도구 및 테스트 -->

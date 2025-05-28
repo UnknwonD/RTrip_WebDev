@@ -60,20 +60,16 @@ def main_recommended():
 
     elif request.method == "POST":
         travel_input = request.form.to_dict()
-        # raw_user = get_user_info(session["username"])
 
-        # user_json = {
-        #     k: v for k, v in raw_user.items()
-        #     if k not in {"BIRTHDATE", "uuid", "phone_number", "PASSWORD", "CONFIRM_PASSWORD"}
-        # }
         try:
             route = main_optimized_test(travel_input)
+
+            # print(route) -> string 변환해서 저장하고 
             dummy_ids = [[d['id'] for d in v] for k, v in route.items()] # 날짜별로, 순서대로 인덱스 갖고 있음
-            print(dummy_ids)
             print(f"[DEBUG] 🤖 GNN 추론 결과: {dummy_ids[:5]}")
 
             travel_plan_list = travel_plans_with_debug(dummy_ids, travel_input['date_range'])
-
+            print(travel_plan_list)
         except Exception as e:
             print(f"[DEBUG] ❌ GNN 추론 실패, 기본 계획 사용: {e}")
             travel_plan_list = default_travel_plans()
@@ -161,46 +157,209 @@ def analyze_styles():
         "images": images
     })
 
+# 마이페이지
+@app.route("/main_mypage", methods=["GET", "POST"])
+def main_mypage():
 
-# 수정 해야함 -> 기존 정보 수정이 아닌 여행 동선 저장장
-# @app.route("/mypage", methods=["GET", "POST"])
-# def mypage():
-#     if "username" not in session:
-#         return redirect(url_for("home"))
-
-#     username = session["username"]
-
-#     if request.method == "GET":
-#         try:
-#             user_json = get_user_info(username)
+    username = session.get("username")
+    if not username:
+        flash("로그인이 필요합니다.")
+        return redirect(url_for("main"))
+    
+    if request.method == "GET":
+        try:
+            user_json = get_user_info(username)
+            if user_json:
+                return render_template("main_mypage.html", user=user_json, today=datetime.today().strftime('%Y-%m-%d'))
+            return "사용자 정보를 찾을 수 없습니다.", 404
+        except RuntimeError as e:
+            return str(e), 500
+        
+    elif request.method == "POST":
+        update_fields = [
+            'NAME', 'GENDER', 'BIRTHDATE',
+            'TRAVEL_TERM', 'TRAVEL_NUM',
+            'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
+            'TRAVEL_STYL_1', 'TRAVEL_STYL_2', 'TRAVEL_STYL_3',
+            'TRAVEL_STYL_4', 'TRAVEL_STYL_5', 'TRAVEL_STYL_6',
+            'TRAVEL_STYL_7', 'TRAVEL_STYL_8',
+            'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2'
+        ]
+        updated_data = {field: request.form.get(field, "") for field in update_fields}
+        try:
+            success = update_user_info(username, updated_data)
             
-#             if user_json:
-#                 return render_template("mypage.html", user=user_json, today=datetime.today().strftime('%Y-%m-%d'))
-#             return "사용자 정보를 찾을 수 없습니다.", 404
-#         except RuntimeError as e:
-#             return str(e), 500
+            if success:
+                flash("회원 정보가 성공적으로 수정되었습니다.")
+                return redirect(url_for("main_recommended"))
+            return "수정 대상 사용자를 찾을 수 없습니다.", 404
+        except RuntimeError as e:
+            return str(e), 500
+    
+# 내 여행 페이지
+@app.route("/main_mytravel")
+def main_mytravel():
+    if "username" not in session:
+        return render_template("main_recommended.html")
 
-#     elif request.method == "POST":
-#         update_fields = [
-#             'NAME', 'GENDER', 'BIRTHDATE', 'phone_number',
-#             'EDU_NM', 'EDU_FNSH_SE', 'MARR_STTS', 'FAMILY_MEMB',
-#             'JOB_NM', 'INCOME', 'HOUSE_INCOME', 'TRAVEL_TERM', 'TRAVEL_NUM',
-#             'TRAVEL_LIKE_SIDO_1', 'TRAVEL_LIKE_SIDO_2', 'TRAVEL_LIKE_SIDO_3',
-#             'TRAVEL_MOTIVE_1', 'TRAVEL_MOTIVE_2', 'TRAVEL_COMPANIONS_NUM'
-#         ] + [f'TRAVEL_STYL_{i}' for i in range(1, 9)]
+    user_id = session["username"]
+    all_plans = load_all_travel_plans(user_id)
 
-#         updated_data = {field: request.form.get(field, "") for field in update_fields}
-#         print("[ 업데이트 데이터]", updated_data)
-#         try:
-#             success = update_user_info(username, updated_data)
-            
-#             if success:
-#                 flash("회원 정보가 성공적으로 수정되었습니다.")
-#                 return redirect(url_for("home"))
-#             return "수정 대상 사용자를 찾을 수 없습니다.", 404
-#         except RuntimeError as e:
-#             return str(e), 500
+    return render_template("main_mytravel.html", travel_list=all_plans)
 
+@app.route("/view_travel_plan/<key>")
+def view_travel_plan(key):
+    if "username" not in session:
+        return redirect(url_for("main_recommended"))
+
+    user_id = session["username"]
+    s3_key = f"user_travel_plans/{user_id}/{key}.json"
+    try:
+        content = s3.get_object(Bucket=BUCKET_NAME, Key=s3_key)['Body'].read().decode('utf-8')
+        travel_data = json.loads(content)
+    except Exception as e:
+        print(f"[ERROR] 여행 상세 보기 실패: {e}")
+        return "일정 로드 실패", 500
+
+    # 변환: [{day: n, route_id: date, spots: [...]}] 형식
+    travel_plans = []
+    for day_index, (_, day_plan) in enumerate(travel_data.items(), start=1):
+        title = day_plan.get("title", f"Day {day_index}")
+        date_str = title.split("|")[-1].strip() if "|" in title else ""
+        spots = day_plan.get("route", [])
+
+        travel_plans.append({
+            "day": day_index,
+            "route_id": date_str,
+            "spots": [
+                {
+                    "name": spot.get("name", "Unknown"),
+                    "coords": [spot.get("x"), spot.get("y")],
+                    "route_code": spot.get("route_code", "N/A")
+                }
+                for spot in spots
+            ]
+        })
+
+    return render_template("view_travel_plan.html", travel_plans=travel_plans, plan_key=key)
+
+
+@app.route("/save_plan", methods=["POST"])
+def save_plan():
+    if "username" not in session:
+        return jsonify({"error": "로그인 필요"}), 401
+
+    user_id = session["username"]
+    
+    try:
+        data = request.get_json()
+        print(f"[DEBUG] 받은 데이터: {data}")  # 디버깅용
+        
+        # 데이터가 직접 전달되는 경우와 plan 키로 감싸진 경우 모두 처리
+        if isinstance(data, dict) and "plan" in data:
+            plan_data = data.get("plan")
+            custom_title = data.get("custom_title", "")
+        else:
+            plan_data = data  # 데이터가 직접 전달된 경우
+            custom_title = ""
+        
+        if not plan_data:
+            return jsonify({"error": "빈 데이터"}), 400
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        key = f"travel__{timestamp}"  # 경로 제거
+        s3_key = f"user_travel_plans/{user_id}/{key}.json"
+
+        # 메타 정보 포함
+        if "meta" not in plan_data:
+            plan_data["meta"] = {}
+        plan_data["meta"]["custom_title"] = custom_title
+        plan_data["meta"]["saved_at"] = datetime.now().isoformat()
+
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key=s3_key,
+            Body=json.dumps(plan_data, ensure_ascii=False),
+            ContentType="application/json"
+        )
+        
+        print(f"[DEBUG] 저장 성공: {s3_key}")
+        return jsonify({"status": "ok", "key": key}), 200
+        
+    except Exception as e:
+        print(f"[ERROR] 여행 저장 실패: {e}")
+        return jsonify({"error": "서버 에러"}), 500
+
+@app.route("/delete_travel_plan", methods=["POST"])
+def delete_travel_plan():
+    if "username" not in session:
+        return jsonify({"error": "로그인 필요"}), 401
+
+    user_id = session["username"]
+    key = request.json.get("key")
+    s3_key = f"user_travel_plans/{user_id}/{key}.json"
+
+    try:
+        s3.delete_object(Bucket=BUCKET_NAME, Key=s3_key)
+        return jsonify({"status": "삭제 완료"}), 200
+    except Exception as e:
+        print(f"[ERROR] 삭제 실패: {e}")
+        return jsonify({"error": "삭제 실패"}), 500
+
+@app.route('/update_travel_title', methods=['POST'])
+def update_travel_title():
+    if "username" not in session:
+        return jsonify({"success": False, "error": "로그인 필요"}), 401
+    
+    data = request.get_json()
+    key = data.get('key')
+    new_title = data.get('title')
+    
+    if not key or not new_title:
+        return jsonify({"success": False, "error": "키와 제목이 필요합니다"}), 400
+    
+    if len(new_title) > 50:
+        return jsonify({"success": False, "error": "제목은 50자 이하여야 합니다"}), 400
+    
+    user_id = session["username"]
+    s3_key = f"user_travel_plans/{user_id}/{key}.json"
+    
+    try:
+        # 기존 여행 데이터 가져오기
+        content = s3.get_object(Bucket=BUCKET_NAME, Key=s3_key)['Body'].read().decode('utf-8')
+        travel_data = json.loads(content)
+        
+        # 각 일차의 title을 새로운 제목으로 업데이트
+        for day_key, day_data in travel_data.items():
+            if day_key != "meta":  # meta 정보는 제외
+                # 기존 title에서 날짜 부분 추출 (| 뒤의 부분)
+                old_title = day_data.get("title", "")
+                if "|" in old_title:
+                    date_part = old_title.split("|")[-1].strip()
+                    day_data["title"] = f"{new_title} | {date_part}"
+                else:
+                    day_data["title"] = new_title
+        
+        # meta 정보에도 custom_title 업데이트
+        if "meta" not in travel_data:
+            travel_data["meta"] = {}
+        travel_data["meta"]["custom_title"] = new_title
+        
+        # S3에 업데이트된 데이터 저장
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key=s3_key,
+            Body=json.dumps(travel_data, ensure_ascii=False),
+            ContentType="application/json"
+        )
+        
+        return jsonify({"success": True}), 200
+        
+    except s3.exceptions.NoSuchKey:
+        return jsonify({"success": False, "error": "여행 계획을 찾을 수 없습니다"}), 404
+    except Exception as e:
+        print(f"[ERROR] 제목 업데이트 실패: {e}")
+        return jsonify({"success": False, "error": "서버 오류가 발생했습니다"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=False)

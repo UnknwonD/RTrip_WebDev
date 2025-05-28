@@ -231,37 +231,46 @@
                 </div>
               </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
-              <button type="button" class="btn btn-primary">이 여행 선택하기</button>
+            <div class="modal-footer">              
+              <button type="button" class="btn btn-custom" data-plan="{{ plan_index }}">
+                이 여행 선택하기
+              </button>
+              <button type="button" class="btn btn-custom" data-bs-dismiss="modal">닫기</button>
             </div>
           </div>
         </div>
       </div>
       {% endfor %}
+      <div class="text-center mt-5">
+        <button id="save-final-trip" class="btn btn-lg btn-success" disabled>💾 여행 저장하기</button>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- section 4: CTA -->
 <section id="section-cta" class="section bg-dark text-white text-center">
-<div class="container">
-<h2>나만의 여행을 지금 시작하세요!</h2>
-<a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
-</div>
+  <div class="container">
+  <h2>나만의 여행을 지금 시작하세요!</h2>
+  <a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
+  </div>
 </section>
 
 <!-- 하단 고정 내비게이션 -->
 <nav class="navbar navbar-default navbar-fixed-bottom">
-<div class="container text-center">
-<ul class="list-inline" style="margin: 10px 0;">
-<li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
-<li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
-{% if session.get("username") %}
-<li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
-{% endif %}
-</ul>
-</div>
+  <div class="container text-center">
+    <ul class="list-inline" style="margin: 10px 0;">
+    <li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
+    <li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
+    <li><a href="{{ url_for('main') }}"><i class="fa fa-sign-out"></i><br>성향 분석</a></li>
+    {% if session.get("username") %}
+    <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
+    <li><a href="{{ url_for('main_mypage') }}"><i class="fa fa-user"></i><br>마이페이지</a></li>
+    <li><a href="{{ url_for('main_mytravel') }}"><i class="fa fa-user"></i><br>내 여행</a></li>    
+    {% else %}
+    {% endif %}
+    </ul>
+  </div>
 </nav>
 
 <style>
@@ -1439,6 +1448,54 @@ function initializeMap(planIdx) {
             }
           }
         });
+</script>
+
+<script>
+  // 여행 저장 
+document.addEventListener("DOMContentLoaded", function () {
+  const totalPlans = {{ travel_plans | length }};
+  const confirmedPlans = {};
+  const saveButton = document.getElementById("save-final-trip");
+  const travelPlans = {{ travel_plans | tojson }};
+  const confirmedDays = new Set();
+  const totalDays = totalPlans;  
+
+  // 1. 여행 선택 시 저장
+  document.querySelectorAll('.btn-custom').forEach(btn => {
+    if (btn.textContent.includes("이 여행 선택하기")) {
+      btn.addEventListener("click", function () {
+        const planIndex = this.dataset.plan || this.closest('.modal').id.replace("travelModal", "");
+
+        confirmedPlans[planIndex] = travelPlans[planIndex];
+        confirmedDays.add(planIndex);  // 중복 제거 + 저장
+
+        if (confirmedDays.size === totalDays) {
+          saveButton.disabled = false;
+        }
+      });
+    }
+  });
+
+  // 2. 저장 버튼 클릭 시 서버 전송
+  saveButton.addEventListener("click", function () {
+    fetch("/save_plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(confirmedPlans)
+    })
+    .then(res => {
+      if (res.ok) {
+        alert("여행이 저장되었습니다!");
+      } else {
+        alert("저장 실패");
+      }
+    })
+    .catch(err => {
+      console.error("저장 오류:", err);
+      alert("오류 발생");
+    });
+  });
+});
 </script>
 
 {% endblock %}

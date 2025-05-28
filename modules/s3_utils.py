@@ -1,7 +1,7 @@
 import json
 import random
 from config import s3, BUCKET_NAME
-
+from datetime import datetime 
 # S3에서 key로 파일을 읽고 JSON으로 반환
 
 def get_json_from_s3(key):
@@ -52,3 +52,40 @@ def put_json_to_s3(key, data):
         Body=json.dumps(data, ensure_ascii=False).encode('utf-8'),
         ContentType='application/json'
     )
+
+# 모든 여행 일정 불러오기 (최신순)
+def load_all_travel_plans(user_id):
+    prefix = f"user_travel_plans/{user_id}/"
+    try:
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+        contents = response.get("Contents", [])
+        if not contents:
+            return []
+
+        def extract_datetime_from_key(obj):
+            key = obj["Key"]
+            try:
+                filename = key.split("/")[-1].replace(".json", "")
+                return datetime.strptime(filename.split("__")[-1], "%Y%m%d_%H%M%S")
+            except Exception:
+                return datetime.min
+
+        sorted_keys = sorted(contents, key=extract_datetime_from_key, reverse=True)
+
+        travel_plans = []
+        for obj in sorted_keys:
+            key = obj["Key"]
+            content = s3.get_object(Bucket=BUCKET_NAME, Key=key)["Body"].read().decode("utf-8")
+            plan_data = json.loads(content)
+            travel_plans.append({
+                "key": key.split("/")[-1].replace(".json", ""),
+                "data": plan_data,
+                "saved_at": extract_datetime_from_key(obj).strftime("%Y-%m-%d %H:%M:%S"),
+                "title": plan_data.get("meta", {}).get("custom_title", plan_data.get("0", {}).get("title", "제목 없음"))
+            })
+
+        return travel_plans
+
+    except Exception as e:
+        print(f"[ERROR] 전체 여행 일정 불러오기 실패: {e}")
+        return []
