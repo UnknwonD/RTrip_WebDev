@@ -166,12 +166,18 @@
                 <div class="col-md-6">
                   <div id="map-plan-{{ plan_index }}" class="map-div"></div>
                   <p class="travel-description">{{ plan.description }}</p>
+                  <div>
+                    <button type="button" class="btn btn-custom" data-plan="{{ plan_index }}">
+                      이 여행 선택하기
+                    </button>
+                    <button type="button" class="btn btn-custom" data-bs-dismiss="modal">닫기</button>
+                  </div>
                 </div>
+                  
       
                 <!-- 여행 정보 -->
                 <div class="col-md-6">
                   <div class="travel-info">
-                    <h5>🗺️ 여행 코스</h5>
                     
                     <div class="route-pagination-container" id="routeContainer{{ plan_index }}">
                       {% set routes_per_page = 3 %}
@@ -224,33 +230,23 @@
                         </button>
                       </div>
                       {% endif %}
-                      <div class="recommendation-section">
-                        <div class="selected-count">
-                          선택된 싫어요: <span id="dislikeCount{{ plan_index }}">0</span>개
-                        </div>
-                        <div class="recommendation-buttons d-flex gap-2">
-                          <button class="btn btn-danger remove-spots-btn" data-plan="{{ plan_index }}">
-                            🗑️ 싫어요 장소 제거하기
-                          </button>
-                          <button class="btn btn-warning recommend-btn" data-plan="{{ plan_index }}" data-replace="false">
-                            🔄 싫어요 장소만 대체하기
-                          </button>
-                          <button class="btn btn-primary recommend-btn" data-plan="{{ plan_index }}" data-replace="true">
-                            ✨ 여행 다시 생성하기
-                          </button>
-                        </div>
+                      <div class="recommendation-buttons d-flex flex-wrap gap-2 justify-content-end mt-2">
+                        <button class="btn btn-danger remove-spots-btn" data-plan="{{ plan_index }}">
+                          🗑️ 싫어요 장소 제거하기
+                        </button>
+                        <button class="btn btn-warning recommend-btn" data-plan="{{ plan_index }}" data-replace="false">
+                          🔄 싫어요 장소만 대체하기
+                        </button>
+                        <button class="btn btn-primary recommend-btn" data-plan="{{ plan_index }}" data-replace="true">
+                          ✨ 여행 다시 생성하기
+                        </button>
                       </div>
+                      
 
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="modal-footer">              
-              <button type="button" class="btn btn-custom" data-plan="{{ plan_index }}">
-                이 여행 선택하기
-              </button>
-              <button type="button" class="btn btn-custom" data-bs-dismiss="modal">닫기</button>
             </div>
           </div>
         </div>
