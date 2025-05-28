@@ -222,7 +222,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("main"))
+    return redirect(url_for("main_recommended"))
 
 @app.route("/check_duplicate")
 def check_duplicate():
@@ -320,7 +320,6 @@ def view_travel_plan(key):
         print(f"[ERROR] 여행 상세 보기 실패: {e}")
         return "일정 로드 실패", 500
 
-    # 변환: [{day: n, route_id: date, spots: [...]}] 형식
     travel_plans = []
     for day_index, (_, day_plan) in enumerate(travel_data.items(), start=1):
         title = day_plan.get("title", f"Day {day_index}")
@@ -358,6 +357,7 @@ def save_plan():
         if isinstance(data, dict) and "plan" in data:
             plan_data = data.get("plan")
             custom_title = data.get("custom_title", "")
+            
         else:
             plan_data = data  # 데이터가 직접 전달된 경우
             custom_title = ""
@@ -459,6 +459,11 @@ def update_travel_title():
     except Exception as e:
         print(f"[ERROR] 제목 업데이트 실패: {e}")
         return jsonify({"success": False, "error": "서버 오류가 발생했습니다"}), 500
+
+
+@app.template_filter("regex_replace")
+def regex_replace(s, pattern, repl):
+    return re.sub(pattern, repl, s)
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=False)

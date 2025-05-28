@@ -204,10 +204,12 @@
 <script>
 function submitForm() {
     document.querySelectorAll('.form-step').forEach((el) => {
-        el.classList.remove('d-none');  // 모든 스텝 일시적으로 표시
+        el.classList.remove('d-none');  
     });
 
-    document.querySelector("form").submit();
+    setTimeout(() => {
+        document.querySelector("form").submit(); 
+    }, 50);
 }
 
 let currentStep = 1;
@@ -351,6 +353,32 @@ function analyzeStyles(finalScores) {
 document.addEventListener("DOMContentLoaded", () => {
     showStep(currentStep);
 });
+
+
+document.querySelector("form").addEventListener("submit", function (e) {
+    const p1 = document.getElementById("phone_1").value.trim();
+    const p2 = document.getElementById("phone_2").value.trim();
+    const p3 = document.getElementById("phone_3").value.trim();
+
+    
+    if (!/^\d{3}$/.test(p1) || !/^\d{4}$/.test(p2) || !/^\d{4}$/.test(p3)) {
+        alert("전화번호 형식이 올바르지 않습니다.");
+        e.preventDefault();
+        return false;
+    }
+
+    let hiddenInput = document.getElementById("phone_number_combined");
+    if (!hiddenInput) {
+        hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = "phone_number";
+        hiddenInput.id = "phone_number_combined";
+        this.appendChild(hiddenInput);
+    }
+
+    hiddenInput.value = p1 + p2 + p3;  
+});
+
 </script>
 
 
@@ -387,16 +415,21 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
 
             <div class="form-group">
-                <label>생년월일</label>
-                <input type="date" name="BIRTHDATE" class="form-control" value="{{ user.BIRTHDATE }}" min="1999-01-01" max="{{ today }}">
+                <label>전화번호</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" name="phone_1" id="phone_1" maxlength="3" class="form-control" style="width: 70px;"
+                        value="{{ user.phone_number[:3] if user.phone_number else '' }}" required>
+                    <input type="text" name="phone_2" id="phone_2" maxlength="4" class="form-control" style="width: 90px;"
+                        value="{{ user.phone_number[3:7] if user.phone_number else '' }}" required>
+                    <input type="text" name="phone_3" id="phone_3" maxlength="4" class="form-control" style="width: 90px;"
+                        value="{{ user.phone_number[7:11] if user.phone_number else '' }}" required>
+                </div>
+                
             </div>
 
             <div class="form-group">
-                <label>전화번호</label>
-                <input type="tel" name="phone_number" class="form-control" value="{{ user.phone_number }}"
-                    pattern="010-[0-9]{4}-[0-9]{4}"
-                    placeholder="010-1234-5678"
-                    required>
+                <label>생년월일</label>
+                <input type="date" name="BIRTHDATE" class="form-control" value="{{ user.BIRTHDATE }}" min="1999-01-01" max="{{ today }}">
             </div>
 
             <div class ="step-btn-group">

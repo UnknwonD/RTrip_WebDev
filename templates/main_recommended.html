@@ -252,9 +252,21 @@
         </div>
       </div>
       {% endfor %}
-      <div class="text-center mt-5">
-        <button id="save-final-trip" class="btn btn-lg btn-success" disabled>💾 여행 저장하기</button>
-      </div>
+      
+    </div>
+    <div class="save-trip-wrapper text-center mt-5">
+      <input
+        type="text"
+        id="custom-title-input"
+        class="form-control custom-title-input mb-3"
+        maxlength="50"
+        placeholder="✏️ 여행 제목을 입력하세요 (최대 50자)">
+      <button
+        id="save-final-trip"
+        class="btn btn-save-trip btn-lg"
+        disabled>
+        💾 여행 저장하기
+      </button>
     </div>
   </div>
 </section>
@@ -268,23 +280,139 @@
 </section>
 
 <!-- 하단 고정 내비게이션 -->
-<nav class="navbar navbar-default navbar-fixed-bottom">
+ <nav class="navbar navbar-default navbar-fixed-bottom">
   <div class="container text-center">
-    <ul class="list-inline" style="margin: 10px 0;">
-      <li><a href="#section-intro"><i class="fa fa-home"></i><br>홈</a></li>
-      <li><a href="#section-recommend"><i class="fa fa-star"></i><br>추천받기</a></li>
-      <li><a href="{{ url_for('main') }}"><i class="fa fa-sign-out"></i><br>성향 분석</a></li>
+    <ul class="navbar-horizontal-scroll">
+      <li><a href="#section-intro" class="nav-icon-link"><i class="fa fa-home"></i><span>홈</span></a></li>
+      <li><a href="#section-recommend" class="nav-icon-link"><i class="fa fa-star"></i><span>추천받기</span></a></li>
       {% if session.get("username") %}
-      <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i><br>로그아웃</a></li>
-      <li><a href="{{ url_for('main_mypage') }}"><i class="fa fa-user"></i><br>마이페이지</a></li>
-      <li><a href="{{ url_for('main_mytravel') }}"><i class="fa fa-user"></i><br>내 여행</a></li>    
+      <li><a href="{{ url_for('main_mypage') }}" class="nav-icon-link"><i class="fa fa-user"></i><span>마이페이지</span></a></li>
+      <li><a href="{{ url_for('main_mytravel') }}" class="nav-icon-link"><i class="fa fa-map-marked-alt"></i><span>내 여행</span></a></li>
+      <li><a href="{{ url_for('logout') }}" class="nav-icon-link"><i class="fa fa-sign-out"></i><span>로그아웃</span></a></li>
       {% else %}
+      <li><a href="{{ url_for('main') }}" class="nav-icon-link"><i class="fa fa-brain"></i><span>성향 분석</span></a></li>
+
       {% endif %}
     </ul>
   </div>
 </nav>
+ㅋ
 
 <style>
+.save-trip-wrapper {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  border-radius: 20px;
+  background-color: #f8f9fa;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.custom-title-input {
+  font-size: 1.1rem;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid #ced4da;
+  transition: all 0.3s ease-in-out;
+}
+
+.custom-title-input:focus {
+  border-color: #74c0fc;
+  box-shadow: 0 0 0 4px rgba(115, 191, 255, 0.3);
+}
+
+.btn-save-trip {
+  background: linear-gradient(135deg, #845ef7, #9775fa);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 30px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 16px rgba(132, 94, 247, 0.3);
+}
+
+.btn-save-trip:hover:enabled {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #7048e8, #a685f9);
+}
+
+.btn-save-trip:disabled {
+  background: #d0c6f6;
+  cursor: not-allowed;
+  color: #fff;
+  box-shadow: none;
+}
+
+
+.nav-icon-link i {
+  color: #667eea;
+}
+.navbar-horizontal-scroll {
+  display: flex;
+  overflow-x: auto;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  justify-content: flex-start;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+
+.navbar-horizontal-scroll li {
+  flex: 0 0 auto;
+  margin: 0 12px;
+  text-align: center;
+  scroll-snap-align: start;
+}
+
+.nav-icon-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 13px;
+  color: #333;
+  text-decoration: none;
+  gap: 4px;
+}
+
+.nav-icon-link i {
+  font-size: 18px;
+}
+
+  .navbar-horizontal {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  background-color: #fff;
+  padding: 10px 0;
+  margin: 0;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid #ddd;
+}
+
+.navbar-horizontal li {
+  flex: 0 0 auto;
+  margin: 0 12px;
+  text-align: center;
+}
+
+.navbar-horizontal li a {
+  display: block;
+  color: #333;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.navbar-horizontal li a i {
+  font-size: 18px;
+  margin-bottom: 4px;
+  display: block;
+}
+
   /* 싫어요 버튼 활성화 상태 */
 .dislike-btn.active {
   background-color: #dc3545;
@@ -1163,6 +1291,14 @@ label {
   color: #555;
   pointer-events: none;
 }
+
+.selected-card {
+  border: 3px solid #7f5af0;
+  box-shadow: 0 0 20px rgba(127, 90, 240, 0.3);
+  background-color: #f9f7ff;
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
 </style>
 
 <script>
@@ -1381,7 +1517,7 @@ function updateDislikedRoutes(routeItems, newRoutes, planId) {
 }
 
 function updateAllRoutes(routeItems, newRoutes) {
-  // newRoutes: { 0: [...], 1: [...], ... } 형태
+  
   let index = 0;
   for (const day in newRoutes) {
     const spots = newRoutes[day];
@@ -1937,52 +2073,82 @@ function initializeMap(planIdx) {
         });
 </script>
 
-<script>
-  // 여행 저장 
-document.addEventListener("DOMContentLoaded", function () {
-  const totalPlans = {{ travel_plans | length }};
-  const confirmedPlans = {};
-  const saveButton = document.getElementById("save-final-trip");
-  const travelPlans = {{ travel_plans | tojson }};
-  const confirmedDays = new Set();
-  const totalDays = totalPlans;  
 
-  // 1. 여행 선택 시 저장
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const confirmedPlans = {};
+  const confirmedDays = new Set();
+  const saveButton = document.getElementById("save-final-trip");
+
+  const totalDays = {{ travel_plans|length }};
+  const travelPlans = {{ travel_plans|tojson }};
+
   document.querySelectorAll('.btn-custom').forEach(btn => {
     if (btn.textContent.includes("이 여행 선택하기")) {
       btn.addEventListener("click", function () {
         const planIndex = this.dataset.plan || this.closest('.modal').id.replace("travelModal", "");
 
         confirmedPlans[planIndex] = travelPlans[planIndex];
-        confirmedDays.add(planIndex);  // 중복 제거 + 저장
+        confirmedDays.add(planIndex);
 
         if (confirmedDays.size === totalDays) {
           saveButton.disabled = false;
         }
+
+        $(`#travelModal${planIndex}`).modal('hide');
+
+        document.querySelectorAll('.travel-card').forEach(card => {
+          card.classList.remove('selected-card');
+        });
+        const selectedCard = document.querySelectorAll('.travel-card')[planIndex];
+        selectedCard.classList.add('selected-card');
       });
     }
   });
 
-  // 2. 저장 버튼 클릭 시 서버 전송
   saveButton.addEventListener("click", function () {
+    if (confirmedDays.size !== totalDays) {
+      alert("모든 날짜의 여행을 선택해야 저장할 수 있습니다.");
+      return;
+    }
+
+    const customTitle = document.getElementById("custom-title-input").value.trim();
+
+    if (!customTitle) {
+      alert("제목을 입력해주세요.");
+      return;
+    }
+
+    console.log("✅ 저장된 제목:", customTitle);
+    console.log("✅ 저장된 계획:", confirmedPlans);
+
     fetch("/save_plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(confirmedPlans)
+      body: JSON.stringify({
+        custom_title: customTitle,
+        plan: confirmedPlans
+      })
     })
     .then(res => {
       if (res.ok) {
         alert("여행이 저장되었습니다!");
+        location.href = "/main_mytravel";  // 저장 후 페이지 이동
       } else {
         alert("저장 실패");
       }
     })
     .catch(err => {
-      console.error("저장 오류:", err);
-      alert("오류 발생");
+      console.error("저장 중 오류:", err);
+      alert("서버 오류 발생");
     });
   });
 });
 </script>
+
+
+
 
 {% endblock %}
