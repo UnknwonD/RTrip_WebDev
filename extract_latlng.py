@@ -83,6 +83,12 @@ def fill_missing_coords_with_kakao(travel_plan_list):
                     lat, lon = get_lat_lon_by_name(loc['name'])
                     if lat and lon:
                         print(f"[DEBUG] 이름으로 검색 성공: {loc['name']} → ({lat}, {lon})")
+                    else: # 이름에서 띄어쓰기 제거하고 확인
+                        name = loc['name'].replace(' ', '')
+                        lat, lon = get_lat_lon_by_name(name)
+
+                        if lat and lon:
+                            print(f"[DEBUG] 이름으로 검색 성공: {loc['name']} → ({lat}, {lon})")
 
                 # 최종 좌표 채움
                 if lat is not None and lon is not None:

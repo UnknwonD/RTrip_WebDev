@@ -1375,14 +1375,31 @@ async function handleRecommendation(button) {
       })
     });
 
-    console.log("데이터로 들어온 값은 바로바로~ : ", dislikedIds)
     
     if (!response.ok) {
       throw new Error('서버 오류가 발생했습니다.');
     }
     
     const result = await response.json();
+  
+    // 🔍 서버 응답 데이터 자세히 출력 (수정 부분)
+    console.log("🔍 서버 응답 전체:", result);
+    console.log("🔍 newRoutes 구조:", JSON.stringify(result.newRoutes, null, 2));
     
+    // 각 날짜별 데이터 상세 확인
+    Object.keys(result.newRoutes).forEach(day => {
+      console.log(`📅 Day ${day}:`, result.newRoutes[day]);
+      result.newRoutes[day].forEach((spot, idx) => {
+        console.log(`  ${idx + 1}. ${spot.name || spot.area || '이름없음'}:`, {
+          id: spot.id,
+          coords: spot.coords,
+          x: spot.x,
+          y: spot.y,
+          addr: spot.addr
+        });
+      });
+    });
+      
     if (result.success) {
       // 성공시 UI 업데이트
       updateRouteDisplay(planId, result.newRoutes, replace);
@@ -1564,6 +1581,8 @@ function updateRouteDisplay(planId, newRoutes, isFullReplace) {
 
 // 지도 업데이트 함수
 function updateMapDisplay(planId) {
+  console.log(`🗺️ 지도 업데이트 시작: Plan ${planId}`);
+  
   const container = document.getElementById(`routeContainer${planId}`);
   const routeItems = container.querySelectorAll('.route-item');
   
@@ -1574,18 +1593,26 @@ function updateMapDisplay(planId) {
     const lng = parseFloat(item.dataset.lng);
     const spotName = item.querySelector('.route-details strong').textContent;
     
+    console.log(`📍 장소 ${index + 1}: ${spotName} - lat: ${lat}, lng: ${lng}`); // 디버깅 로그
+    
     if (!isNaN(lat) && !isNaN(lng)) {
       positions.push({
         title: spotName,
         latlng: new kakao.maps.LatLng(lat, lng),
         order: index + 1
       });
+    } else {
+      console.warn(`⚠️ 유효하지 않은 좌표: ${spotName}`);
     }
   });
+  
+  console.log(`📊 총 ${positions.length}개 위치 정보 수집됨`);
   
   // 지도 다시 초기화
   if (positions.length > 0) {
     initializeMapWithPositions(planId, positions);
+  } else {
+    console.error('❌ 유효한 위치 정보가 없어서 지도를 업데이트할 수 없습니다.');
   }
 }
 

@@ -49,9 +49,12 @@ def serialize_routes(routes):
     for day, spots in routes.items():
         new_spots = []
         for spot in spots:
-            # coords를 list로 변환
+            # coords를 list로 변환하고 x, y 키 추가
             if isinstance(spot.get('coords'), np.ndarray):
                 spot['coords'] = spot['coords'].tolist()
+            if 'coords' in spot and isinstance(spot['coords'], list) and len(spot['coords']) == 2:
+                spot['x'], spot['y'] = spot['coords'][0], spot['coords'][1]
+            
             # 모든 numpy.int64 같은 정수형을 int로 변환
             for k, v in spot.items():
                 if isinstance(v, (np.integer, np.int64)):
@@ -59,6 +62,7 @@ def serialize_routes(routes):
             new_spots.append(spot)
         new_serializable_routes[day] = new_spots
     return new_serializable_routes
+
 
 def filter_disliked_places(new_routes, dislike_set):
     """
