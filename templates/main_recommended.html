@@ -1055,6 +1055,7 @@ select.form-control {
 
 .route-item {
   display: flex;
+  cursor: pointer;
   justify-content: space-between;
   align-items: center;
   padding: 20px;
@@ -1070,7 +1071,27 @@ select.form-control {
 .route-item:hover {
   border-color: #667eea;
   transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)) !important;
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+  animation: pulseHighlight 2s ease-in-out;
+}
+
+/* 지도에서 마커 hover 시 해당 장소 아이템 하이라이트 */
+.route-item-highlighted {
+  border-color: #667eea !important;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)) !important;
+  transform: translateY(-2px) translateX(5px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25) !important;
+  animation: pulseHighlight 2s ease-in-out;
+}
+
+@keyframes pulseHighlight {
+  0%, 100% { 
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
+  }
+  50% { 
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+  }
 }
 
 .route-info {
@@ -1204,6 +1225,15 @@ select.form-control {
   font-size: 16px;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.custom-marker:hover {
+  transform: scale(1.15);
+  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+  z-index: 1000;
 }
 
 .custom-marker::before {
@@ -1215,6 +1245,17 @@ select.form-control {
   height: 200%;
   background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent);
   animation: markerGlow 2s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.custom-marker:hover::before {
+  opacity: 1;
+}
+
+/* 장소 이름 텍스트 hover 효과 */
+.route-details strong {
+  transition: color 0.3s ease;
 }
 
 @keyframes markerGlow {
@@ -1246,10 +1287,20 @@ select.form-control {
   .modal-body .row {
     flex-direction: column;
   }
+  .route-item:hover .route-details strong {
+  color: #667eea;
+  text-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+}
+
+  .route-item-highlighted .route-details strong {
+  color: #667eea;
+  text-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+  }
   
   .map-div {
     height: 280px;
     margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
   }
   
   .mission-grid {
@@ -1290,6 +1341,37 @@ label {
   font-size: 13px;
   color: #555;
   pointer-events: none;
+}
+/* 지도 컨테이너 hover 시 부드러운 효과 */
+.map-div {
+  transition: box-shadow 0.3s ease;
+}
+
+.map-div:hover {
+  box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+}
+
+/* 인포윈도우 커스텀 스타일 */
+.map-div .infowindow {
+  border-radius: 8px !important;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+/* 장소 번호 호버 효과 */
+.route-number {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.route-item:hover .route-number {
+  background: linear-gradient(135deg, #5a6fd8, #6b4190);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.route-item-highlighted .route-number {
+  background: linear-gradient(135deg, #5a6fd8, #6b4190);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .selected-card {
@@ -1903,10 +1985,14 @@ updateTotalCost();
 
 <!-- 카카오맵 마커 스크립트 -->
 <script>
+// 카카오맵 마커 및 hover 인터랙션 스크립트
 document.addEventListener("DOMContentLoaded", function () {
 const travelPlans = {{ travel_plans | tojson }};
 
+// 지도 관련 객체들을 저장할 전역 변수
 window.mapObjects = {};
+window.mapMarkers = {}; // 마커들 저장
+window.mapInfoWindows = {}; // 인포윈도우들 저장
 
 // 모달이 열릴 때 지도 초기화
 $(document).on('shown.bs.modal', '[id^="travelModal"]', function() {
@@ -1915,10 +2001,11 @@ $(document).on('shown.bs.modal', '[id^="travelModal"]', function() {
   
   setTimeout(() => {
     initializeMap(parseInt(planIndex));
+    setupHoverEvents(parseInt(planIndex)); // hover 이벤트 설정
   }, 100);
 });
 
-// 지도 초기화 함수 - 안전성 강화
+// 지도 초기화 함수 - 수정된 버전
 function initializeMap(planIdx) {
   const plan = travelPlans[planIdx];
   const mapId = `map-plan-${planIdx}`;
@@ -1945,7 +2032,8 @@ function initializeMap(planIdx) {
         positions.push({
           title: spot.area || spot.name,
           latlng: new kakao.maps.LatLng(lat, lng),
-          order: i + 1
+          order: i + 1,
+          spotId: spot.area_id || spot.name
         });
       }
     });
@@ -1966,10 +2054,14 @@ function initializeMap(planIdx) {
     // 지도 생성
     const map = new kakao.maps.Map(mapContainer, mapOption);
 
+    // 마커와 인포윈도우 배열 초기화
+    window.mapMarkers[planIdx] = [];
+    window.mapInfoWindows[planIdx] = [];
+
     // 마커와 인포윈도우 생성
     positions.forEach((position, i) => {
       // 커스텀 마커 HTML
-      const markerContent = `<div class="custom-marker">${position.order}</div>`;
+      const markerContent = `<div class="custom-marker" data-spot-index="${i}">${position.order}</div>`;
 
       // 커스텀 오버레이 (마커 대신 사용)
       const customOverlay = new kakao.maps.CustomOverlay({
@@ -1982,13 +2074,52 @@ function initializeMap(planIdx) {
 
       // 인포윈도우
       const infowindow = new kakao.maps.InfoWindow({
-        content: `<div style="padding:8px;font-size:13px;font-weight:500;">${position.order}. ${position.title}</div>`
+        content: `<div style="padding:8px;font-size:13px;font-weight:500;">${position.order}. ${position.title}</div>`,
+        removable: false
       });
 
-      // 클릭 이벤트
+      // 배열에 저장
+      window.mapMarkers[planIdx].push({
+        overlay: customOverlay,
+        position: position,
+        index: i
+      });
+      window.mapInfoWindows[planIdx].push(infowindow);
+
+      // 마커 클릭 이벤트
       kakao.maps.event.addListener(customOverlay, 'click', function() {
+        // 모든 인포윈도우 닫기
+        closeAllInfoWindows(planIdx);
+        // 해당 인포윈도우 열기
         infowindow.open(map, position.latlng);
       });
+
+      // 마커 hover 이벤트 추가
+      const markerElement = customOverlay.getContent();
+      
+      // DOM에 마커가 추가된 후 이벤트 리스너 설정
+      setTimeout(() => {
+        const markerDiv = mapContainer.querySelector(`[data-spot-index="${i}"]`);
+        if (markerDiv) {
+          markerDiv.addEventListener('mouseenter', function() {
+            // 모든 인포윈도우 닫기
+            closeAllInfoWindows(planIdx);
+            // 해당 인포윈도우 열기
+            infowindow.open(map, position.latlng);
+            
+            // 해당 장소 리스트 아이템 하이라이트
+            highlightRouteItem(planIdx, i, true);
+          });
+
+          markerDiv.addEventListener('mouseleave', function() {
+            // 인포윈도우 닫기
+            infowindow.close();
+            
+            // 장소 리스트 아이템 하이라이트 해제
+            highlightRouteItem(planIdx, i, false);
+          });
+        }
+      }, 500);
     });
 
     // 경로 선 그리기
@@ -1997,7 +2128,7 @@ function initializeMap(planIdx) {
       const polyline = new kakao.maps.Polyline({
         path: linePath,
         strokeWeight: 3,
-        strokeColor: '#655cff',
+        strokeColor: '#667eea',
         strokeOpacity: 0.8,
         strokeStyle: 'solid'
       });
@@ -2016,87 +2147,213 @@ function initializeMap(planIdx) {
     console.error('지도 초기화 중 오류:', error);
   }
 }
+
+// 장소 리스트 hover 이벤트 설정
+function setupHoverEvents(planIdx) {
+  const container = document.getElementById(`routeContainer${planIdx}`);
+  if (!container) return;
+
+  // 기존 이벤트 리스너 제거 (중복 방지)
+  const routeItems = container.querySelectorAll('.route-item');
+  routeItems.forEach(item => {
+    // 기존 이벤트 리스너 클론으로 교체하여 제거
+    const newItem = item.cloneNode(true);
+    item.parentNode.replaceChild(newItem, item);
+  });
+
+  // 현재 활성화된 페이지의 route-item들에만 이벤트 추가
+  const activePageItems = container.querySelectorAll('.route-page.active .route-item');
+  
+  activePageItems.forEach((item) => {
+    // route-number에서 실제 순서 가져오기
+    const routeNumber = item.querySelector('.route-number');
+    const spotIndex = routeNumber ? parseInt(routeNumber.textContent) - 1 : 0;
+    
+    // 새로운 이벤트 리스너 추가
+    item.addEventListener('mouseenter', function() {
+      handleRouteItemHover(planIdx, spotIndex, true);
+    });
+
+    item.addEventListener('mouseleave', function() {
+      handleRouteItemHover(planIdx, spotIndex, false);
+    });
+  });
+}
+
+// 장소 리스트 아이템 hover 처리
+function handleRouteItemHover(planIdx, spotIndex, isEnter) {
+  const map = window.mapObjects[planIdx];
+  const markers = window.mapMarkers[planIdx];
+  const infoWindows = window.mapInfoWindows[planIdx];
+
+  if (!map || !markers || !infoWindows) return;
+
+  if (isEnter) {
+    // 해당 위치의 마커와 인포윈도우 찾기
+    const markerData = markers[spotIndex];
+    const infoWindow = infoWindows[spotIndex];
+
+    if (markerData && infoWindow) {
+      // 지도 중심을 해당 위치로 부드럽게 이동
+      map.panTo(markerData.position.latlng);
+      
+      // 모든 인포윈도우 닫기
+      closeAllInfoWindows(planIdx);
+      
+      // 해당 인포윈도우 열기
+      infoWindow.open(map, markerData.position.latlng);
+      
+      // 마커 강조 효과
+      highlightMarker(planIdx, spotIndex, true);
+    }
+  } else {
+    // hover out 시 인포윈도우 닫기
+    closeAllInfoWindows(planIdx);
+    
+    // 마커 강조 해제
+    highlightMarker(planIdx, spotIndex, false);
+  }
+}
+
+// 모든 인포윈도우 닫기
+function closeAllInfoWindows(planIdx) {
+  const infoWindows = window.mapInfoWindows[planIdx];
+  if (infoWindows) {
+    infoWindows.forEach(infoWindow => {
+      infoWindow.close();
+    });
+  }
+}
+
+// 마커 강조 효과
+function highlightMarker(planIdx, spotIndex, highlight) {
+  const markers = window.mapMarkers[planIdx];
+  if (!markers || !markers[spotIndex]) return;
+
+  const mapContainer = document.getElementById(`map-plan-${planIdx}`);
+  const markerDiv = mapContainer.querySelector(`[data-spot-index="${spotIndex}"]`);
+  
+  if (markerDiv) {
+    if (highlight) {
+      markerDiv.style.transform = 'scale(1.2)';
+      markerDiv.style.zIndex = '1000';
+      markerDiv.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.8)';
+    } else {
+      markerDiv.style.transform = 'scale(1)';
+      markerDiv.style.zIndex = '1';
+      markerDiv.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+    }
+  }
+}
+
+// 장소 리스트 아이템 하이라이트
+function highlightRouteItem(planIdx, spotIndex, highlight) {
+  const container = document.getElementById(`routeContainer${planIdx}`);
+  if (!container) return;
+
+  // 모든 route-item에서 하이라이트 제거
+  container.querySelectorAll('.route-item').forEach(item => {
+    item.classList.remove('route-item-highlighted');
+  });
+
+  if (highlight) {
+    // 해당 인덱스의 route-item 찾기
+    const routeItems = container.querySelectorAll('.route-item');
+    routeItems.forEach(item => {
+      const routeNumber = item.querySelector('.route-number');
+      if (routeNumber && parseInt(routeNumber.textContent) - 1 === spotIndex) {
+        item.classList.add('route-item-highlighted');
+      }
+    });
+  }
+}
+
+// 기존 페이지네이션 기능 유지 + hover 이벤트 추가
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.pagination-btn')) {
+    const btn = e.target.closest('.pagination-btn');
+    const containerId = btn.dataset.container;
+    const action = btn.dataset.action;
+    const container = document.getElementById(containerId);
+    
+    if (container) {
+      const currentPage = container.querySelector('.route-page.active');
+      const currentPageNum = parseInt(currentPage.dataset.page);
+      const totalPages = container.querySelectorAll('.route-page').length;
+      
+      let newPageNum = currentPageNum;
+      
+      if (action === 'prev' && currentPageNum > 1) {
+        newPageNum = currentPageNum - 1;
+      } else if (action === 'next' && currentPageNum < totalPages) {
+        newPageNum = currentPageNum + 1;
+      }
+      
+      if (newPageNum !== currentPageNum) {
+        showPage(containerId, newPageNum);
+        // 페이지 변경 후 hover 이벤트 재설정
+        const planIdx = parseInt(containerId.replace('routeContainer', ''));
+        setTimeout(() => setupHoverEvents(planIdx), 100);
+      }
+    }
+  }
+  
+  // 페이지 도트 클릭
+  if (e.target.classList.contains('page-dot')) {
+    const pageNum = parseInt(e.target.dataset.page);
+    const container = e.target.closest('.route-pagination-container');
+    if (container) {
+      showPage(container.id, pageNum);
+      // 페이지 변경 후 hover 이벤트 재설정
+      const planIdx = parseInt(container.id.replace('routeContainer', ''));
+      setTimeout(() => setupHoverEvents(planIdx), 100);
+    }
+  }
 });
-  // 페이지네이션 기능 추가
-  document.addEventListener('DOMContentLoaded', function() {
-          // 페이지네이션 버튼 이벤트
-          document.addEventListener('click', function(e) {
-            if (e.target.closest('.pagination-btn')) {
-              const btn = e.target.closest('.pagination-btn');
-              const containerId = btn.dataset.container;
-              const action = btn.dataset.action;
-              const container = document.getElementById(containerId);
-              
-              if (container) {
-                const currentPage = container.querySelector('.route-page.active');
-                const currentPageNum = parseInt(currentPage.dataset.page);
-                const totalPages = container.querySelectorAll('.route-page').length;
-                
-                let newPageNum = currentPageNum;
-                
-                if (action === 'prev' && currentPageNum > 1) {
-                  newPageNum = currentPageNum - 1;
-                } else if (action === 'next' && currentPageNum < totalPages) {
-                  newPageNum = currentPageNum + 1;
-                }
-                
-                if (newPageNum !== currentPageNum) {
-                  showPage(containerId, newPageNum);
-                }
-              }
-            }
-            
-            // 페이지 도트 클릭
-            if (e.target.classList.contains('page-dot')) {
-              const pageNum = parseInt(e.target.dataset.page);
-              const container = e.target.closest('.route-pagination-container');
-              if (container) {
-                showPage(container.id, pageNum);
-              }
-            }
-          });
-          
-          function showPage(containerId, pageNum) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            
-            // 모든 페이지 숨기기
-            container.querySelectorAll('.route-page').forEach(page => {
-              page.classList.remove('active');
-            });
-            
-            // 선택된 페이지 보이기
-            const targetPage = container.querySelector(`[data-page="${pageNum}"]`);
-            if (targetPage) {
-              targetPage.classList.add('active');
-            }
-            
-            // 페이지네이션 컨트롤 업데이트
-            const paginationControls = container.querySelector('.pagination-controls');
-            if (paginationControls) {
-              const totalPages = container.querySelectorAll('.route-page').length;
-              
-              // 버튼 상태 업데이트
-              const prevBtn = paginationControls.querySelector('[data-action="prev"]');
-              const nextBtn = paginationControls.querySelector('[data-action="next"]');
-              
-              if (prevBtn) prevBtn.disabled = pageNum === 1;
-              if (nextBtn) nextBtn.disabled = pageNum === totalPages;
-              
-              // 현재 페이지 표시 업데이트
-              const currentPageSpan = paginationControls.querySelector('.current-page');
-              if (currentPageSpan) currentPageSpan.textContent = pageNum;
-              
-              // 페이지 도트 업데이트
-              paginationControls.querySelectorAll('.page-dot').forEach(dot => {
-                dot.classList.remove('active');
-                if (parseInt(dot.dataset.page) === pageNum) {
-                  dot.classList.add('active');
-                }
-              });
-            }
-          }
-        });
+
+// 페이지 표시 함수
+function showPage(containerId, pageNum) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  // 모든 페이지 숨기기
+  container.querySelectorAll('.route-page').forEach(page => {
+    page.classList.remove('active');
+  });
+  
+  // 선택된 페이지 보이기
+  const targetPage = container.querySelector(`[data-page="${pageNum}"]`);
+  if (targetPage) {
+    targetPage.classList.add('active');
+  }
+  
+  // 페이지네이션 컨트롤 업데이트
+  const paginationControls = container.querySelector('.pagination-controls');
+  if (paginationControls) {
+    const totalPages = container.querySelectorAll('.route-page').length;
+    
+    // 버튼 상태 업데이트
+    const prevBtn = paginationControls.querySelector('[data-action="prev"]');
+    const nextBtn = paginationControls.querySelector('[data-action="next"]');
+    
+    if (prevBtn) prevBtn.disabled = pageNum === 1;
+    if (nextBtn) nextBtn.disabled = pageNum === totalPages;
+    
+    // 현재 페이지 표시 업데이트
+    const currentPageSpan = paginationControls.querySelector('.current-page');
+    if (currentPageSpan) currentPageSpan.textContent = pageNum;
+    
+    // 페이지 도트 업데이트
+    paginationControls.querySelectorAll('.page-dot').forEach(dot => {
+      dot.classList.remove('active');
+      if (parseInt(dot.dataset.page) === pageNum) {
+        dot.classList.add('active');
+      }
+    });
+  }
+}
+
+});
 </script>
 
 
