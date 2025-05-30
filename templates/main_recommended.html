@@ -191,8 +191,11 @@
                                 <div class="route-info">
                                   <span class="route-number">{{ loop.index + ((page_num-1)*routes_per_page) }}</span>
                                   <div class="route-details">
-                                    <strong>{{ spot.area or spot.name }}</strong>
-                                  </div>
+                                  <strong>{{ spot.area or spot.name }}</strong>
+                                    {% if spot.addr %}
+                                    <div style="color: #666; font-size: 13px; margin-top: 2px;">{{ spot.addr }}</div>
+                                    {% endif %}
+                                </div>
                                 </div>
                                 <div class="route-actions">
                                   <button class="btn btn-sm btn-outline-danger dislike-btn" 
@@ -1739,7 +1742,7 @@ function initializeMapWithPositions(planIdx, positions) {
 
       // 인포윈도우
       const infowindow = new kakao.maps.InfoWindow({
-        content: `<div style="padding:8px;font-size:13px;font-weight:500;">${position.order}. ${position.title}</div>`
+        content: `<div style="padding:8px;font-size:13px;font-weight:500;">${position.order}. ${position.title}${position.addr ? '<br><span style="color:#666;font-size:11px;">' + position.addr + '</span>' : ''}</div>`
       });
 
       // 클릭 이벤트
@@ -2033,7 +2036,8 @@ function initializeMap(planIdx) {
           title: spot.area || spot.name,
           latlng: new kakao.maps.LatLng(lat, lng),
           order: i + 1,
-          spotId: spot.area_id || spot.name
+          spotId: spot.area_id || spot.name,
+          addr: spot.addr || ''
         });
       }
     });
