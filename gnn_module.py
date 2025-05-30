@@ -194,7 +194,7 @@ class FastDataProcessor:
             if keyword.lower() in name_str:
                 tourist_keywords = {'관광', '테마', '파크', '랜드', '월드', '호텔',
                                   '맛집', '식당', '카페', '박물관', '전시', '갤러리', '문화'}
-                if any(tk in name_str for tk in tourist_keywords):
+                if any(tk in name_str for tk in tourist_keywords) and keyword != '아파트':
                     continue
                 return True
         return False
@@ -623,6 +623,7 @@ class FastRecommendationEngine:
             )
             if replacement:
                 filtered.append(replacement)
+                used_indices.add(replacement['idx'])  # 이 줄 추가!
                 print(f"  ✅ '{outlier['name']}' → '{replacement['name']}' 대체")
         
         return filtered
@@ -677,8 +678,9 @@ class FastRecommendationEngine:
             # 임계값 이내의 장소만 후보로
             if dist_to_center <= self.max_distance_km * 0.7:  # 70% 이내
                 area = self.visit_area_df.iloc[idx]
-                if not self.processor.should_exclude_location(area['VISIT_AREA_NM']):
-                    candidates.append((idx, dist_to_center))
+                area_id = area['NEW_VISIT_AREA_ID']  # ID 체크 추가
+                if not self.processor.should_exclude_location(area['VISIT_AREA_NM']) and area_id != 0:
+                    candidates.append((idx, dist_to_center, area_id))  # area_id도 포함
         
         if not candidates:
             return None
@@ -711,8 +713,9 @@ class FastRecommendationEngine:
             
             if dist <= self.max_distance_km * 0.5:  # 최대 거리의 50% 이내
                 area = self.visit_area_df.iloc[idx]
-                if not self.processor.should_exclude_location(area['VISIT_AREA_NM']):
-                    candidates.append((idx, dist))
+                area_id = area['NEW_VISIT_AREA_ID']  # ID 체크 추가
+                if not self.processor.should_exclude_location(area['VISIT_AREA_NM']) and area_id != 0:
+                    candidates.append((idx, dist, area_id))  # area_id도 포함
         
         if not candidates:
             return None
@@ -1236,21 +1239,29 @@ def _replace_specific_places(recommender, optimized_routes, travel_context_tenso
     
     # 3. 새로운 장소 정보 생성
     new_locations = []
+    used_area_ids = set()  # 이미 사용된 장소 ID 추적
+
     for idx in new_recommendations:
         if idx < len(recommender.visit_area_df):
             row = recommender.visit_area_df.iloc[idx]
             area_id = row['NEW_VISIT_AREA_ID']
-            if area_id not in all_excluded_ids and area_id != 0:
+            
+            # 기존 제외 조건 + 이미 사용된 ID도 제외
+            if area_id not in all_excluded_ids and area_id != 0 and area_id not in used_area_ids:
+                addr = row['ROAD_NM_ADDR'] if pd.notna(row['ROAD_NM_ADDR']) else row['LOTNO_ADDR']
                 new_locations.append({
                     'id': area_id,
                     'name': row['VISIT_AREA_NM'],
                     'coords': [row['X_COORD'], row['Y_COORD']],
                     'idx': idx,
+                    'addr': addr,  # 주소 정보도 추가
                     'type': row.get('VISIT_AREA_TYPE_CD', 0)
                 })
+                used_area_ids.add(area_id)  # 사용된 ID 추가
+                
                 if len(new_locations) >= total_replacements:
                     break
-    
+        
     # 4. 각 날짜별로 장소 대체
     new_routes = {}
     replacement_idx = 0

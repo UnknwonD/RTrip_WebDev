@@ -1363,7 +1363,6 @@ async function handleRecommendation(button) {
   // 로딩 상태 시작
   setLoadingState(planId, true);
   
-  console.log("데이터로 들어온 값은 바로바로~ : ", dislikedIds)
   try {
     const response = await fetch('/api/recommend', {
       method: 'POST',
