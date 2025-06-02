@@ -18,29 +18,29 @@ R-Trip은 사용자에게 맞춤형 여행 경험을 제공하는 혁신적인 �
 ## 🚀 개발 현황
 
 ### 완료된 페이지
-- 개발 중 ..
+- 'main.html' - 여행성향분석 및 회원가입/로그인 사이트
+- 'main_headcontent.html' - 모든 main이 네이밍된 html이 상속하는 템플릿
+- 'main_reocommend.html' - 여행 추천을 제공하는 페이지
+- 'main_register.html' - 회원가입 사이트
+- 'main_mypage.html' - mypage 페이지
+- 'main_travel.html' - 추천받은 여행들을 저장하고 다시 리뷰하는 페이지
+- 'view_travel_plan.html' - 여행의 세부 목적지를 확인하는 페이지
 
 ### 개발 중인 페이지
-- `index.html` - 로그인 전 메인 페이지
-- `app.html` - 로그인 후 메인 대시보드
-- `privacy.html` - 개인정보 처리방침 및 회원가입 안내
-- `video.html` - 서비스 소개 비디오 페이지 (영상 제작 필요)
-- `download.html` - 챗봇 서비스 안내 및 다운로드 페이지 (커스텀 작업 중)
-- `pages.html` - 인터랙티브 여행 지도 페이지 (개발 진행 중)
+- 프로토타입(public)용 개발 완
 
 ## 📋 개발 TODO 리스트
 
-1. **HTML 코드 블록 정리** (필수)
-2. **필요한 HTML 화면만 선별 정리**
-3. 반응형 디자인 최적화
-4. 다국어 지원 기능 구현
-5. 성능 최적화 및 로딩 속도 개선
+1. **HTML 코드 블록 정리** (완료)
+2. **필요한 HTML 화면만 선별 정리** (완료)
+3. 반응형 디자인 최적화 (완료)
+4. 성능 최적화 및 로딩 속도 개선 (완료)
 
 ## 💻 기술 스택
 
 - Frontend: HTML5, CSS3, JavaScript, Flask
-- Backend: Flask
-- Database: AWS S3
+- Backend: Flask, Docker
+- Database: AWS S3, RDS
 - 배포: AWS Cloud Services
 - 버전 관리: Git/GitHub
 
@@ -74,7 +74,7 @@ python app.py
 
 ## 📅 개발 로드맵
 
-- **2025년 5월**: 베타 버전 출시
+- **2025년 5월**: 베타 버전 개발 완료
 - **2025년 8월**: 모바일 앱 출시
 
 ## 👥 팀 구성
