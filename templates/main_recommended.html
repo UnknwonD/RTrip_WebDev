@@ -313,7 +313,8 @@
       <li><a href="{{ url_for('logout') }}" class="nav-icon-link"><i class="fa fa-sign-out"></i><span>로그아웃</span></a></li>
       {% else %}
       <li><a href="{{ url_for('main') }}" class="nav-icon-link"><i class="fa fa-brain"></i><span>성향 분석</span></a></li>
-
+      <li><a href="#" class="nav-icon-link" onclick="showLoginAlert()"><i class="fa fa-sign-in-alt"></i><span>로그인하기</span></a></li>
+      <li><a href="{{ url_for('main_register') }}" class="nav-icon-link"><i class="fa fa-user-plus"></i><span>회원가입</span></a></li>
       {% endif %}
     </ul>
   </div>
