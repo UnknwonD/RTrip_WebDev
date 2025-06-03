@@ -10,7 +10,11 @@
   <div class="container text-center">
     <h1>✨ R-Trip</h1>
     <p class="lead">나만의 여행을 찾아주는 여행 추천 시스템</p>
+    {% if session.get('username') %}
     <a href="#section-recommend" class="btn btn-primary btn-lg">지금 시작하기</a>
+    {% else %}
+    <a href="#section-cta" class="btn btn-primary btn-lg">지금 시작하기</a>
+    {% endif %}
   </div>
 </section>
 
@@ -277,10 +281,25 @@
 <!-- section 4: CTA -->
 <section id="section-cta" class="section bg-dark text-white text-center">
   <div class="container">
-    <h2>나만의 여행을 지금 시작하세요!</h2>
-    <a href="#section-recommend" class="btn btn-warning btn-lg">여행 입력하기</a>
+
+    {% if session.get('username') %}
+      <!-- 로그인 된 경우 -->
+      <h2>나만의 여행을 지금 시작하세요!</h2>
+      <a href="#section-recommend" class="btn btn-warning btn-lg">
+        여행 입력하기
+      </a>
+    {% else %}
+      <!-- 로그인 안 된 경우 -->
+      <h2>여행 추천을 받기 위해 로그인이 필요해요 !</h2>
+      <a href="#" class="btn btn-warning btn-lg" onclick="showLoginAlert()">
+        로그인하기
+      </a>
+      <a href="{{ url_for('main_register') }}" class="btn btn-warning btn-lg">회원가입</a>
+    {% endif %}
+    
   </div>
 </section>
+
 
 <!-- 하단 고정 내비게이션 -->
  <nav class="navbar navbar-default navbar-fixed-bottom">
@@ -299,7 +318,7 @@
     </ul>
   </div>
 </nav>
-ㅋ
+
 
 <style>
 .save-trip-wrapper {
@@ -2435,7 +2454,16 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+<script>
+function showLoginAlert() {
 
+  const loginModal = document.getElementById('loginModal');
+  if (loginModal) {
+    const modalInstance = new bootstrap.Modal(loginModal);
+    modalInstance.show();
+  }
+}
+</script>
 
 
 {% endblock %}
