@@ -4,11 +4,94 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module=".*resource_tracker.*")
 
 from dependency import *
+from tasks import run_gnn # redis
+from celery.result import AsyncResult
+from tasks import celery_app
 from config import s3, BUCKET_NAME
 
 app = Flask(__name__)
 app.secret_key = 'test'
 recommendation_storage = {}
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    travel_input = request.json
+    task = run_gnn.delay(travel_input)  # Celery에 작업 등록
+    return jsonify({"task_id": task.id})
+
+@app.route("/status/<task_id>")
+def status_api(task_id):
+    from celery.result import AsyncResult
+    from tasks import celery_app
+
+    result = AsyncResult(task_id, app=celery_app)
+
+    if result.state == "PENDING":
+        return jsonify({"status": "PENDING"})
+
+    elif result.state == "FAILURE":
+        return jsonify({"status": "FAILURE", "error": str(result.info)})
+
+    elif result.state == "SUCCESS":
+        return jsonify({"status": "SUCCESS", "result": result.result})
+
+    else:
+        return jsonify({"status": result.state})
+
+def restore_numpy_types(obj, original_format_hint=None):
+    """필요한 경우 numpy 타입으로 복원 (선택사항)"""
+    # 대부분의 경우 Python native 타입으로도 충분하지만
+    # 특별히 numpy array가 필요한 경우에만 사용
+    if original_format_hint == 'numpy_array' and isinstance(obj, list):
+        return np.array(obj)
+    return obj
+
+
+@app.route("/result/<task_id>")
+def result_status(task_id):
+    result = AsyncResult(task_id, app=celery_app)
+
+    if result.ready():
+        if result.successful():
+            data = result.result
+            plan_id = data['plan_id']
+            travel_plan_list = data['travel_plan_list']
+            
+            session['current_plan_id'] = plan_id
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
+            # travel_context_tensor를 torch.tensor로 복원
+            travel_context_tensor = torch.tensor(data['travel_context_tensor'], device=device)
+            
+            # 다른 데이터는 이미 Python native 타입으로 변환되어 있으므로 바로 사용 가능
+            route = data['route']
+            unique_recommendations = data['unique_recommendations']
+            
+            # Flask 메모리에 저장
+            recommendation_storage[plan_id] = {
+                'route': route,
+                'recommender': FastRecommendationEngine(device),
+                'unique_recommendations': unique_recommendations,
+                'travel_context_tensor': travel_context_tensor,
+                'timestamp': datetime.now()
+            }
+        else:
+            print(f"[DEBUG] Celery 작업 실패: {result.result}")
+            travel_plan_list = default_travel_plans()
+
+    else:
+        return render_template("loading.html", task_id=task_id)
+
+    return render_template(
+        "main_recommended.html",
+        purpose_options=purpose_options,
+        movement_options=movement_options,
+        whowith_options=whowith_options,
+        user_feature_keys=user_feature_keys,
+        user_info=None,
+        travel_plans=travel_plan_list
+    )
+
 
 # app.py
 @app.route("/main", methods=["GET", "POST"])
@@ -145,40 +228,29 @@ def get_recommendations(plan_id=None):
     
     return recommendation_storage.get(plan_id)
 
-
 # 메인 페이지
 @app.route("/", methods=["GET", "POST"])
 def main_recommended():
-    user_json = None  # 사용자 정보
+    user_json = None
     travel_plan_list = []
 
     if request.method == "POST":
         travel_input = request.form.to_dict()
-        
+
         try:
-          route, recommender, unique_recommendations, travel_context_tensor = main_optimized_test(travel_input)
+            # 🔄 GNN 작업을 Celery에 등록
+            task = run_gnn.delay(travel_input)
+            print(f"[DEBUG] 🎯 GNN 작업 등록 완료: task_id = {task.id}")
 
-          plan_id = update_recommendations(route, recommender, unique_recommendations, travel_context_tensor)
-
-          dummy_ids = [[d['id'] for d in v] for k, v in route.items()] # 날짜별로, 순서대로 인덱스 갖고 있음
-          print(f"[DEBUG] 🤖 GNN 추론 결과: {dummy_ids[:5]}")
-
-          travel_plan_list = travel_plans_with_debug(dummy_ids, travel_input['date_range'])
-          print(f"[DEBUG] 🤖 travel_plan_list 값 확인: {travel_plan_list[:5]}")
-
-          travel_plan_list = fill_missing_coords_with_kakao(travel_plan_list)
+            # 👉 작업 상태 페이지로 리다이렉트
+            return redirect(url_for('result_status', task_id=task.id))
 
         except Exception as e:
-             print(f"[DEBUG] ❌ GNN 추론 실패, 기본 계획 사용: {e}")
-             travel_plan_list = default_travel_plans()
+            print(f"[DEBUG] ❌ 작업 등록 실패: {e}")
+            travel_plan_list = default_travel_plans()
 
     else:
         travel_plan_list = default_travel_plans()
-        # dummy_ids = {1: [7858, 1869, 9863], 2: [9858, 9855, 8691, 8032], 3:[6478, 8580, 8729]}
-        # dummy_ids = [[v] for k, v in dummy_ids.items()]
-        # print(f"[DEBUG] 🧪 더미 ID로 테스트 중: {dummy_ids}")
-        
-        # travel_plan_list = travel_plans_with_debug(dummy_ids, '2025-06-18 ~ 2025-06-20')
 
     return render_template(
         "main_recommended.html",
@@ -189,6 +261,49 @@ def main_recommended():
         user_info=user_json,
         travel_plans=travel_plan_list
     )
+
+# @app.route("/", methods=["GET", "POST"])
+# def main_recommended():
+#     user_json = None  # 사용자 정보
+#     travel_plan_list = []
+
+#     if request.method == "POST":
+#         travel_input = request.form.to_dict()
+        
+#         try:
+#           route, recommender, unique_recommendations, travel_context_tensor = main_optimized_test(travel_input)
+
+#           plan_id = update_recommendations(route, recommender, unique_recommendations, travel_context_tensor)
+
+#           dummy_ids = [[d['id'] for d in v] for k, v in route.items()] # 날짜별로, 순서대로 인덱스 갖고 있음
+#           print(f"[DEBUG] 🤖 GNN 추론 결과: {dummy_ids[:5]}")
+
+#           travel_plan_list = travel_plans_with_debug(dummy_ids, travel_input['date_range'])
+#           print(f"[DEBUG] 🤖 travel_plan_list 값 확인: {travel_plan_list[:5]}")
+
+#           travel_plan_list = fill_missing_coords_with_kakao(travel_plan_list)
+
+#         except Exception as e:
+#              print(f"[DEBUG] ❌ GNN 추론 실패, 기본 계획 사용: {e}")
+#              travel_plan_list = default_travel_plans()
+
+#     else:
+#         travel_plan_list = default_travel_plans()
+#         # dummy_ids = {1: [7858, 1869, 9863], 2: [9858, 9855, 8691, 8032], 3:[6478, 8580, 8729]}
+#         # dummy_ids = [[v] for k, v in dummy_ids.items()]
+#         # print(f"[DEBUG] 🧪 더미 ID로 테스트 중: {dummy_ids}")
+        
+#         # travel_plan_list = travel_plans_with_debug(dummy_ids, '2025-06-18 ~ 2025-06-20')
+
+#     return render_template(
+#         "main_recommended.html",
+#         purpose_options=purpose_options,
+#         movement_options=movement_options,
+#         whowith_options=whowith_options,
+#         user_feature_keys=user_feature_keys,
+#         user_info=user_json,
+#         travel_plans=travel_plan_list
+#     )
     
 # 로그인
 @app.route("/login", methods=["POST"])

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>여행 추천 생성 중...</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* 배경 파티클 애니메이션 */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        /* 메인 컨테이너 */
+        .container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        /* 3D 뉴럴 네트워크 비주얼 */
+        .neural-network {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 2rem 0;
+            perspective: 1000px;
+        }
+        
+        .network-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: rotate3d 8s linear infinite;
+        }
+        
+        .node {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(45deg, #00f5ff, #0080ff);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.6);
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+        
+        .connection {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(0, 245, 255, 0.8), rgba(0, 128, 255, 0.3));
+            transform-origin: left center;
+            animation: dataFlow 3s ease-in-out infinite;
+        }
+        
+        /* 글래스모피즘 카드 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            transform: translateZ(0);
+            animation: cardFloat 4s ease-in-out infinite;
+            max-width: 500px;
+        }
+        
+        /* 타이포그래피 */
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff, #e0e7ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        /* 프로그레스 바 */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00f5ff, #0080ff, #8b5cf6);
+            border-radius: 3px;
+            animation: progress 3s ease-in-out infinite;
+        }
+        
+        /* 상태 인디케이터 */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            margin-top: 1.5rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00f5ff;
+            animation: statusPulse 1.5s ease-in-out infinite;
+        }
+        
+        .status-text {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+        
+        /* 애니메이션 정의 */
+        @keyframes rotate3d {
+            0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
+            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 245, 255, 0.6); }
+            100% { transform: scale(1.3); box-shadow: 0 0 30px rgba(0, 245, 255, 1); }
+        }
+        
+        @keyframes dataFlow {
+            0% { opacity: 0.3; transform: scaleX(0); }
+            50% { opacity: 1; transform: scaleX(1); }
+            100% { opacity: 0.3; transform: scaleX(0); }
+        }
+        
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0) rotateX(0); }
+            50% { transform: translateY(-10px) rotateX(2deg); }
+        }
+        
+        @keyframes progress {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+        
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            50% { transform: translateY(-100px) rotate(180deg); }
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .title { font-size: 2rem; }
+            .subtitle { font-size: 1rem; }
+            .neural-network { width: 200px; height: 200px; }
+            .glass-card { padding: 2rem 1.5rem; }
+        }
+        
+        /* 추가 3D 효과 */
+        .floating-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .floating-icon {
+            position: absolute;
+            font-size: 2rem;
+            color: rgba(255, 255, 255, 0.1);
+            animation: floatIcon 8s ease-in-out infinite;
+        }
+        
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.1; }
+            50% { transform: translateY(-50px) rotate(15deg); opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 배경 파티클 -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- 플로팅 아이콘들 -->
+    <div class="floating-elements">
+        <div class="floating-icon" style="top: 20%; left: 10%; animation-delay: 0s;">🧠</div>
+        <div class="floating-icon" style="top: 30%; right: 15%; animation-delay: 2s;">✈️</div>
+        <div class="floating-icon" style="bottom: 40%; left: 20%; animation-delay: 4s;">🗺️</div>
+        <div class="floating-icon" style="bottom: 20%; right: 25%; animation-delay: 6s;">🎯</div>
+    </div>
+    
+    <div class="container">
+        <div class="glass-card">
+            <!-- 3D 뉴럴 네트워크 비주얼 -->
+            <div class="neural-network">
+                <div class="network-container" id="networkContainer">
+                    <!-- 노드와 연결선은 JavaScript로 동적 생성 -->
+                </div>
+            </div>
+            
+            <h1 class="title">AI가 최적 여행코스를 설계중입니다</h1>
+            <p class="subtitle">
+                Graph Neural Network가 수천 개의 여행지 데이터를 분석하여<br>
+                당신만을 위한 완벽한 여행 루트를 계산하고 있습니다
+            </p>
+            
+            <!-- 프로그레스 바 -->
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+            </div>
+            
+            <!-- 상태 인디케이터 -->
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span class="status-text" id="statusText">딥러닝 모델 추론 중...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 파티클 생성
+        function createParticles() {
+            const particleContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                particleContainer.appendChild(particle);
+            }
+        }
+        
+        // 3D 뉴럴 네트워크 생성
+        function createNeuralNetwork() {
+            const container = document.getElementById('networkContainer');
+            const nodeCount = 12;
+            const nodes = [];
+            
+            // 노드 생성
+            for (let i = 0; i < nodeCount; i++) {
+                const node = document.createElement('div');
+                node.className = 'node';
+                
+                // 3D 공간에 노드 배치
+                const angle = (i / nodeCount) * Math.PI * 2;
+                const radius = 80 + Math.random() * 40;
+                const z = (Math.random() - 0.5) * 100;
+                
+                const x = Math.cos(angle) * radius + 150;
+                const y = Math.sin(angle) * radius + 150;
+                
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                node.style.transform = `translateZ(${z}px)`;
+                node.style.animationDelay = (i * 0.2) + 's';
+                
+                container.appendChild(node);
+                nodes.push({element: node, x, y, z});
+            }
+            
+            // 연결선 생성
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    if (Math.random() > 0.7) { // 30% 확률로 연결
+                        const connection = document.createElement('div');
+                        connection.className = 'connection';
+                        
+                        const dx = nodes[j].x - nodes[i].x;
+                        const dy = nodes[j].y - nodes[i].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx);
+                        
+                        connection.style.left = nodes[i].x + 'px';
+                        connection.style.top = nodes[i].y + 'px';
+                        connection.style.width = distance + 'px';
+                        connection.style.transform = `rotate(${angle}rad)`;
+                        connection.style.animationDelay = Math.random() * 3 + 's';
+                        
+                        container.appendChild(connection);
+                    }
+                }
+            }
+        }
+        
+        // 상태 텍스트 변경
+        function updateStatusText() {
+            const statusTexts = [
+                '딥러닝 모델 추론 중...',
+                '여행지 데이터 분석 중...',
+                '최적 경로 계산 중...',
+                '개인화 추천 생성 중...',
+                '결과 최적화 중...'
+            ];
+            
+            let currentIndex = 0;
+            const statusElement = document.getElementById('statusText');
+            
+            setInterval(() => {
+                statusElement.style.opacity = '0';
+                setTimeout(() => {
+                    currentIndex = (currentIndex + 1) % statusTexts.length;
+                    statusElement.textContent = statusTexts[currentIndex];
+                    statusElement.style.opacity = '1';
+                }, 300);
+            }, 2500);
+        }
+        
+        // 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            createNeuralNetwork();
+            updateStatusText();
+        });
+        
+        // 페이지 새로고침 (기존 기능 유지)
+        setTimeout(() => {
+            window.location.reload();
+        }, 3000);
+    </script>
+</body>
+</html>

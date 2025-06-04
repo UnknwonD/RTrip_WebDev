@@ -9,3 +9,5 @@ travel_input.csv
 *.pyd
 pickle
 *.txt
+.DS_Store
+docker-compose.yml

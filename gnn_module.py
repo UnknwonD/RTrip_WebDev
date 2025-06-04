@@ -244,7 +244,7 @@ class FastDataProcessor:
 
 
 class FastRecommendationEngine:
-    """최적화된 추천 엔진"""
+    """최적화된 추천 엔진 - 지역별 모델 호환성 추가"""
     def __init__(self, 
                  device, 
                  model_path='./pickle/improved_travel_recommendation_model.pt', 
@@ -260,25 +260,80 @@ class FastRecommendationEngine:
             with open(data_path, 'rb') as f:
                 self.data_dict = pickle.load(f)
             
+            # 🔧 기존 포맷 호환성 유지
             self.visit_area_df = self.data_dict['visit_area_df']
             self.graph_data = self.data_dict['graph_data']
             self.visit_scaler = self.data_dict['visit_scaler']
             self.travel_scaler = self.data_dict['travel_scaler']
+            
+            # 🆕 새로운 정보 사용 (있는 경우)
+            self.id_to_index = self.data_dict.get('id_to_index', {})
+            self.region_info = self.data_dict.get('region_info', {})
+            
+            print(f"✅ 데이터 로드 완료:")
+            print(f"  - 방문지 데이터: {len(self.visit_area_df)}개 레코드")
+            if self.region_info:
+                print(f"  - 그래프 노드: {self.region_info.get('num_nodes', 'N/A')}개")
+            if self.id_to_index:
+                print(f"  - ID 매핑: {len(self.id_to_index)}개")
+                
         except Exception as e:
             print(f"❌ 데이터 로드 실패: {e}")
             raise RuntimeError(f"데이터 파일을 로드할 수 없습니다: {data_path}")
         
-        # 2. 좌표 사전 처리 및 거리 행렬 계산
-        self.coords = self.visit_area_df[['X_COORD', 'Y_COORD']].values
+        # 🆕 2. 실제 사용되는 방문지 데이터만 추출 (지역별 모델 대응)
+        if self.id_to_index:
+            # ID 매핑이 있는 경우: 실제 사용되는 데이터만 필터링
+            used_area_ids = set(self.id_to_index.keys())
+            mask = self.visit_area_df['NEW_VISIT_AREA_ID'].isin(used_area_ids)
+            self.filtered_visit_df = self.visit_area_df[mask].copy()
+            
+            # 중복 제거 및 정렬 (학습 시와 동일한 순서)
+            agg_dict = {
+                'VISIT_AREA_NM': 'first',
+                'X_COORD': 'mean',
+                'Y_COORD': 'mean',
+                'ROAD_NM_ADDR': 'first',
+                'LOTNO_ADDR': 'first',
+                'VISIT_AREA_TYPE_CD': 'first'
+            }
+            
+            # 만족도 컬럼들이 있는 경우 추가
+            satisfaction_cols = ['DGSTFN', 'REVISIT_INTENTION', 'RCMDTN_INTENTION']
+            for col in satisfaction_cols:
+                if col in self.filtered_visit_df.columns:
+                    agg_dict[col] = 'mean'
+            
+            self.filtered_visit_df = self.filtered_visit_df.groupby('NEW_VISIT_AREA_ID').agg(agg_dict).reset_index()
+            
+            # ID 순서대로 정렬
+            ordered_ids = sorted(self.id_to_index.keys())
+            id_to_row_idx = {area_id: i for i, area_id in enumerate(ordered_ids)}
+            self.filtered_visit_df['sort_order'] = self.filtered_visit_df['NEW_VISIT_AREA_ID'].map(id_to_row_idx)
+            self.filtered_visit_df = self.filtered_visit_df.sort_values('sort_order').reset_index(drop=True)
+            self.filtered_visit_df = self.filtered_visit_df.drop('sort_order', axis=1)
+            
+            print(f"  - 필터링된 방문지: {len(self.filtered_visit_df)}개")
+            
+            # 🆕 필터링된 데이터 사용 플래그
+            self.use_filtered_data = True
+        else:
+            # ID 매핑이 없는 경우: 원본 데이터 사용
+            self.filtered_visit_df = self.visit_area_df.copy()
+            self.use_filtered_data = False
+            print("  ⚠️ ID 매핑 정보가 없어 원본 데이터 사용")
+        
+        # 3. 좌표 사전 처리 및 거리 행렬 계산 (필터링된 데이터 기준)
+        self.coords = self.filtered_visit_df[['X_COORD', 'Y_COORD']].values
         # NaN 값 처리
         self.coords = np.nan_to_num(self.coords, nan=self.coords[~np.isnan(self.coords).any(axis=1)].mean(axis=0)[0] if len(self.coords[~np.isnan(self.coords).any(axis=1)]) > 0 else 0)
         self.distance_matrix = None  # 필요시 계산
         
-        # 3. 디바이스 설정
+        # 4. 디바이스 설정
         self.device = device
         self.graph_data = self.graph_data.to(self.device)
         
-        # 4. 최적화된 모델 로드
+        # 5. 최적화된 모델 로드 (기존 코드 유지)
         checkpoint = torch.load(model_path, map_location=self.device)
         model_config = checkpoint['model_config']
         
@@ -372,6 +427,7 @@ class FastRecommendationEngine:
             # 원래 모델로 로드
             self.model = OriginalGNN(**model_config).to(self.device)
             self.model.load_state_dict(checkpoint['model_state_dict'])
+            
             print("✅ 기존 모델 구조로 로드 성공")
             
         except Exception as e:
@@ -392,7 +448,7 @@ class FastRecommendationEngine:
             
         self.model.eval()
         
-        # 5. 초기화
+        # 6. 초기화 (기존 코드 유지)
         self.max_distance_km = max_distance_km
         self.excluded_ids = set()
         self.processor = FastDataProcessor()
@@ -401,14 +457,15 @@ class FastRecommendationEngine:
         self.min_recommendations_per_day = 3
         self.min_total_recommendations = 10
         
-        # 6. 캐시 초기화
+        # 7. 캐시 초기화
         self._embedding_cache = None
         self._score_cache = None
-        
+    
+    
     @torch.no_grad()
     def get_recommendations(self, travel_context, top_k=50, diversity_weight=0.3,
                           excluded_ids=None, filter_useless=True, consider_distance=True):
-        """최적화된 추천 로직"""
+        """🔧 개선된 추천 로직 - 지역별 모델 호환"""
         self.model.eval()
         
         # 임베딩 캐싱
@@ -422,21 +479,49 @@ class FastRecommendationEngine:
         
         scores = preference_scores.clone()
         
-        # 벡터화된 필터링
+        # 🔧 개선된 벡터화 필터링 - 데이터 크기 호환성 고려
         if filter_useless:
-            exclude_mask = torch.tensor([
-                self.processor.should_exclude_location(name) 
-                for name in self.visit_area_df['VISIT_AREA_NM']
-            ], device=self.device)
-            scores[exclude_mask] *= 0.3
+            # 사용할 데이터 결정
+            target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+            
+            try:
+                exclude_mask = torch.tensor([
+                    self.processor.should_exclude_location(name) 
+                    for name in target_df['VISIT_AREA_NM']
+                ], device=self.device)
+                
+                # 크기 검증
+                if len(exclude_mask) == len(scores):
+                    scores[exclude_mask] *= 0.3
+                else:
+                    print(f"⚠️ 마스크 크기 불일치: exclude_mask={len(exclude_mask)}, scores={len(scores)}")
+                    # 안전한 대체 처리
+                    for i, name in enumerate(target_df['VISIT_AREA_NM']):
+                        if i < len(scores) and self.processor.should_exclude_location(name):
+                            scores[i] *= 0.3
+            except Exception as e:
+                print(f"⚠️ 필터링 중 오류: {e}, 스킵")
         
-        # 제외 ID 처리 (벡터화)
+        # 🔧 개선된 제외 ID 처리
         if excluded_ids:
-            exclude_mask = torch.tensor([
-                self.visit_area_df.iloc[i]['NEW_VISIT_AREA_ID'] in excluded_ids 
-                for i in range(len(scores))
-            ], device=self.device)
-            scores[exclude_mask] = -1.0
+            try:
+                target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+                
+                exclude_mask = torch.tensor([
+                    target_df.iloc[i]['NEW_VISIT_AREA_ID'] in excluded_ids 
+                    for i in range(min(len(target_df), len(scores)))
+                ], device=self.device)
+                
+                if len(exclude_mask) == len(scores):
+                    scores[exclude_mask] = -1.0
+                else:
+                    # 안전한 대체 처리
+                    for i in range(min(len(target_df), len(scores))):
+                        area_id = target_df.iloc[i]['NEW_VISIT_AREA_ID']
+                        if area_id in excluded_ids:
+                            scores[i] = -1.0
+            except Exception as e:
+                print(f"⚠️ 제외 ID 처리 중 오류: {e}, 스킵")
         
         # 유효한 점수가 있는지 확인
         valid_scores = scores > 0
@@ -448,11 +533,14 @@ class FastRecommendationEngine:
                 # 필터링을 완화하여 다시 시도
                 scores = preference_scores.clone()
                 if excluded_ids:
-                    exclude_mask = torch.tensor([
-                        self.visit_area_df.iloc[i]['NEW_VISIT_AREA_ID'] in excluded_ids 
-                        for i in range(len(scores))
-                    ], device=self.device)
-                    scores[exclude_mask] = -1.0
+                    try:
+                        target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+                        for i in range(min(len(target_df), len(scores))):
+                            area_id = target_df.iloc[i]['NEW_VISIT_AREA_ID']
+                            if area_id in excluded_ids:
+                                scores[i] = -1.0
+                    except:
+                        pass
                 valid_scores = scores > 0
                 num_valid = torch.sum(valid_scores).item()
             
@@ -537,6 +625,7 @@ class FastRecommendationEngine:
             remaining.pop(best_idx)
         
         return selected
+    
     def _filter_distant_locations(self, routes, all_recommendations):
         """거리가 너무 먼 장소를 필터링하고 대체"""
         if not routes or len(routes) == 0:
@@ -655,7 +744,7 @@ class FastRecommendationEngine:
         return current_day_locations
 
     def _find_replacement_location(self, current_locations, outlier_idx, used_indices, day):
-        """제거된 장소를 대체할 가까운 장소 찾기"""
+        """🔧 개선된 대체 장소 찾기 - 필터링된 데이터 사용"""
         if not current_locations:
             return None
         
@@ -663,9 +752,12 @@ class FastRecommendationEngine:
         current_indices = [loc['idx'] for loc in current_locations]
         center_coords = np.mean([self.coords[idx] for idx in current_indices], axis=0)
         
+        # 사용할 데이터 결정
+        target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+        
         # 모든 후보 장소와의 거리 계산
         candidates = []
-        for idx in range(len(self.visit_area_df)):
+        for idx in range(len(target_df)):
             if idx in used_indices or idx == outlier_idx:
                 continue
             
@@ -677,7 +769,7 @@ class FastRecommendationEngine:
             
             # 임계값 이내의 장소만 후보로
             if dist_to_center <= self.max_distance_km * 0.7:  # 70% 이내
-                area = self.visit_area_df.iloc[idx]
+                area = target_df.iloc[idx]
                 area_id = area['NEW_VISIT_AREA_ID']  # ID 체크 추가
                 if not self.processor.should_exclude_location(area['VISIT_AREA_NM']) and area_id != 0:
                     candidates.append((idx, dist_to_center, area_id))  # area_id도 포함
@@ -689,7 +781,7 @@ class FastRecommendationEngine:
         candidates.sort(key=lambda x: x[1])
         best_idx = candidates[0][0]
         
-        row = self.visit_area_df.iloc[best_idx]
+        row = target_df.iloc[best_idx]
         addr = row['ROAD_NM_ADDR'] if pd.notna(row['ROAD_NM_ADDR']) else row['LOTNO_ADDR']
         
         return {
@@ -702,17 +794,20 @@ class FastRecommendationEngine:
         }
 
     def _find_nearby_replacement(self, reference_idx, replace_idx, used_indices, prefer_closer=True):
-        """참조 위치에서 가까운 대체 장소 찾기"""
+        """🔧 개선된 근처 대체 찾기 - 필터링된 데이터 사용"""
         candidates = []
         
-        for idx in range(len(self.visit_area_df)):
+        # 사용할 데이터 결정
+        target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+        
+        for idx in range(len(target_df)):
             if idx in used_indices or idx == replace_idx:
                 continue
             
             dist = self.distance_matrix[reference_idx][idx]
             
             if dist <= self.max_distance_km * 0.5:  # 최대 거리의 50% 이내
-                area = self.visit_area_df.iloc[idx]
+                area = target_df.iloc[idx]
                 area_id = area['NEW_VISIT_AREA_ID']  # ID 체크 추가
                 if not self.processor.should_exclude_location(area['VISIT_AREA_NM']) and area_id != 0:
                     candidates.append((idx, dist, area_id))  # area_id도 포함
@@ -724,7 +819,7 @@ class FastRecommendationEngine:
         candidates.sort(key=lambda x: x[1])
         best_idx = candidates[0][0]
         
-        row = self.visit_area_df.iloc[best_idx]
+        row = target_df.iloc[best_idx]
         addr = row['ROAD_NM_ADDR'] if pd.notna(row['ROAD_NM_ADDR']) else row['LOTNO_ADDR']
         return {
             'id': row['NEW_VISIT_AREA_ID'],
@@ -736,7 +831,10 @@ class FastRecommendationEngine:
         }
 
     def _ensure_minimum_places(self, routes, all_recommendations, used_indices):
-        """각 날짜가 최소 장소 수를 만족하도록 보장"""
+        """🔧 개선된 최소 장소 수 보장 - 필터링된 데이터 사용"""
+        # 사용할 데이터 결정
+        target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+        
         for day, locations in routes.items():
             if len(locations) < self.min_recommendations_per_day:
                 needed = self.min_recommendations_per_day - len(locations)
@@ -744,8 +842,8 @@ class FastRecommendationEngine:
                 
                 # 사용하지 않은 추천 중에서 선택
                 for idx in all_recommendations:
-                    if idx not in used_indices and idx < len(self.visit_area_df):
-                        row = self.visit_area_df.iloc[idx]
+                    if idx not in used_indices and idx < len(target_df):
+                        row = target_df.iloc[idx]
                         addr = row['ROAD_NM_ADDR'] if pd.notna(row['ROAD_NM_ADDR']) else row['LOTNO_ADDR']
                         new_loc = {
                             'id': row['NEW_VISIT_AREA_ID'],
@@ -765,16 +863,19 @@ class FastRecommendationEngine:
         return routes
     
     def optimize_routes(self, recommendations, travel_tensor):
-        """최적화된 경로 생성"""
+        """🔧 개선된 경로 생성 - 필터링된 데이터 사용"""
         travel_duration = max(1, int(travel_tensor[0, 3]))
+        
+        # 사용할 데이터 결정
+        target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
         
         # 중복 제거 (기존 코드)
         unique_recommendations = []
         seen_ids = set()
         
         for idx in recommendations:
-            if idx < len(self.visit_area_df):
-                area_id = self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID']
+            if idx < len(target_df):
+                area_id = target_df.iloc[idx]['NEW_VISIT_AREA_ID']
                 if area_id not in seen_ids and area_id != 0:
                     unique_recommendations.append(idx)
                     seen_ids.add(area_id)
@@ -783,16 +884,16 @@ class FastRecommendationEngine:
         min_required = travel_duration * self.min_recommendations_per_day
         if len(unique_recommendations) < min_required:
             for idx in recommendations:
-                if idx not in unique_recommendations and idx < len(self.visit_area_df):
-                    area_id = self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID']
+                if idx not in unique_recommendations and idx < len(target_df):
+                    area_id = target_df.iloc[idx]['NEW_VISIT_AREA_ID']
                     if area_id != 0:
                         unique_recommendations.append(idx)
                         if len(unique_recommendations) >= min_required:
                             break
         
-        # 빠른 경로 생성
+        # 빠른 경로 생성 (필터링된 데이터 사용)
         optimized_routes = self.route_generator.generate_routes(
-            unique_recommendations, self.visit_area_df, travel_duration, self.coords
+            unique_recommendations, target_df, travel_duration, self.coords
         )
         
         # 거리 기반 필터링 추가
@@ -807,6 +908,9 @@ class FastRecommendationEngine:
         self._embedding_cache = None
         self._score_cache = None
         
+        # 사용할 데이터 결정
+        target_df = self.filtered_visit_df if self.use_filtered_data else self.visit_area_df
+        
         liked_indices = [unique_recommendations[i] for i in feedback.get("liked", []) 
                         if i < len(unique_recommendations)]
         disliked_indices = [unique_recommendations[i] for i in feedback.get("disliked", []) 
@@ -814,9 +918,11 @@ class FastRecommendationEngine:
         
         self.update_preferences(disliked_place_ids=disliked_indices)
         
-        # 제외 ID 설정
-        excluded_ids = {self.visit_area_df.iloc[idx]['NEW_VISIT_AREA_ID'] 
-                       for idx in disliked_indices}
+        # 제외 ID 설정 (안전한 처리)
+        excluded_ids = set()
+        for idx in disliked_indices:
+            if idx < len(target_df):
+                excluded_ids.add(target_df.iloc[idx]['NEW_VISIT_AREA_ID'])
         
         # 새로운 추천
         recommendations, _, _ = self.get_recommendations(
@@ -1286,10 +1392,6 @@ def _replace_specific_places(recommender, optimized_routes, travel_context_tenso
     
     print(f"\n  📊 총 {replacement_idx}개 장소 대체 완료")
     return new_routes
-
-
-
-
 
 
 def main_optimized_test(travel_example) -> dict:
