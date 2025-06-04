@@ -175,25 +175,25 @@ def get_meta_photo_info(new_visit_area_id):
         with engine.connect() as conn:
             result = conn.execute(text(query), {"ids": tuple(new_visit_area_id)})
             rows = result.fetchall()
-
+            
             if not rows:
                 print(f"[DEBUG] ⚠️ 결과 없음 for NEW_VISIT_AREA_ID: {new_visit_area_id}")
                 return None
 
             data = {}
-            print(f"[DEBUG] ✅ 결과: {data}")
 
             for row in rows:
                 addr = row.ROAD_NM_CD if row.ROAD_NM_CD is not None else row.LOTNO_CD
                 
-                data[row.NEW_VISIT_AREA_ID] = {
+                data[int(row.NEW_VISIT_AREA_ID)] = {
                     "area_id": row.NEW_VISIT_AREA_ID,
                     "area": row.VISIT_AREA_NM or "[이름없음]",
                     "x": row.X_COORD,
                     "y": row.Y_COORD,
                     "addr": addr
                 }
-        
+            print(f"[DEBUG] ✅ 결과: {data}")
+
         return data
             
     except Exception as e:
@@ -232,15 +232,29 @@ def travel_plans_with_debug(area_ids, travel_date:str):
 
     for i, route in enumerate(area_ids):
         print(f"[DEBUG] 📍 처리 중인 루트 {i+1}: {route}")
-        
+        meta_info = get_meta_photo_info(route)
+
+        if not meta_info:
+            print(f"[DEBUG] ⚠️ 루트에서 유효한 장소 정보 없음")
+            continue
+
+        for area_id in route:
+            if area_id not in meta_info:
+                print(f"[DEBUG] ⚠️ area_id {area_id}에 대한 장소 정보 없음 (결과에 없음)")
+            elif meta_info[area_id]["x"] is None or meta_info[area_id]["y"] is None:
+                print(f"[DEBUG] ⚠️ area_id {area_id}는 좌표 정보 없음")
+            else:
+                print(f"[DEBUG] ✅ area_id {area_id} 처리 성공")
+
         route_infos = []
         
-        # 🚀 Batch로 한 번에 가져오기
+        #  Batch로 한 번에 가져오기
         area_info_dict = get_meta_photo_info(route)
         route_infos = []
         
         for area_id in route:
             photo = area_info_dict.get(area_id)
+                    
             if photo:
                 route_infos.append({
                     "name": photo["area"],
