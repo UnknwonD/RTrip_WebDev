@@ -152,7 +152,7 @@ def get_meta_photo_info(new_visit_area_id):
                 Y_COORD,
                 ROAD_NM_CD,
                 LOTNO_CD
-            FROM place_info_new
+            FROM places
             WHERE NEW_VISIT_AREA_ID IN :ids
         )
         UNION
@@ -164,10 +164,10 @@ def get_meta_photo_info(new_visit_area_id):
                 NULL AS Y_COORD,
                 NULL AS ROAD_NM_CD,
                 NULL AS LOTNO_CD
-            FROM meta_photo_new
+            FROM photos
             WHERE NEW_VISIT_AREA_ID IN :ids
             AND NEW_VISIT_AREA_ID NOT IN (
-                SELECT NEW_VISIT_AREA_ID FROM place_info_new WHERE NEW_VISIT_AREA_ID IN :ids
+                SELECT NEW_VISIT_AREA_ID FROM places WHERE NEW_VISIT_AREA_ID IN :ids
             )
         )
         """
