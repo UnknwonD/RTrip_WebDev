@@ -66,11 +66,14 @@ def result_status(task_id):
             # 다른 데이터는 이미 Python native 타입으로 변환되어 있으므로 바로 사용 가능
             route = data['route']
             unique_recommendations = data['unique_recommendations']
+            target_region = data['target_region']
+            model_path=f'./pickle/{target_region}/improved_travel_recommendation_model.pt'
+            data_path=f'./pickle/{target_region}/improved_travel_data.pkl'
             
             # Flask 메모리에 저장
             recommendation_storage[plan_id] = {
                 'route': route,
-                'recommender': FastRecommendationEngine(device),
+                'recommender': FastRecommendationEngine(device, model_path, data_path),
                 'unique_recommendations': unique_recommendations,
                 'travel_context_tensor': travel_context_tensor,
                 'timestamp': datetime.now()

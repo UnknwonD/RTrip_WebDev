@@ -4,14 +4,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from celery import Celery
 
-# Redis와 연결 - EC2 서버용
 # celery_app = Celery(
 #     'rtrip',
 #     broker='redis://redis:6379/0',     # 작업 요청을 보내는 곳
 #     backend='redis://redis:6379/0'     # 작업 결과를 받는 곳 (보내줄 곳)
 # )
 
-# Local 테스트용
+# 로컬 테스트용
 celery_app = Celery(
     'rtrip',
     broker='redis://localhost:6379/0',
@@ -45,8 +44,15 @@ def run_gnn(travel_input):
     from gnn_module import main_optimized_test
     from extract_latlng import fill_missing_coords_with_kakao
     from modules.rds_utils import travel_plans_with_debug
+    
+    region_map = {'eastern' : '동부권',
+     'western' : '서부권',
+     'capital' : '수도권',
+     'jeju' : '제주도'}
+    
+    target_region = region_map[travel_input['selected_region']]
 
-    route, recommender, unique_recommendations, travel_context_tensor = main_optimized_test(travel_input)
+    route, recommender, unique_recommendations, travel_context_tensor = main_optimized_test(travel_input, target_region)
     
     plan_id = str(uuid.uuid4())[:8]
     
@@ -65,5 +71,6 @@ def run_gnn(travel_input):
         'travel_plan_list': filled_plan_list,
         'route': route,
         'unique_recommendations': unique_recommendations,
-        'travel_context_tensor': travel_context_tensor
+        'travel_context_tensor': travel_context_tensor,
+        'target_region': target_region
     }

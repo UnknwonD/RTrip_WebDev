@@ -1394,7 +1394,7 @@ def _replace_specific_places(recommender, optimized_routes, travel_context_tenso
     return new_routes
 
 
-def main_optimized_test(travel_example) -> dict:
+def main_optimized_test(travel_example, target_region) -> dict:
     """최적화된 테스트 함수"""
     print("🚀 최적화된 GNN 추천 시스템 시작!")
     print("=" * 60)
@@ -1414,7 +1414,10 @@ def main_optimized_test(travel_example) -> dict:
         travel_context_tensor = torch.tensor(travel_tensor, dtype=torch.float32).to(device)
         
         # 추천 엔진 초기화
-        recommender = FastRecommendationEngine(device)
+        model_path=f'./pickle/{target_region}/improved_travel_recommendation_model.pt'
+        data_path=f'./pickle/{target_region}/improved_travel_data.pkl'
+        
+        recommender = FastRecommendationEngine(device, model_path, data_path)
         
         # 추천 생성
         recommendations, embeddings, _ = recommender.get_recommendations(
