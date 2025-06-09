@@ -113,7 +113,6 @@
     position: relative;
 }
 
-/* 중복확인 버튼 스타일 개선 */
 .input-group .btn-check-duplicate {
     height: 38px;
     padding: 8px 16px;
@@ -160,7 +159,6 @@
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
-/* Input 필드와 함께 사용될 때 스타일 개선 */
 .input-group .form-control {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
@@ -367,7 +365,6 @@ input[type=range].hidden-slider {
     text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 
-/* 별도 landing-text 스타일 (슬라이더 외부용) */
 .landing-text:not(.slide .landing-text) {
     position: relative;
     background: none;
@@ -555,7 +552,6 @@ input[type=range].hidden-slider {
     position: relative;
 }
 
-/* 버튼 스타일 개선 */
 .btn-group {
     display: flex;
     gap: 15px;
@@ -622,7 +618,6 @@ input[type=range].hidden-slider {
     font-size: 16px;
 }
 
-/* 애니메이션 강화 */
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
@@ -632,7 +627,6 @@ input[type=range].hidden-slider {
     animation: pulse 0.3s ease;
 }
 
-/* 텍스트 스타일 개선 */
 .text-center {
     text-align: center;
 }
@@ -641,7 +635,6 @@ input[type=range].hidden-slider {
     margin-top: 1rem;
 }
 
-/* #style-analysis 내부 h4 스타일 */
 #style-analysis h4 {
     color: #2c3e50;
     font-weight: 700;

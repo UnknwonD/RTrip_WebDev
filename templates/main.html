@@ -3,14 +3,17 @@
 {% block content %}
 <div class="main-wrapper">
     <div class="main-card" style="max-width: 1200px;">
-        <h2 class="form-title">🌏 R-Trip 여행 성향 분석</h2>
+    <h2 class="form-title text-center">🌏 R-Trip 여행 성향 분석</h2>
         <form method="POST" action="{{ url_for('main') }}">
-            <h4 class="mb-4 text-center">
-                더욱 마음에 드는 사진을 골라보세요 
-            </h4>
-            <h5 class="mb-4 text-center">
-                당신의 여행 스타일을 찾아드립니다.
-            </h5>
+            
+                <h4 class="mb-4 text-center" id="select-image-title">
+                    더욱 마음에 드는 사진을 골라보세요 
+                </h4>
+                <h5 class="mb-4 text-center" id="select-image-subtitle">
+                    당신의 여행 스타일을 찾아드립니다.
+                </h5>
+            
+
 
             {% for i in range(1,11) %}            
             <div class="form-step" id="step{{ i }}">
@@ -54,14 +57,14 @@
                     </div>
 
                         <div id="slider-wrapper" style="overflow: hidden; position: relative;">
+                            <div class="style-info-box text-center">
+                                <p class="style-info-text">유사 성향 사용자들이 자주 방문한 장소입니다</p>
+                            </div>
                             <div id="slider-container" style="white-space: nowrap; transition: transform 0.5s ease;">
                                 <!-- 이미지 결과 렌더링 -->
                             </div>
                         </div>
                             
-                        <div class='landing-text wow fadeInRight text-center'> 
-                            <p>유사 성향 사용자들이 자주 방문한 장소입니다 </p>
-                        </div>
           
                         <div class="text-center">
                             <div class="btn-group">
