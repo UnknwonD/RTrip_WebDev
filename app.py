@@ -96,6 +96,93 @@ def result_status(task_id):
     )
 
 
+# main_community
+@app.route('/main_community', methods=['GET', 'POST'])
+def main_community():
+    # 예시 데이터 정의
+    sample_images = [
+        "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop",  # 경복궁
+        "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop",  # 부산 해운대
+        "https://images.unsplash.com/photo-1544376664-80b17f26fd82?w=400&h=300&fit=crop",  # 제주도 한라산
+        "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&h=300&fit=crop",  # 여수 밤바다
+        "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop",  # 전주 한옥마을
+        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",  # 강릉 경포대
+        "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=400&h=300&fit=crop",  # 대구 동성로
+        "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&h=300&fit=crop",  # 인천 차이나타운
+    ]
+    
+    sample_names = [
+        "경복궁",
+        "해운대 해수욕장", 
+        "한라산 국립공원",
+        "여수 밤바다",
+        "전주 한옥마을",
+        "강릉 경포대",
+        "대구 동성로",
+        "인천 차이나타운"
+    ]
+    
+    sample_locations = [
+        "서울특별시 종로구 사직로 161",
+        "부산광역시 해운대구 해운대해변로 264", 
+        "제주특별자치도 제주시 1100로 2070-61",
+        "전라남도 여수시 돌산읍 돌산로 3600-1",
+        "전라북도 전주시 완산구 기린대로 99",
+        "강원도 강릉시 창해로 365",
+        "대구광역시 중구 동성로2가 6-1",
+        "인천광역시 중구 차이나타운로 59"
+    ]
+    
+    try:
+        # 실제 함수 호출 시도
+        images, visit_area_nm, visit_area_loc = extract_lastet_travel_images()
+        
+        # POST 요청 처리 (지역 검색)
+        if request.method == 'POST':
+            location = request.form.get('location', '').strip()
+            if location:
+                # 검색어가 있으면 필터링
+                filtered_data = []
+                for i, (img, name, loc) in enumerate(zip(images, visit_area_nm, visit_area_loc)):
+                    if location.lower() in name.lower() or location.lower() in loc.lower():
+                        filtered_data.append((img, name, loc))
+                
+                if filtered_data:
+                    images, visit_area_nm, visit_area_loc = zip(*filtered_data)
+                    images, visit_area_nm, visit_area_loc = list(images), list(visit_area_nm), list(visit_area_loc)
+        
+    except Exception as e:
+        print(f"함수 호출 실패: {e}")
+        print("예시 데이터를 사용합니다.")
+        
+        # 예시 데이터 사용
+        images = sample_images
+        visit_area_nm = sample_names  
+        visit_area_loc = sample_locations
+        
+        # POST 요청 처리 (지역 검색) - 예시 데이터에서
+        if request.method == 'POST':
+            location = request.form.get('location', '').strip()
+            if location:
+                # 검색어가 있으면 필터링
+                filtered_data = []
+                for i, (img, name, loc) in enumerate(zip(images, visit_area_nm, visit_area_loc)):
+                    if location.lower() in name.lower() or location.lower() in loc.lower():
+                        filtered_data.append((img, name, loc))
+                
+                if filtered_data:
+                    images, visit_area_nm, visit_area_loc = zip(*filtered_data)
+                    images, visit_area_nm, visit_area_loc = list(images), list(visit_area_nm), list(visit_area_loc)
+                else:
+                    # 검색 결과가 없으면 메시지 전달
+                    images = []
+                    visit_area_nm = []
+                    visit_area_loc = []
+    
+    return render_template("main_community.html", 
+                           images=images, 
+                           visit_area_nm=visit_area_nm, 
+                           visit_area_loc=visit_area_loc)
 # app.py
 @app.route("/main", methods=["GET", "POST"])
 def main():

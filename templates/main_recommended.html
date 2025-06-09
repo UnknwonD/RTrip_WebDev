@@ -438,11 +438,12 @@
 
 
 <!-- 하단 고정 내비게이션 -->
- <nav class="navbar navbar-default navbar-fixed-bottom">
+<nav class="navbar navbar-default navbar-fixed-bottom">
   <div class="container text-center">
     <ul class="navbar-horizontal-scroll">
       <li><a href="#section-intro" class="nav-icon-link"><i class="fa fa-home"></i><span>홈</span></a></li>
       <li><a href="#section-recommend" class="nav-icon-link"><i class="fa fa-star"></i><span>추천받기</span></a></li>
+      <li><a href="{{ url_for('main_community') }}" class="nav-icon-link"><i class="fa fa-camera"></i><span>여행 후기</span></a></li>
       {% if session.get("username") %}
       <li><a href="{{ url_for('main_mypage') }}" class="nav-icon-link"><i class="fa fa-user"></i><span>마이페이지</span></a></li>
       <li><a href="{{ url_for('main_mytravel') }}" class="nav-icon-link"><i class="fa fa-map-marked-alt"></i><span>내 여행</span></a></li>

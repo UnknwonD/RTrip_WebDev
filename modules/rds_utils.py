@@ -100,8 +100,35 @@ def find_nearest_users(input_vec, k=5):
     except Exception as e:
         print("[ERROR] find_nearest_users 실패:", e)
         return []
-
-# GNN 
+    
+def extract_lastet_travel_images():
+    sql = """
+        WITH regional_travels AS (
+            SELECT 
+                TRAVEL_ID,
+                LEFT(name, 1) as REGION,
+                VISIT_START_YMD,
+                ROW_NUMBER() OVER (
+                    PARTITION BY LEFT(name, 1) 
+                    ORDER BY VISIT_START_YMD DESC
+                ) as rn
+            FROM places 
+            GROUP BY TRAVEL_ID, LEFT(name, 1), VISIT_START_YMD
+        )
+        SELECT 
+            TRAVEL_ID,
+            REGION
+        FROM regional_travels 
+        WHERE rn <= 10
+        ORDER BY REGION, VISIT_START_YMD DESC;
+        """
+    travel_df = pd.read_sql(sql, con=engine)
+    travel_ids = travel_df['TRAVEL_ID'].to_list()
+    
+    images = get_images_by_travel_ids(travel_ids)
+    # todos: 장소 정보 (지역, 이름)도 같이 return하도록 수정
+    
+    return images
 
 def get_user_recommended_images_and_areas(username):
     from modules.s3_utils import get_user_info
