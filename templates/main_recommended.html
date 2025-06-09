@@ -20,7 +20,7 @@
 
 
       
-
+{% if session.get('username') %}
 <!-- 여행 정보 입력 -->
  <!-- section 2: 지역 및 정보 입력 -->
 <section id="section-recommend" class="section">
@@ -412,6 +412,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- section 4: CTA -->
 <section id="section-cta" class="section bg-dark text-white text-center">
