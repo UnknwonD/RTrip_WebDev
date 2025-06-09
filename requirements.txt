@@ -1,3 +1,7 @@
+# --- Backend Queue ---
+redis==6.2.0
+celery==5.5.3
+
 # --- Web framework ---
 Flask==3.1.0
 gunicorn==21.2.0
@@ -33,7 +37,3 @@ boto3==1.38.8
 botocore==1.38.8
 s3transfer==0.12.0
 jmespath==1.0.1
-
-# --- Backend Queue ---
-redis==6.2.0
-celery==5.5.3
