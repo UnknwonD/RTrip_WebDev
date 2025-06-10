@@ -128,6 +128,7 @@ def extract_lastet_travel_images():
     images = get_images_by_travel_ids(travel_ids)
     # todos: 장소 정보 (지역, 이름)도 같이 return하도록 수정
     
+    
     return images
 
 def get_user_recommended_images_and_areas(username):

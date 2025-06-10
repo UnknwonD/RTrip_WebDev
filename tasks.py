@@ -4,18 +4,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from celery import Celery
 
-# celery_app = Celery(
-#     'rtrip',
-#     broker='redis://redis:6379/0',     # 작업 요청을 보내는 곳
-#     backend='redis://redis:6379/0'     # 작업 결과를 받는 곳 (보내줄 곳)
-# )
-
-# 로컬 테스트용
 celery_app = Celery(
     'rtrip',
-    broker='redis://localhost:6379/0',
-    backend='redis://localhost:6379/0'
+    broker='redis://redis:6379/0',     # 작업 요청을 보내는 곳
+    backend='redis://redis:6379/0'     # 작업 결과를 받는 곳 (보내줄 곳)
 )
+
+# 로컬 테스트용
+# celery_app = Celery(
+#     'rtrip',
+#     broker='redis://localhost:6379/0',
+#     backend='redis://localhost:6379/0'
+# )
 
 celery = celery_app
 
