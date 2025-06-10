@@ -39,6 +39,7 @@ def get_images_by_travel_ids(travel_ids):
                 JOIN meta_photo_new m
                 ON p.NEW_VISIT_AREA_ID = m.NEW_VISIT_AREA_ID
                 WHERE m.PHOTO_FILE_NM IS NOT NULL
+                AND p.VISIT_AREA_NM != '집' 
             )
             SELECT
                 travel_id,
