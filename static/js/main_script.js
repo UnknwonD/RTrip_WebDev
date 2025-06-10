@@ -12,8 +12,24 @@
 
         updateProgress(step);
 
+        const titleEl = document.getElementById("select-image-title");
+        const subtitleEl = document.getElementById("select-image-subtitle");
+
+        if (titleEl && subtitleEl) {
+            const shouldHide = step === 11;
+            titleEl.style.display = shouldHide ? "none" : "block";
+            subtitleEl.style.display = shouldHide ? "none" : "block";
+        }
+
         if (step === 11) {
-            analyzeStyles();  // step10에서 분석 실행
+            analyzeStyles();
+
+            setTimeout(() => {
+                const section = document.getElementById("step11");
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, 300);  
         }
     }
 }

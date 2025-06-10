@@ -611,7 +611,7 @@
   width: 100%;
 }
 
-  .flatpickr-calendar {
+.flatpickr-calendar {
   border-radius: 12px !important;
   box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important;
   border: none !important;
@@ -640,87 +640,94 @@
   color: #667eea !important;
 }
 
+@media (max-width: 768px) {
+  .flatpickr-calendar {
+    width: 90vw !important;
+    left: 5vw !important;
+    right: auto !important;
+  }
+}
 .route-pagination-container {
-          position: relative;
-        }
-        
-        .route-page {
-          display: none;
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        .route-page.active {
-          display: block;
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .pagination-controls {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 15px;
-          margin-top: 20px;
-          padding: 15px;
-          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-          border-radius: 10px;
-        }
-        
-        .pagination-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          border: none;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          font-size: 16px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        
-        .pagination-btn:hover:not(:disabled) {
-          transform: scale(1.1);
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .pagination-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          transform: none;
-        }
-        
-        .pagination-info {
-          font-size: 14px;
-          color: #64748b;
-          font-weight: 500;
-          min-width: 100px;
-          text-align: center;
-        }
-        
-        .page-dots {
-          display: flex;
-          gap: 8px;
-        }
-        
-        .page-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #cbd5e1;
-          transition: all 0.3s ease;
-          cursor: pointer;
-        }
-        
-        .page-dot.active {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          transform: scale(1.3);
-        }
+  position: relative;
+}
+
+.route-page {
+  display: none;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.route-page.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+  padding: 15px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 10px;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  min-width: 100px;
+  text-align: center;
+}
+
+.page-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.page-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.page-dot.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transform: scale(1.3);
+}
 
   /* 백드롭 제거 (기존 유지) */
 .modal-backdrop {
@@ -2407,7 +2414,8 @@ document.addEventListener("DOMContentLoaded", function () {
       dateFormat: "Y-m-d",
       locale: "ko", // 한국어
       minDate: "today", // 오늘 이후만 선택 가능
-      showMonths: 2, // 두 달 보이기
+      position: "auto center",  // 화면 너비에 따라 위치 자동 조정
+      showMonths: 1, // 두 달 보이기
       conjunction: " ~ ", // 구분자
       onChange: function(selectedDates, dateStr, instance) {
         const startDateElement = document.getElementById('start_date');
@@ -2955,6 +2963,19 @@ function showLoginAlert() {
   }
 }
 </script>
+
+<script>
+  // 페이지 로드 후 section-features로 부드럽게 스크롤
+  window.addEventListener('load', function () {
+    const section = document.getElementById('section-features');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      console.warn("section-features 섹션을 찾을 수 없습니다.");
+    }
+  });
+</script>
+
 
 
 {% endblock %}
